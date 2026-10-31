@@ -1,0 +1,5 @@
+export { ApiError, setUnauthorizedHandler } from './client'
+export { currentSession, login, logout } from './auth'
+export { createNote, deleteNote, listNotes } from './notes'
+export { createTask, deleteTask, listTasks, updateTask } from './tasks'
+export { getToday } from './today'
