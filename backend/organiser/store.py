@@ -7,8 +7,17 @@ from organiser.tags import join_tags, split_tags
 
 MAX_LIST = 500
 
-_TASK_COLUMNS = {"title", "due_date", "priority", "status", "recurring"}
-_NOTE_COLUMNS = {"body", "tags", "task_id"}
+_TASK_COLUMNS = {
+    "title",
+    "due_date",
+    "priority",
+    "status",
+    "recurring",
+    "assist_mode",
+    "context_hint",
+    "source",
+}
+_NOTE_COLUMNS = {"body", "tags", "task_id", "source"}
 
 
 def now_iso() -> str:
@@ -31,6 +40,9 @@ def task_from_row(row: sqlite3.Row) -> dict:
         "priority": row["priority"],
         "status": row["status"],
         "recurring": bool(row["recurring"]),
+        "assist_mode": row["assist_mode"],
+        "context_hint": row["context_hint"],
+        "source": row["source"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -43,6 +55,7 @@ def note_from_row(row: sqlite3.Row) -> dict:
         "tags": split_tags(row["tags"]),
         "task_id": row["task_id"],
         "task_title": row["task_title"],
+        "source": row["source"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -54,6 +67,7 @@ SELECT
     notes.body,
     notes.tags,
     notes.task_id,
+    notes.source,
     notes.created_at,
     notes.updated_at,
     tasks.title AS task_title
@@ -114,9 +128,11 @@ def create_task(conn: sqlite3.Connection, fields: dict) -> dict:
     due = fields.get("due_date")
     cur = conn.execute(
         """
-        INSERT INTO tasks
-            (title, due_date, priority, status, recurring, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO tasks (
+            title, due_date, priority, status, recurring,
+            assist_mode, context_hint, source, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fields["title"],
@@ -124,6 +140,9 @@ def create_task(conn: sqlite3.Connection, fields: dict) -> dict:
             fields["priority"],
             fields["status"],
             1 if fields["recurring"] else 0,
+            fields.get("assist_mode") or "when_useful",
+            fields.get("context_hint") or None,
+            fields.get("source") or "manual",
             now,
             now,
         ),
@@ -232,13 +251,14 @@ def create_note(conn: sqlite3.Connection, fields: dict) -> dict:
     now = now_iso()
     cur = conn.execute(
         """
-        INSERT INTO notes (body, tags, task_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO notes (body, tags, task_id, source, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             fields["body"],
             join_tags(fields.get("tags") or []),
             fields.get("task_id"),
+            fields.get("source") or "manual",
             now,
             now,
         ),

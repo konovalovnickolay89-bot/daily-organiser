@@ -1,6 +1,10 @@
 # Agent rules for daily-organiser
 
-This is Nick's (Mykola's) personal organiser. The house Debian box, looked after by discovery-system, will run both the FastAPI backend and the React UI. It is not a work system. There is no separate frontend machine.
+Daily Organiser is a smart home organiser for Nick (Mykola). Tasks can be bot-reasoned and context-aware when that helps (a rota, or public transport, later). A plain task still works with zero extra fields: a title is enough, and `assist_mode` defaults to `when_useful` without asking.
+
+Do not build live transport monitoring or curator routines unless a later PR says so. The hooks are `assist_mode` (`off` or `when_useful`), `context_hint`, and `source` (`manual` or `bot`) on tasks, plus `source` on notes. A bot may update status or add a note only after Nick says yes. This app does not ask that question yet, and it does not call a bot.
+
+The house Debian box, looked after by discovery-system, will run both the FastAPI backend and the React UI. It is not a work system. There is no separate frontend machine.
 
 ## Hard rules
 

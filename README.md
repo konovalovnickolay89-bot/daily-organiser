@@ -1,12 +1,15 @@
 # Daily Organiser
 
-Personal tasks and notes for Nick (Mykola). Home data only: no work systems, and no Hilton or guest data.
+A smart home organiser for Nick (Mykola). A task can be a title and nothing else. When a hint is useful, a later routine can reason about it (a rota, or public transport) and, only after Nick says yes, update the status or add a note. This version stores that hook. It does not watch transport or run a curator.
+
+Home data only: no work systems, and no Hilton or guest data.
 
 The house Debian box (looked after by discovery-system) will run **both** this FastAPI backend and the Vite/React UI, on that one machine. There is no separate frontend host. The public name `organiser.grok.me` comes later, through the existing grok.me Cloudflare setup on that same box. This repo does not install a service, change the host, or configure Cloudflare. See `DEPLOY.md` and `AGENTS.md`.
 
 ## MVP
 
-- **Tasks** have a title, due date, priority (`low` / `medium` / `high`), status (`todo` / `doing` / `done`, shown as To do / Doing / Done), and an optional recurring flag.
+- **Tasks** have a title, due date, priority (`low` / `medium` / `high`), status (`todo` / `doing` / `done`, shown as To do / Doing / Done), and an optional recurring flag. A title alone is a full task.
+- **Assist hook** (optional, default on, no extra typing): `assist_mode` is `when_useful` or `off`, `context_hint` is a short note for a later routine, and `source` is `manual` or `bot`. The Tasks page hides this under "Assist, optional". Today still adds a plain task. No bot runs in this version. A future curator may set `source` to `bot` and change status or add a note only after Nick agrees.
 - **Notes** are quick text with tags, search, and an optional link to a task.
 - **Today** lists tasks whose due date is the server's local date, plus recent notes.
 - **Auth** is one shared password (`AUTH_SECRET`) and an `HttpOnly` session cookie.
@@ -114,7 +117,7 @@ Log in with `AUTH_SECRET`.
 | View | What it does |
 | --- | --- |
 | Today | Tasks due on the server's local date, and the latest notes. You can add either from this page. |
-| Tasks | Create and filter tasks. Change status. Delete. |
+| Tasks | Create and filter tasks. Change status. Delete. Assist is optional and shut by default. |
 | Notes | Capture a note, tag it, optionally link a task, and search. |
 
 HTTP API (session required except health, login, and logout):
@@ -134,6 +137,8 @@ HTTP API (session required except health, login, and logout):
 Task list filters: `status`, `priority`, `due` (`YYYY-MM-DD`), `q`. Note list filters: `q`, `tag`, `task_id`. Today accepts `notes_limit` (default 20, max 100).
 
 Status values are `todo`, `doing`, and `done`. Priority values are `low`, `medium`, and `high`.
+
+Task JSON may also include `assist_mode` (`when_useful` or `off`, default `when_useful`), `context_hint` (optional text), and `source` (`manual` or `bot`, default `manual`). Note JSON may include `source` the same way. Omit them and the defaults apply.
 
 ## Tests
 

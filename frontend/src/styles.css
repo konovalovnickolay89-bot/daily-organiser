@@ -203,6 +203,20 @@ label {
 
 .check input { width: auto; }
 
+.assist {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.assist summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.assist .hint { margin-top: 4px; }
+
 .error {
   margin: 0;
   color: var(--danger);

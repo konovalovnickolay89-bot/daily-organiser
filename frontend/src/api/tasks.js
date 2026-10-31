@@ -10,16 +10,28 @@ export function listTasks({ status, priority, due, q } = {}) {
   return request(`/api/tasks${query ? `?${query}` : ''}`)
 }
 
-export function createTask({ title, dueDate, priority, status, recurring }) {
+export function createTask({
+  title,
+  dueDate,
+  priority,
+  status,
+  recurring,
+  assistMode,
+  contextHint,
+}) {
+  const body = {
+    title,
+    due_date: dueDate || null,
+    priority,
+    status,
+    recurring: Boolean(recurring),
+  }
+  if (assistMode) body.assist_mode = assistMode
+  const hint = (contextHint || '').trim()
+  if (hint) body.context_hint = hint
   return request('/api/tasks', {
     method: 'POST',
-    body: JSON.stringify({
-      title,
-      due_date: dueDate || null,
-      priority,
-      status,
-      recurring: Boolean(recurring),
-    }),
+    body: JSON.stringify(body),
   })
 }
 

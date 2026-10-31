@@ -14,6 +14,7 @@ export function NoteList({ notes, onDelete, empty }) {
             {formatWhen(note.created_at)}
             {note.tags.length ? ` · ${note.tags.join(', ')}` : ''}
             {note.task_title ? ` · ${note.task_title}` : ''}
+            {note.source === 'bot' ? ' · Bot' : ''}
           </p>
           {onDelete ? <DeleteButton onDelete={() => onDelete(note)} /> : null}
         </li>

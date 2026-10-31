@@ -9,6 +9,8 @@ from organiser.tags import clean_tags
 
 Priority = Literal["low", "medium", "high"]
 Status = Literal["todo", "doing", "done"]
+AssistMode = Literal["off", "when_useful"]
+Source = Literal["manual", "bot"]
 
 
 def _clean_title(value: str) -> str:
@@ -23,6 +25,13 @@ def _clean_body(value: str) -> str:
     if not value:
         raise ValueError("Note text is required")
     return value
+
+
+def _clean_hint(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
 
 
 class LoginIn(BaseModel):
@@ -47,11 +56,19 @@ class TaskIn(BaseModel):
     priority: Priority = "medium"
     status: Status = "todo"
     recurring: bool = False
+    assist_mode: AssistMode = "when_useful"
+    context_hint: str | None = Field(default=None, max_length=300)
+    source: Source = "manual"
 
     @field_validator("title")
     @classmethod
     def title_not_blank(cls, value: str) -> str:
         return _clean_title(value)
+
+    @field_validator("context_hint")
+    @classmethod
+    def hint_blank_is_absent(cls, value: str | None) -> str | None:
+        return _clean_hint(value)
 
 
 class TaskPatch(BaseModel):
@@ -60,6 +77,9 @@ class TaskPatch(BaseModel):
     priority: Priority | None = None
     status: Status | None = None
     recurring: bool | None = None
+    assist_mode: AssistMode | None = None
+    context_hint: str | None = Field(default=None, max_length=300)
+    source: Source | None = None
 
     @field_validator("title")
     @classmethod
@@ -67,6 +87,11 @@ class TaskPatch(BaseModel):
         if value is None:
             return None
         return _clean_title(value)
+
+    @field_validator("context_hint")
+    @classmethod
+    def hint_blank_is_absent(cls, value: str | None) -> str | None:
+        return _clean_hint(value)
 
 
 class TaskOut(BaseModel):
@@ -76,6 +101,9 @@ class TaskOut(BaseModel):
     priority: Priority
     status: Status
     recurring: bool
+    assist_mode: AssistMode
+    context_hint: str | None = None
+    source: Source
     created_at: str
     updated_at: str
 
@@ -84,6 +112,7 @@ class NoteIn(BaseModel):
     body: str = Field(min_length=1, max_length=20_000)
     tags: list[str] = []
     task_id: int | None = None
+    source: Source = "manual"
 
     @field_validator("body")
     @classmethod
@@ -100,6 +129,7 @@ class NotePatch(BaseModel):
     body: str | None = Field(default=None, min_length=1, max_length=20_000)
     tags: list[str] | None = None
     task_id: int | None = None
+    source: Source | None = None
 
     @field_validator("body")
     @classmethod
@@ -122,6 +152,7 @@ class NoteOut(BaseModel):
     tags: list[str]
     task_id: int | None
     task_title: str | None
+    source: Source
     created_at: str
     updated_at: str
 

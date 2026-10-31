@@ -1,7 +1,9 @@
 import asyncio
+import sqlite3
 from datetime import date, timedelta
 
 import pytest
+from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from organiser.config import get_settings
@@ -65,6 +67,9 @@ def test_task_note_and_today_after_login(client):
     assert task["priority"] == "high"
     assert task["status"] == "todo"
     assert task["recurring"] is True
+    assert task["assist_mode"] == "when_useful"
+    assert task["context_hint"] is None
+    assert task["source"] == "manual"
 
     later = client.post(
         "/api/tasks",
@@ -85,6 +90,7 @@ def test_task_note_and_today_after_login(client):
     assert saved["tags"] == ["home", "errands"]
     assert saved["task_id"] == task["id"]
     assert saved["task_title"] == "Buy oat milk"
+    assert saved["source"] == "manual"
 
     page = client.get("/api/today")
     assert page.status_code == 200, page.text
@@ -107,6 +113,99 @@ def test_task_note_and_today_after_login(client):
 
     listed = client.get("/api/tasks", params={"status": "doing", "q": "oat"})
     assert [item["id"] for item in listed.json()] == [task["id"]]
+
+
+def test_title_only_task_stays_plain_and_assist_hook_round_trips(client):
+    login(client)
+    plain = client.post("/api/tasks", json={"title": "Fold towels"})
+    assert plain.status_code == 201, plain.text
+    body = plain.json()
+    assert body["assist_mode"] == "when_useful"
+    assert body["context_hint"] is None
+    assert body["source"] == "manual"
+
+    hinted = client.post(
+        "/api/tasks",
+        json={
+            "title": "Check the evening train",
+            "assist_mode": "when_useful",
+            "context_hint": "  public transport  ",
+            "source": "manual",
+        },
+    )
+    assert hinted.status_code == 201, hinted.text
+    assert hinted.json()["context_hint"] == "public transport"
+
+    quiet = client.patch(
+        f"/api/tasks/{body['id']}",
+        json={"assist_mode": "off"},
+    )
+    assert quiet.status_code == 200
+    assert quiet.json()["assist_mode"] == "off"
+    assert quiet.json()["title"] == "Fold towels"
+
+    bot_note = client.post(
+        "/api/notes",
+        json={"body": "Leave ten minutes earlier", "source": "bot", "task_id": hinted.json()["id"]},
+    )
+    assert bot_note.status_code == 201, bot_note.text
+    assert bot_note.json()["source"] == "bot"
+
+
+def test_existing_database_gains_assist_columns(tmp_path, monkeypatch):
+    path = tmp_path / "old.db"
+    conn = sqlite3.connect(path)
+    conn.execute(
+        """
+        CREATE TABLE tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            due_date TEXT,
+            priority TEXT NOT NULL DEFAULT 'medium',
+            status TEXT NOT NULL DEFAULT 'todo',
+            recurring INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            body TEXT NOT NULL,
+            tags TEXT NOT NULL DEFAULT '',
+            task_id INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO tasks (title, priority, status, recurring, created_at, updated_at)
+        VALUES ('Old task', 'medium', 'todo', 0, '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00')
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setenv("AUTH_SECRET", AUTH_SECRET)
+    monkeypatch.setenv("SESSION_SECRET", SESSION_SECRET)
+    monkeypatch.setenv("DATABASE_PATH", str(path))
+    get_settings.cache_clear()
+    try:
+        with TestClient(create_app()) as client:
+            login(client)
+            listed = client.get("/api/tasks")
+            assert listed.status_code == 200, listed.text
+            task = listed.json()[0]
+            assert task["title"] == "Old task"
+            assert task["assist_mode"] == "when_useful"
+            assert task["source"] == "manual"
+            assert task["context_hint"] is None
+    finally:
+        get_settings.cache_clear()
 
 
 def test_percent_in_title_is_searchable(client):

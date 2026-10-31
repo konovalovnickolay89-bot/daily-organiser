@@ -12,6 +12,8 @@ const EMPTY = {
   priority: 'medium',
   status: 'todo',
   recurring: false,
+  assistMode: 'when_useful',
+  contextHint: '',
 }
 
 export function Tasks() {
@@ -64,6 +66,8 @@ export function Tasks() {
         priority: form.priority,
         status: form.status,
         recurring: form.recurring,
+        assistMode: form.assistMode,
+        contextHint: form.contextHint,
       })
       setForm((current) => ({ ...EMPTY, due: current.due }))
       await load()
@@ -98,7 +102,7 @@ export function Tasks() {
     <div className="stack">
       <header className="page-head">
         <h2>Tasks</h2>
-        <p className="muted">Title, due date, priority, status, and an optional repeat flag.</p>
+        <p className="muted">A title is enough. Assist stays optional.</p>
       </header>
       <ErrorText>{error}</ErrorText>
       <TaskForm form={form} pending={pending} onChange={update} onSubmit={create} />
