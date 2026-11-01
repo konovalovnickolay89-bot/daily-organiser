@@ -3,6 +3,11 @@ import { listTasks } from "../../api/tasks.js";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { taskMeta } from "../../lib/labels.js";
 
+function taskCount(count) {
+  if (count === 1) return "1 task";
+  return `${count} tasks`;
+}
+
 export function TodayList() {
   const { tick, system } = useHouse();
   const [items, setItems] = useState(null);
@@ -10,7 +15,7 @@ export function TodayList() {
 
   useEffect(() => {
     let cancelled = false;
-    listTasks({ scope: "today", limit: 6 })
+    listTasks({ scope: "today", limit: 5 })
       .then((data) => {
         if (!cancelled) {
           setItems(data.items);
@@ -27,7 +32,10 @@ export function TodayList() {
 
   return (
     <section className="module today" aria-labelledby="today-title" data-module="today">
-      <h2 id="today-title">Today</h2>
+      <div className="module-head">
+        <h2 id="today-title">Today</h2>
+        {items && <p className="count">{taskCount(items.length)}</p>}
+      </div>
       <p className="lede">Due today, and anything still open from earlier.</p>
       {error && (
         <p className="error" role="alert">

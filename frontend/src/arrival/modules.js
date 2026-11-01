@@ -6,9 +6,13 @@ import { TodayList } from "../modules/tasks/TodayList.jsx";
 /**
  * Arrival screen registry.
  *
- * Slots: "primary" (left), "secondary" (right), "corner".
- * A later module is added here and talks to src/api. The shell does not need a rewrite.
- * Any other slot is rendered under the panes.
+ * Slots, read by ArrivalShell:
+ *   "primary"   — left pane (daily needs)
+ *   "secondary" — right pane (approvals, today)
+ *   "corner"    — quiet, non-dominant
+ *
+ * A later module is added here and talks to src/api. The shell does not change.
+ * Any other slot is rendered under the desk.
  */
 export const arrivalModules = [
   { id: "morning-brief", slot: "primary", Component: MorningBrief },

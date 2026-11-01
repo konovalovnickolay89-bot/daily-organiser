@@ -1,8 +1,23 @@
 import { useEffect, useState } from "react";
 import { getMorningBrief } from "../../api/brief.js";
 import { useHouse } from "../../house/HouseContext.jsx";
+import { BriefSection } from "./BriefSection.jsx";
+import { Disclosure } from "./Disclosure.jsx";
 
-const OPEN_BY_DEFAULT = new Set(["tasks", "commitments"]);
+const OPEN_KEYS = new Set(["tasks", "commitments"]);
+
+function foldLine(sections) {
+  const tasks = sections.find((section) => section.key === "tasks");
+  const commitments = sections.find((section) => section.key === "commitments");
+  const parts = [];
+  if (tasks?.summary) parts.push(tasks.summary);
+  if (commitments && !commitments.placeholder) {
+    parts.push(
+      commitments.summary === "None open." ? "No open commitments" : `${commitments.summary} commitments`,
+    );
+  }
+  return parts.join(" · ");
+}
 
 export function MorningBrief() {
   const { tick } = useHouse();
@@ -26,43 +41,53 @@ export function MorningBrief() {
     };
   }, [tick]);
 
+  const line = brief ? foldLine(brief.sections ?? []) : "";
+
   return (
     <section className="module brief" aria-labelledby="brief-title" data-module="morning-brief">
-      <h2 id="brief-title">Morning brief</h2>
-      <p className="lede">Daily needs, read from the house log.</p>
-      {error && (
-        <p className="error" role="alert">
-          {error.message}
-        </p>
-      )}
-      {!brief && !error && <p className="empty">Opening the brief…</p>}
-      {brief?.note && <p className="brief-note">{brief.note}</p>}
-      {brief?.sections.map((section) => (
-        <details key={section.key} defaultOpen={OPEN_BY_DEFAULT.has(section.key)}>
-          <summary>
-            <span className="chevron" aria-hidden="true" />
-            <span className="section-title">{section.title}</span>
-            <span className="section-summary">
-              {section.placeholder ? "Not connected" : section.summary}
-            </span>
-          </summary>
-          {section.placeholder ? (
-            <p className="placeholder-copy">{section.summary}</p>
-          ) : section.items.length === 0 ? (
-            <p className="empty">Nothing in this section.</p>
+      {!brief && (
+        <>
+          <h2 id="brief-title">Morning brief</h2>
+          <p className="lede">Daily needs from the house log.</p>
+          {error ? (
+            <p className="error" role="alert">
+              {error.message}
+            </p>
           ) : (
-            <ul className="item-list">
-              {section.items.map((item) => (
-                <li key={item.id ?? item.title} className="item">
-                  <h3>{item.title}</h3>
-                  {item.meta && <p className="meta">{item.meta}</p>}
-                  {item.detail && <p>{item.detail}</p>}
-                </li>
-              ))}
-            </ul>
+            <p className="empty">Opening the brief…</p>
           )}
-        </details>
-      ))}
+        </>
+      )}
+      {brief && (
+        <Disclosure
+          className="brief-fold"
+          startOpen
+          summary={
+            <span className="brief-heading">
+              <span className="chevron" aria-hidden="true" />
+              <span className="brief-heading-text">
+                <h2 id="brief-title">Morning brief</h2>
+                {line && <span className="brief-fold-line">{line}</span>}
+              </span>
+            </span>
+          }
+        >
+          <p className="lede">Daily needs from the house log.</p>
+          {error && (
+            <p className="error" role="alert">
+              {error.message}
+            </p>
+          )}
+          {brief.note && <p className="brief-note">{brief.note}</p>}
+          {(brief.sections ?? []).map((section) => (
+            <BriefSection
+              key={section.key}
+              section={section}
+              startOpen={OPEN_KEYS.has(section.key) && !section.placeholder}
+            />
+          ))}
+        </Disclosure>
+      )}
     </section>
   );
 }

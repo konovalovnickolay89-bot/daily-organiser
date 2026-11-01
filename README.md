@@ -16,7 +16,7 @@ The house Debian box will run this later as PostgreSQL plus one process. `organi
 backend/organiser/     FastAPI service (Postgres, brief, approvals, pause)
 backend/tests/         Schema and API tests
 frontend/src/api/      The only place the UI calls the API
-frontend/src/arrival/  Module registry for the arrival screen
+frontend/src/arrival/  Arrival shell and the module registry
 frontend/src/modules/  Presence bar, brief, approvals, today, quiet suggestion
 docker-compose.yml     Internal Postgres; API and UI on 127.0.0.1:8080 only
 DEPLOY.md              systemd sketch for later; nothing is installed
@@ -30,7 +30,7 @@ browser  →  arrival UI
             tasks, commitments, events, action_requests, system_state
 ```
 
-A later screen is a module in `frontend/src/arrival/modules.js` plus a function in `frontend/src/api/`. The shell already has slots: `primary`, `secondary`, and `corner`.
+A later module is registered in `frontend/src/arrival/modules.js` and calls `frontend/src/api/`. The shell (`ArrivalShell.jsx`) already has slots: `primary` (left), `secondary` (right), and `corner`.
 
 ## Run the whole stack
 
@@ -143,7 +143,7 @@ Approve and skip return `effect.applied: false` and a short summary. The `action
 
 One home screen:
 
-1. Centred presence bar: “Welcome home”, the system status, and Pause / Resume.
+1. Presence bar across the top, centred: “Welcome home”, the system status, and Pause / Unpause.
 2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
 3. Right: pending approvals, then a short Today list.
 4. Corner: “A playlist is ready, when you want it.” It is text only. It does not play anything and it does not control the house.

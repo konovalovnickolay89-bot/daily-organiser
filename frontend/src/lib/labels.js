@@ -17,6 +17,19 @@ export const STATUS_LABELS = {
   done: "Done",
 };
 
+export function formatHouseDate(value) {
+  if (!value) return "";
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (!match) return String(value);
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function taskMeta(task, houseDate) {
   let when = "No date";
   if (task.due_on) {
