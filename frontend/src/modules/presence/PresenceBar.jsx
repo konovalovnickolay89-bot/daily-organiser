@@ -23,13 +23,14 @@ export function PresenceBar() {
       className="presence"
       data-paused={paused ? "true" : "false"}
       data-state={state}
+      data-greeting-reason={system?.greeting_reason ?? ""}
       aria-busy={busy ? "true" : "false"}
     >
       <p className="eyebrow">
         Home
         {dateLabel && <span className="eyebrow-date"> · {dateLabel}</span>}
       </p>
-      <h1>Welcome home</h1>
+      <h1>{system?.greeting ?? ""}</h1>
       <div className="presence-control">
         <p className="status" role="status" aria-live="polite">
           <span className="status-mark" aria-hidden="true" />

@@ -131,4 +131,7 @@ class SystemState(Base):
     paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     activity: Mapped[str] = mapped_column(String(32), nullable=False, default="quiet", server_default="quiet")
     status_text: Mapped[str] = mapped_column(String(160), nullable=False, default="All quiet", server_default="All quiet")
+    # Last accepted arrival. Null until the house posts one. The presence bar
+    # shows "Welcome home" only while this sits inside the one-hour window.
+    arrived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

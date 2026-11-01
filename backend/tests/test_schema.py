@@ -20,8 +20,9 @@ def test_actionable_records_have_owner_and_status(db):
     assert "owner" in event_columns
     assert "kind" in event_columns
     assert "status" not in event_columns
-    state_columns = {column["name"] for column in inspector.get_columns("system_state")}
-    assert {"paused", "activity", "status_text"} <= state_columns
+    state_columns = {column["name"]: column for column in inspector.get_columns("system_state")}
+    assert {"paused", "activity", "status_text", "arrived_at"} <= set(state_columns)
+    assert state_columns["arrived_at"]["nullable"] is True
 
 
 def test_task_status_is_constrained(db):

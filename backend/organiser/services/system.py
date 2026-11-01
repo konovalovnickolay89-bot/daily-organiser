@@ -1,7 +1,12 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from sqlalchemy.orm import Session
 
+from organiser.domain import DEFAULT_OWNER
 from organiser.models import SystemState
 from organiser.services.events import record_event
+from organiser.services.greeting import arrival_window_open, greeting_state
 from organiser.timeutil import utcnow
 
 QUIET_TEXT = "All quiet"
@@ -18,6 +23,42 @@ def ensure_system_state(session: Session) -> SystemState:
         row = SystemState(id=1, paused=False, activity="quiet", status_text=QUIET_TEXT)
         session.add(row)
         session.flush()
+    return row
+
+
+def present_system(row: SystemState, now: datetime, tz_name: str) -> dict:
+    greet = greeting_state(now, row.arrived_at, tz_name)
+    return {
+        "paused": row.paused,
+        "activity": row.activity,
+        "status_text": row.status_text,
+        "house_date": greet["house_date"],
+        "updated_at": row.updated_at,
+        "greeting": greet["greeting"],
+        "greeting_reason": greet["greeting_reason"],
+        "arrived_at": greet["arrived_at"],
+        "debounce_until": greet["debounce_until"],
+    }
+
+
+def record_arrival(session: Session, now: datetime, tz_name: str) -> SystemState:
+    """Note an arrival for the presence bar.
+
+    A second call inside the open hour leaves the first timestamp and does not
+    write another log line. Nothing outside the house log is changed.
+    """
+    row = ensure_system_state(session)
+    if arrival_window_open(now, row.arrived_at, tz_name):
+        return row
+    row.arrived_at = now.astimezone(ZoneInfo(tz_name))
+    row.updated_at = utcnow()
+    record_event(
+        session,
+        kind="system",
+        title="Arrived home",
+        body="Arrival noted on the presence bar for one hour. Nothing outside the house log was changed.",
+        owner=DEFAULT_OWNER,
+    )
     return row
 
 

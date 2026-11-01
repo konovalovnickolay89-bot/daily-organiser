@@ -90,6 +90,7 @@ h1 {
   font-size: clamp(2.7rem, 5.4vw, 4rem);
   letter-spacing: -0.03em;
   line-height: 1.02;
+  min-height: 1.02em;
 }
 
 .presence-control {

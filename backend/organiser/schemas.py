@@ -10,6 +10,7 @@ from organiser.domain import (
     ActionStatus,
     CommitmentStatus,
     EventKind,
+    GreetingReason,
     Priority,
     TaskStatus,
 )
@@ -202,6 +203,10 @@ class SystemRead(APIModel):
     status_text: str
     house_date: date
     updated_at: datetime
+    greeting: str
+    greeting_reason: GreetingReason
+    arrived_at: datetime | None = None
+    debounce_until: datetime | None = None
 
 
 def apply_changes(row: object, payload: BaseModel) -> None:

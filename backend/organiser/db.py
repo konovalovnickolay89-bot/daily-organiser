@@ -46,6 +46,20 @@ def get_db() -> Generator[Session, None, None]:
         session.close()
 
 
+def ensure_arrived_at_column() -> None:
+    """Add the arrival timestamp on databases created before that column existed.
+
+    ``create_all`` does not alter an existing ``system_state`` table.
+    """
+    with get_engine().begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE system_state "
+                "ADD COLUMN IF NOT EXISTS arrived_at TIMESTAMP WITH TIME ZONE"
+            )
+        )
+
+
 def wait_for_database(attempts: int = 30, delay_seconds: float = 1.0) -> None:
     import time
 
