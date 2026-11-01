@@ -1,0 +1,76 @@
+# Local run only. This file does not deploy to the house box.
+#
+# Postgres stays on the compose network. It has no host port.
+# Evolving Cook already listens on 127.0.0.1:5432 on the house box, so this
+# file must not publish 5432 or any other Postgres port.
+#
+# The only published port is the API on the host loopback: 127.0.0.1:8080.
+# Inside the container the process listens on 0.0.0.0:8080 so Docker can
+# forward that one address. It is not published on the LAN. The same process
+# serves the built arrival screen.
+name: daily-organiser
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: organiser
+      POSTGRES_PASSWORD: organiser
+      POSTGRES_DB: organiser
+    # No ports. Reachable only as hostname "db" on this network.
+    # The image still declares 5432 for that network. Nothing maps it to the host.
+    volumes:
+      - organiser-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U organiser -d organiser"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    environment:
+      DATABASE_URL: postgresql+psycopg://organiser:organiser@db:5432/organiser
+      SEED_ON_START: "true"
+      HOUSE_TIMEZONE: Europe/London
+      HOST: 0.0.0.0
+      PORT: "8080"
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://127.0.0.1:8080,http://localhost:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: test
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg://organiser:organiser@db:5432/organiser_test
+      SEED_ON_START: "false"
+      HOUSE_TIMEZONE: Europe/London
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["pytest", "-q", "tests"]
+
+volumes:
+  organiser-pg:
