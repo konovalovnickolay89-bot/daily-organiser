@@ -1,0 +1,59 @@
+# Local run only. This file does not deploy to the house box.
+name: daily-organiser
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: organiser
+      POSTGRES_PASSWORD: organiser
+      POSTGRES_DB: organiser
+    ports:
+      - "5432:5432"
+    volumes:
+      - organiser-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U organiser -d organiser"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://organiser:organiser@db:5432/organiser
+      SEED_ON_START: "true"
+      HOUSE_TIMEZONE: Europe/London
+      HOST: 0.0.0.0
+      PORT: "8000"
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 8s
+
+  ui:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  organiser-pg:
