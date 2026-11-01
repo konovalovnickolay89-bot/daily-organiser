@@ -18,7 +18,7 @@ backend/tests/         Schema and API tests
 frontend/src/api/      The only place the UI calls the API
 frontend/src/arrival/  Module registry for the arrival screen
 frontend/src/modules/  Presence bar, brief, approvals, today, quiet suggestion
-docker-compose.yml     Local Postgres, API, and UI
+docker-compose.yml     Internal Postgres; API and UI on 127.0.0.1:8080 only
 DEPLOY.md              systemd sketch for later; nothing is installed
 ```
 
@@ -34,48 +34,35 @@ A later screen is a module in `frontend/src/arrival/modules.js` plus a function 
 
 ## Run the whole stack
 
-Docker Compose starts Postgres, the API (with demo rows), and the arrival screen.
+Docker Compose starts Postgres, the API, and the arrival screen. Postgres has no host port. It is reachable only as the hostname `db` on the compose network. Evolving Cook already listens on `127.0.0.1:5432` on the house box, so this file does not publish `5432` or any other Postgres port.
+
+The only published port is the API on the host loopback. Inside the container the process listens on `0.0.0.0:8080` so Docker can forward that one address. It is not published on the LAN. The same process serves the built UI.
 
 ```bash
 docker compose up --build
 ```
 
-Open http://localhost:8080. The API is also at http://localhost:8000, and the docs are at http://localhost:8000/docs.
+Open http://127.0.0.1:8080. Interactive API docs are on that same origin at http://127.0.0.1:8080/docs.
 
 The database password in Compose is a local default (`organiser`). Do not reuse it on the house box.
 
-Stop it with Ctrl-C. `docker compose down -v` drops the local database. With `SEED_ON_START=true`, the next start fills the log again only when there are no tasks.
-
-If port 5432 is already taken by another Postgres, stop that one first or change the host port in `docker-compose.yml` and `DATABASE_URL`.
+Stop it with Ctrl-C. `docker compose down -v` drops the compose database. With `SEED_ON_START=true`, the next start fills the log again only when there are no tasks.
 
 ## Run it while editing
 
-Terminal A, Postgres only:
+Leave Postgres inside Compose (`docker compose up -d db`). Do not add a host port for it.
+
+The API container can be started on the loopback with the source mounted, still talking to hostname `db`:
 
 ```bash
-docker compose up db
+docker compose run --rm --service-ports \
+  -v "$PWD/backend/organiser:/app/organiser" \
+  api
 ```
 
-Or use a Postgres you already have, and create the role and database:
+That publishes `127.0.0.1:8080` only when the `api` service is not already running. Stop the service first if the port is taken.
 
-```bash
-createuser --pwprompt organiser
-createdb --owner=organiser organiser
-```
-
-The URL in `.env.example` matches the Compose defaults. Copy it if you want the file; the environment variables alone are enough.
-
-```bash
-cp .env.example .env
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r backend/requirements.txt
-PYTHONPATH=backend python -m organiser
-```
-
-That listens on `127.0.0.1:8000` and seeds the demo household when the task table is empty.
-
-Terminal B:
+For the Vite dev server, with the API already on `127.0.0.1:8080`:
 
 ```bash
 cd frontend
@@ -85,37 +72,42 @@ npm run dev
 
 Open http://127.0.0.1:5173. Vite proxies the API, so leave `VITE_API_BASE_URL` empty.
 
-For reload while editing the API:
+A host virtualenv is fine on a machine that is not the house box. Set `DATABASE_URL` yourself. On the house box, do not point it at `127.0.0.1:5432`.
 
 ```bash
-PYTHONPATH=backend uvicorn organiser.main:app --reload --host 127.0.0.1 --port 8000
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+PYTHONPATH=backend python -m organiser
 ```
+
+That listens on `127.0.0.1:8080` (`HOST` and `PORT` in `.env.example`).
 
 ## One process, the shape of the house box
 
-Build the UI, then let FastAPI serve `frontend/dist` and the API together.
+Build the UI, then let FastAPI serve `frontend/dist` and the API together, bound to the loopback.
 
 ```bash
 cd frontend && npm ci && npm run build && cd ..
 PYTHONPATH=backend python -m organiser
 ```
 
-Open http://127.0.0.1:8000. `DEPLOY.md` is the later systemd note. This repo does not install it.
+Open http://127.0.0.1:8080. `DEPLOY.md` is the later systemd note. This repo does not install it, and it does not take Evolving Cook’s Postgres port.
 
 ## Tests
 
-Tests use PostgreSQL, never SQLite. They create `organiser_test` when the role is allowed to, and they do not read the demo database.
+Tests use PostgreSQL, never SQLite. They create `organiser_test` when the role is allowed to, and they do not read the demo database. The compose test profile uses hostname `db` and publishes nothing.
+
+```bash
+docker compose --profile test run --rm tests
+```
+
+On a machine that is not the house box, a private database can be named with `TEST_DATABASE_URL`. Do not use Evolving Cook’s `127.0.0.1:5432`.
 
 ```bash
 source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
-pytest
-```
-
-Start Compose Postgres first (`docker compose up db`) or point `TEST_DATABASE_URL` at another empty database:
-
-```bash
-TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@localhost:5432/organiser_test pytest
+TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 ```
 
 `SEED_ON_START` is forced off inside the tests.

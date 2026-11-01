@@ -1,8 +1,10 @@
 import os
 
+# Compose tests use hostname "db" and do not publish a port.
+# A host-side run must set TEST_DATABASE_URL. Do not use Evolving Cook's 127.0.0.1:5432.
 os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://organiser:organiser@localhost:5432/organiser_test",
+    "postgresql+psycopg://organiser:organiser@db:5432/organiser_test",
 )
 os.environ["SEED_ON_START"] = "false"
 os.environ["HOUSE_TIMEZONE"] = "Europe/London"

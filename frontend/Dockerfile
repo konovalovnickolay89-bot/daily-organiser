@@ -1,3 +1,5 @@
+# Not used by docker-compose. Compose builds the UI into the API image and
+# publishes only 127.0.0.1:8080. Postgres is not published.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

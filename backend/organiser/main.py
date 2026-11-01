@@ -13,7 +13,14 @@ from organiser.routes import register
 from organiser.seed import seed_if_empty
 from organiser.services.system import ensure_system_state
 
-UI_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+def _ui_dist() -> Path | None:
+    """Built arrival screen, next to the package in the image or the repo."""
+    package_dir = Path(__file__).resolve().parent
+    for ancestor in list(package_dir.parents)[:3]:
+        candidate = ancestor / "frontend" / "dist"
+        if (candidate / "index.html").is_file():
+            return candidate
+    return None
 
 
 @asynccontextmanager
@@ -51,9 +58,9 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     register(app)
-    index = UI_DIST / "index.html"
-    if index.is_file():
-        app.mount("/", StaticFiles(directory=UI_DIST, html=True), name="ui")
+    ui_dist = _ui_dist()
+    if ui_dist is not None:
+        app.mount("/", StaticFiles(directory=ui_dist, html=True), name="ui")
     else:
 
         @app.get("/", include_in_schema=False)
