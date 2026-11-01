@@ -41,6 +41,11 @@ class ActionStatus(str, Enum):
     skipped = "skipped"
 
 
+class GreetingReason(str, Enum):
+    arrival = "arrival"
+    time_of_day = "time_of_day"
+
+
 DEFAULT_OWNER = "Nick"
 
 TASK_STATUS_LABELS = {

@@ -2,7 +2,7 @@
 
 Home operations for Nick: a household log, a morning brief, and a quiet arrival screen. Tasks, commitments, and approvals carry an owner and a status. Events are the memory of what was recorded. The presence bar can pause the house.
 
-This is not a chat and not a sidekick. “Welcome home” is the arrival line. Nothing here speaks, listens, or greets in a conversation.
+This is not a chat and not a sidekick. “Welcome home” is the arrival line, shown for one hour after the house records an arrival. At other times the presence bar follows the clock in Europe/London. From 22:00 to 04:59 the headline is Nick’s name; the date is already on the bar. Nothing here speaks, listens, or greets in a conversation. The morning brief stays the day’s tasks and commitments.
 
 Approvals stop at the log. Observe, advise, and prepare update a status. Execute can be approved and still does nothing outside this database: no message, no purchase, no booking.
 
@@ -129,9 +129,10 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | GET | `/approvals` | Pending requests. `status=all` lists every decision |
 | POST | `/approvals/{id}/approve` | Status becomes approved. Nothing outside the log changes |
 | POST | `/approvals/{id}/skip` | Status becomes skipped |
-| GET | `/system` | Pause flag, activity, and status line for the presence bar |
+| GET | `/system` | Pause flag, activity, status line, and the presence-bar greeting |
 | POST | `/system/pause` | Pause. Repeating it does not write a second log line |
 | POST | `/system/unpause` | Resume |
+| POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
 
 Task status is `todo`, `doing`, or `done`. Priority is `low`, `medium`, or `high`. Commitment status is `open`, `kept`, or `dropped`. An action mode is `observe`, `advise`, `prepare`, or `execute`. An action status is `pending`, `approved`, or `skipped`. Owner defaults to `Nick`.
 
@@ -143,7 +144,7 @@ Approve and skip return `effect.applied: false` and a short summary. The `action
 
 One home screen:
 
-1. Presence bar across the top, centred: “Welcome home”, the system status, and Pause / Unpause.
+1. Presence bar across the top, centred. The headline comes from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Nick’s name, and the date stays beside Home. The status and Pause / Unpause stay on the bar.
 2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
 3. Right: pending approvals, then a short Today list.
 4. Corner: “A playlist is ready, when you want it.” It is text only. It does not play anything and it does not control the house.
@@ -156,4 +157,4 @@ When the task table is empty and `SEED_ON_START` is true, the API inserts a smal
 
 ## What this does not do
 
-No merge to `main`, no deploy, no Cloudflare, no voice, no live weather, no playlist service, and no shopping that buys anything.
+No merge to `main`, no deploy, no Cloudflare, no voice, no Bantō call, no live weather, no playlist service, and no shopping that buys anything.
