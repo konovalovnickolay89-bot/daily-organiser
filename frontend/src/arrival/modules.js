@@ -7,18 +7,19 @@ import { TodayList } from "../modules/tasks/TodayList.jsx";
 /**
  * Arrival screen registry.
  *
- * Slots, read by ArrivalShell:
- *   "primary"   — left pane (daily needs)
- *   "secondary" — right pane (approvals, proposed changes, today)
- *   "corner"    — quiet, non-dominant
+ * Panels, read by ArrivalShell:
+ *   "brief"      — brief card
+ *   "approvals"  — approvals card
+ *   "today"      — today card (tasks, then proposed changes)
+ *   "corner"     — quiet line under the cards
  *
- * A later module is added here and talks to src/api. The shell does not change.
- * Any other slot is rendered under the desk.
+ * A later module is added here and talks to src/api.
+ * Any other panel is rendered under the cards.
  */
 export const arrivalModules = [
-  { id: "morning-brief", slot: "primary", Component: MorningBrief },
-  { id: "approvals", slot: "secondary", Component: ApprovalsPane },
-  { id: "assistant", slot: "secondary", Component: AssistantPane },
-  { id: "today", slot: "secondary", Component: TodayList },
-  { id: "quiet-media", slot: "corner", Component: QuietSuggestion },
+  { id: "morning-brief", panel: "brief", Component: MorningBrief },
+  { id: "approvals", panel: "approvals", Component: ApprovalsPane },
+  { id: "today", panel: "today", Component: TodayList },
+  { id: "assistant", panel: "today", Component: AssistantPane },
+  { id: "quiet-media", panel: "corner", Component: QuietSuggestion },
 ];

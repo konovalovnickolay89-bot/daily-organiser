@@ -1,8 +1,8 @@
 # Daily Organiser
 
-Home operations for Nick: a household log, a morning brief, and a quiet arrival screen. Tasks, commitments, and approvals carry an owner and a status. Events are the memory of what was recorded. The presence bar can pause the house.
+Home operations for Nick: a household log, a morning brief, and a quiet arrival screen. Tasks, commitments, and approvals carry an owner and a status. Events are the memory of what was recorded. The greeting can pause the house.
 
-This is not a chat and not a sidekick. “Welcome home” is the arrival line, shown for one hour after the house records an arrival. At other times the presence bar follows the clock in Europe/London. From 22:00 to 04:59 the headline is Good night; the date is already on the bar. Nothing here speaks, listens, or greets in a conversation. The morning brief stays the day’s tasks and commitments.
+This is not a chat and not a sidekick. “Welcome home” is the arrival line, shown for one hour after the house records an arrival. At other times the greeting follows the clock in Europe/London. From 22:00 to 04:59 the headline is Good night; the date stays beside Home. Nothing here speaks, listens, or greets in a conversation. The morning brief stays the day’s tasks and commitments.
 
 Approvals stop at the log. Observe, advise, and prepare update a status. Execute can be approved and still does nothing outside this database: no message, no purchase, no booking.
 
@@ -19,8 +19,8 @@ backend/organiser/        FastAPI service (Postgres, brief, approvals, pause)
 backend/organiser/agent/  Mistral assistant: rules, functions, spec, client
 backend/tests/            Schema and API tests
 frontend/src/api/         The only place the UI calls the API
-frontend/src/arrival/     Arrival shell and the module registry
-frontend/src/modules/     Presence bar, brief, approvals, proposed changes, today, quiet suggestion, catch-up
+frontend/src/arrival/     Arrival shell, icon rail, and the module registry
+frontend/src/modules/     Greeting, brief, approvals, proposed changes, today, quiet suggestion, catch-up
 docker-compose.yml        Internal Postgres; API and UI on 127.0.0.1:8080 only
 docs/mistral-agent.md     Assistant setup, console values, and the rulebook
 DEPLOY.md                 systemd sketch for later; nothing is installed
@@ -37,7 +37,7 @@ browser  →  arrival UI
             Mistral (agent and web search)
 ```
 
-A later module is registered in `frontend/src/arrival/modules.js` and calls `frontend/src/api/`. The shell (`ArrivalShell.jsx`) already has slots: `primary` (left), `secondary` (right), and `corner`.
+A later module is registered in `frontend/src/arrival/modules.js` and calls `frontend/src/api/`. Panels are `brief`, `approvals`, `today`, and `corner`. Any other panel is rendered under the cards.
 
 ## Run the whole stack
 
@@ -158,16 +158,18 @@ Approve and skip return `effect.applied: false` and a short summary. The `action
 
 ## Arrival screen
 
-One home screen, in a dark charcoal palette: a thin centred presence bar, then two quiet panes.
+One home screen. A thin icon rail on the left, a large greeting, then cream cards on a near-black canvas. Morning and evening use the same structure. Only the warm high-contrast colours shift. The greeting words still come from the house.
 
-1. Presence bar across the top, centred. The headline comes from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. The status and Pause / Unpause stay on the bar.
-2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
-3. Right: pending approvals, proposed changes, then a short Today list. Proposed changes has one input line for the assistant and its cards, each with Apply and Not now. It shows “The assistant is off” until a key and an agent id are set.
-4. Corner: “A playlist is ready, when you want it.” It is text only. It does not play anything and it does not control the house.
+1. Rail: thin line icons for Home, Brief, tasks, approvals, Today, and Settings. No illustrations.
+2. Greeting, large, at the top of the main area. The words come from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. Status and Pause / Unpause sit with the greeting.
+3. Cards: morning brief, pending approvals, and Today. Today includes the short task list and proposed changes. Proposed changes has one input line and cards, each with Apply and Not now. It shows “The assistant is off” until a key and an agent id are set. Appointments, shopping, and weather on the brief are labelled as not connected.
+4. Under the cards: “A playlist is ready, when you want it.” Text only. It does not play anything and it does not control the house.
 
-After a gap, a quiet Catch up strip sits under the presence bar. It appears on the first look once the screen has been away for eight hours, or the last look was on an earlier London day. From 22:00 to 05:59 it stays hidden, and a look in those hours does not spend a gap that is already due. It stays hidden while the house is paused. At most four cards, one pass per gap: tasks that are overdue or due today, a task in progress with no update for three days, commitments due today or tomorrow, then anything else still unfinished on the brief. Apply adds one dated note to that task or commitment. Not now rests the item for 72 hours. Two screens share the one pass. Nothing is sent.
+Colour follows the house clock. Good morning and Good afternoon use the brighter morning theme. Good evening and Good night use the deeper evening theme. “Welcome home” follows the London hour. Settings can hold morning or evening in this browser. That only recolors the chrome.
 
-Pausing changes the presence bar and writes one system event. It does not send or prepare anything. Approving while paused still only updates the log.
+After a gap, a quiet Catch up card sits under the greeting. It appears on the first look once the screen has been away for eight hours, or the last look was on an earlier London day. From 22:00 to 05:59 it stays hidden, and a look in those hours does not spend a gap that is already due. It stays hidden while the house is paused. At most four cards, one pass per gap: tasks that are overdue or due today, a task in progress with no update for three days, commitments due today or tomorrow, then anything else still unfinished on the brief. Apply adds one dated note to that task or commitment. Not now rests the item for 72 hours. Two screens share the one pass. Nothing is sent.
+
+Pausing changes the greeting and writes one system event. It does not send or prepare anything. Approving while paused still only updates the log.
 
 ## Demo rows
 
