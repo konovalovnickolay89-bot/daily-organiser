@@ -44,7 +44,7 @@ export function ArrivalShell() {
       <div className="desk-wrap">
         <div className="desk">
           <Pane slot="primary" className="pane pane-primary" label="Daily needs" />
-          <Pane slot="secondary" className="pane pane-secondary" label="Approvals and today" />
+          <Pane slot="secondary" className="pane pane-secondary" label="Approvals, proposed changes, and today" />
           <Corner />
         </div>
         {extras.length > 0 && (

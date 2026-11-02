@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { listTasks } from "../../api/tasks.js";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { taskMeta } from "../../lib/labels.js";
+import { TaskEditor } from "./TaskEditor.jsx";
+import { TaskRow } from "./TaskRow.jsx";
 
 function taskCount(count) {
   if (count === 1) return "1 task";
@@ -12,6 +14,7 @@ export function TodayList() {
   const { tick, system } = useHouse();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
+  const [taskId, setTaskId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,13 +50,16 @@ export function TodayList() {
       {items && items.length > 0 && (
         <ul className="item-list today-list">
           {items.map((task) => (
-            <li key={task.id} className="item">
-              <h3>{task.title}</h3>
-              <p className="meta">{taskMeta(task, system?.house_date)}</p>
-            </li>
+            <TaskRow
+              key={task.id}
+              title={task.title}
+              meta={taskMeta(task, system?.house_date)}
+              onOpen={() => setTaskId(task.id)}
+            />
           ))}
         </ul>
       )}
+      {taskId && <TaskEditor taskId={taskId} onClose={() => setTaskId(null)} />}
     </section>
   );
 }
