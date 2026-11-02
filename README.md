@@ -20,7 +20,7 @@ backend/organiser/agent/  Mistral assistant: rules, functions, spec, client
 backend/tests/            Schema and API tests
 frontend/src/api/         The only place the UI calls the API
 frontend/src/arrival/     Arrival shell and the module registry
-frontend/src/modules/     Presence bar, brief, approvals, proposed changes, today, quiet suggestion
+frontend/src/modules/     Presence bar, brief, approvals, proposed changes, today, quiet suggestion, catch-up
 docker-compose.yml        Internal Postgres; API and UI on 127.0.0.1:8080 only
 docs/mistral-agent.md     Assistant setup, console values, and the rulebook
 DEPLOY.md                 systemd sketch for later; nothing is installed
@@ -145,6 +145,10 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/agent/review` | Run the review `GET /agent` says is due. Each window runs once |
 | POST | `/agent/proposals/{id}/apply` | Make exactly that change to one task or commitment, and log one line. 409 if paused, decided, or the item changed |
 | POST | `/agent/proposals/{id}/dismiss` | Not now. A proactive item rests for 72 hours |
+| GET | `/catch-up` | Pending catch-up cards, if any are showing. Does not record a look |
+| POST | `/catch-up/look` | Record a look at the arrival screen. After a gap, prepare one catch-up |
+| POST | `/catch-up/items/{id}/apply` | Add the note on that card to one task or commitment |
+| POST | `/catch-up/items/{id}/dismiss` | Not now. That item rests for 72 hours |
 
 Task status is `todo`, `doing`, or `done`. Priority is `low`, `medium`, or `high`. Commitment status is `open`, `kept`, or `dropped`. An action mode is `observe`, `advise`, `prepare`, or `execute`. An action status is `pending`, `approved`, or `skipped`. Owner defaults to `Nick`.
 
@@ -160,6 +164,8 @@ One home screen, in a dark charcoal palette: a thin centred presence bar, then t
 2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
 3. Right: pending approvals, proposed changes, then a short Today list. Proposed changes has one input line for the assistant and its cards, each with Apply and Not now. It shows “The assistant is off” until a key and an agent id are set.
 4. Corner: “A playlist is ready, when you want it.” It is text only. It does not play anything and it does not control the house.
+
+After a gap, a quiet Catch up strip sits under the presence bar. It appears on the first look once the screen has been away for eight hours, or the last look was on an earlier London day. From 22:00 to 05:59 it stays hidden, and a look in those hours does not spend a gap that is already due. It stays hidden while the house is paused. At most four cards, one pass per gap: tasks that are overdue or due today, a task in progress with no update for three days, commitments due today or tomorrow, then anything else still unfinished on the brief. Apply adds one dated note to that task or commitment. Not now rests the item for 72 hours. Two screens share the one pass. Nothing is sent.
 
 Pausing changes the presence bar and writes one system event. It does not send or prepare anything. Approving while paused still only updates the log.
 

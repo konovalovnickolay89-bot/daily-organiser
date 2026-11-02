@@ -7,7 +7,13 @@ from fastapi.staticfiles import StaticFiles
 
 from organiser import __version__
 from organiser.config import get_settings
-from organiser.db import ensure_arrived_at_column, get_engine, get_sessionmaker, wait_for_database
+from organiser.db import (
+    ensure_arrived_at_column,
+    ensure_last_looked_at_column,
+    get_engine,
+    get_sessionmaker,
+    wait_for_database,
+)
 from organiser.models import Base
 from organiser.routes import register
 from organiser.seed import seed_if_empty
@@ -29,6 +35,7 @@ async def lifespan(app: FastAPI):
     wait_for_database()
     Base.metadata.create_all(bind=get_engine())
     ensure_arrived_at_column()
+    ensure_last_looked_at_column()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)

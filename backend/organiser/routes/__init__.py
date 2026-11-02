@@ -5,6 +5,7 @@ from organiser.routes import (
     agent,
     approvals,
     brief,
+    catchup,
     commitments,
     events,
     health,
@@ -23,3 +24,4 @@ def register(app: FastAPI) -> None:
     app.include_router(approvals.router)
     app.include_router(system.router)
     app.include_router(agent.router)
+    app.include_router(catchup.router)

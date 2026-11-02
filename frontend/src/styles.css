@@ -245,6 +245,45 @@ h1 {
   opacity: 0.5;
 }
 
+/* Catch up: a quiet strip under the bar, cards in the same voice as proposals. */
+
+.catch-up {
+  width: min(1080px, calc(100% - 48px));
+  margin: 22px auto 0;
+  padding: 16px 22px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+}
+
+.catch-up h2 {
+  font-size: 1.32rem;
+}
+
+.catch-up .lede {
+  margin-bottom: 12px;
+}
+
+.catch-up .notice,
+.catch-up .error {
+  margin: 0 0 12px;
+}
+
+.catch-up-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 14px;
+  margin-top: 0;
+}
+
+.catch-up .proposal {
+  margin: 0;
+  padding: 10px 12px 8px;
+  border-radius: 14px;
+  background: var(--sunken);
+}
+
 /* Two-pane desk under the bar. */
 
 .desk-wrap {
@@ -746,8 +785,17 @@ dialog.task-dialog .lede {
     padding: 8px 10px;
   }
 
+  .catch-up,
   .desk-wrap {
     width: min(1080px, calc(100% - 24px));
+  }
+
+  .catch-up {
+    margin-top: 14px;
+    padding: 14px 16px 12px;
+  }
+
+  .desk-wrap {
     margin-top: 16px;
     margin-bottom: 28px;
   }

@@ -21,6 +21,7 @@ export default defineConfig({
       "/approvals": api,
       "/system": api,
       "/agent": api,
+      "/catch-up": api,
     },
   },
 });

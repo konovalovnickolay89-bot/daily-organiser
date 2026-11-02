@@ -139,6 +139,9 @@ class SystemState(Base):
     # Last accepted arrival. Null until the house posts one. The presence bar
     # shows "Welcome home" only while this sits inside the one-hour window.
     arrived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Last time the arrival screen recorded a look. Catch-up measures the gap
+    # from here. A paused house does not move it.
+    last_looked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
@@ -214,3 +217,55 @@ class AgentProposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     applied_ref_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+
+
+_CATCHUP_RULES = "('overdue', 'due_today', 'stalled', 'commitment_due', 'brief')"
+
+
+class CatchUpPass(Base):
+    """One catch-up after a gap. ``window_key`` is that gap, so two screens share it."""
+
+    __tablename__ = "catchup_passes"
+    __table_args__ = (UniqueConstraint("window_key", name="uq_catchup_passes_window"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    window_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    from_looked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CatchUpItem(Base):
+    """One card in a catch-up. Apply adds the stored note; nothing else changes.
+
+    Not now sets ``dismissed`` and the item rests. ``position`` is the order
+    the rules chose, most pressing first.
+    """
+
+    __tablename__ = "catchup_items"
+    __table_args__ = (
+        CheckConstraint(f"rule in {_CATCHUP_RULES}", name="ck_catchup_items_rule"),
+        CheckConstraint("action = 'add_note'", name="ck_catchup_items_action"),
+        CheckConstraint("ref_type in ('task', 'commitment')", name="ck_catchup_items_ref_type"),
+        CheckConstraint(
+            "status in ('pending', 'applied', 'dismissed', 'stale')",
+            name="ck_catchup_items_status",
+        ),
+        Index("ix_catchup_items_status", "status"),
+        Index("ix_catchup_items_ref", "ref_type", "ref_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    pass_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("catchup_passes.id"), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule: Mapped[str] = mapped_column(String(32), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False, default="add_note", server_default="add_note")
+    ref_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    ref_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    changes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    reason: Mapped[str] = mapped_column(String(300), nullable=False)
+    ref_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
