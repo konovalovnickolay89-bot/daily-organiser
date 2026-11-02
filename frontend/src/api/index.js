@@ -12,3 +12,4 @@ export { getMorningBrief } from "./brief.js";
 export { listApprovals, approveRequest, skipRequest } from "./approvals.js";
 export { getSystem, pauseSystem, unpauseSystem } from "./system.js";
 export { getAgent, feedAgent, runReview, applyProposal, dismissProposal } from "./agent.js";
+export { recordLook, applyCatchUp, dismissCatchUp } from "./catchup.js";

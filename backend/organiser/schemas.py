@@ -280,6 +280,30 @@ class ApplyResult(APIModel):
     applied: AppliedChange
 
 
+class CatchUpItemRead(APIModel):
+    id: UUID
+    rule: str
+    label: str
+    summary: str
+    reason: str
+    ref_type: str
+    ref_id: UUID
+    status: str
+
+
+class CatchUpRead(APIModel):
+    paused: bool
+    quiet: bool
+    as_of: datetime
+    house_date: date
+    items: list[CatchUpItemRead]
+
+
+class CatchUpApplyResult(APIModel):
+    item: CatchUpItemRead
+    applied: AppliedChange
+
+
 def apply_changes(row: object, payload: BaseModel) -> None:
     from organiser.timeutil import utcnow
 

@@ -1,4 +1,5 @@
 import { arrivalModules } from "./modules.js";
+import { CatchUpStrip } from "../modules/catchup/CatchUpStrip.jsx";
 import { PresenceBar } from "../modules/presence/PresenceBar.jsx";
 
 const KNOWN_SLOTS = new Set(["primary", "secondary", "corner"]);
@@ -41,6 +42,7 @@ export function ArrivalShell() {
   return (
     <main className="arrival">
       <PresenceBar />
+      <CatchUpStrip />
       <div className="desk-wrap">
         <div className="desk">
           <Pane slot="primary" className="pane pane-primary" label="Daily needs" />

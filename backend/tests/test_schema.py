@@ -7,7 +7,15 @@ from organiser.models import ActionRequest
 
 def test_ops_tables_exist(db):
     names = set(inspect(db.get_bind()).get_table_names())
-    assert {"tasks", "commitments", "events", "action_requests", "system_state"} <= names
+    assert {
+        "tasks",
+        "commitments",
+        "events",
+        "action_requests",
+        "system_state",
+        "catchup_passes",
+        "catchup_items",
+    } <= names
 
 
 def test_actionable_records_have_owner_and_status(db):
@@ -21,8 +29,9 @@ def test_actionable_records_have_owner_and_status(db):
     assert "kind" in event_columns
     assert "status" not in event_columns
     state_columns = {column["name"]: column for column in inspector.get_columns("system_state")}
-    assert {"paused", "activity", "status_text", "arrived_at"} <= set(state_columns)
+    assert {"paused", "activity", "status_text", "arrived_at", "last_looked_at"} <= set(state_columns)
     assert state_columns["arrived_at"]["nullable"] is True
+    assert state_columns["last_looked_at"]["nullable"] is True
 
 
 def test_task_status_is_constrained(db):

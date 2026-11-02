@@ -46,6 +46,20 @@ def get_db() -> Generator[Session, None, None]:
         session.close()
 
 
+def ensure_last_looked_at_column() -> None:
+    """Add the last-look timestamp on databases created before catch-up existed.
+
+    ``create_all`` does not alter an existing ``system_state`` table.
+    """
+    with get_engine().begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE system_state "
+                "ADD COLUMN IF NOT EXISTS last_looked_at TIMESTAMP WITH TIME ZONE"
+            )
+        )
+
+
 def ensure_arrived_at_column() -> None:
     """Add the arrival timestamp on databases created before that column existed.
 
