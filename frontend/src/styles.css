@@ -455,6 +455,61 @@ details[open] > summary .chevron::before {
   margin: 0 0 10px;
 }
 
+/* Proposed changes: one line in, cards out. */
+
+.feed-form {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+/* width: 0 drops the browser's 20-character default, which widened the
+   one-column phone desk; flex then fills the row. */
+.feed-form input {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffdf9;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.feed-form input::placeholder {
+  color: var(--muted);
+}
+
+.feed-form input:disabled {
+  opacity: 0.55;
+}
+
+.assistant .notice,
+.assistant .status-note,
+.assistant .empty,
+.assistant .error {
+  margin: 0 0 10px;
+}
+
+.assistant .reply {
+  color: var(--ink);
+  white-space: pre-line;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .quiet-suggestion {
   max-width: 220px;
   margin: 0 6px 0 0;
