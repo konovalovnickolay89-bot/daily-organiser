@@ -2,14 +2,11 @@
 
 The string is decided here, on the house clock (Europe/London by default).
 A fresh arrival shows "Welcome home" until an hour has passed. The clock alone
-never produces that line. From 22:00 to 04:59 the headline is the resident's
-name: the presence bar already shows the house date beside Home.
+never produces that line. From 22:00 to 04:59 the headline is "Good night".
 """
 
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-
-from organiser.domain import DEFAULT_OWNER
 
 ARRIVAL_DEBOUNCE = timedelta(hours=1)
 
@@ -17,6 +14,7 @@ WELCOME_HOME = "Welcome home"
 GOOD_MORNING = "Good morning"
 GOOD_AFTERNOON = "Good afternoon"
 GOOD_EVENING = "Good evening"
+GOOD_NIGHT = "Good night"
 
 
 def _in_zone(value: datetime, zone: ZoneInfo) -> datetime:
@@ -25,7 +23,7 @@ def _in_zone(value: datetime, zone: ZoneInfo) -> datetime:
     return value.astimezone(zone)
 
 
-def time_of_day_greeting(local: datetime, resident: str = DEFAULT_OWNER) -> str:
+def time_of_day_greeting(local: datetime) -> str:
     """Headline for a house-local clock with no open arrival window."""
     hour = local.hour
     if 5 <= hour < 12:
@@ -34,14 +32,13 @@ def time_of_day_greeting(local: datetime, resident: str = DEFAULT_OWNER) -> str:
         return GOOD_AFTERNOON
     if 17 <= hour < 22:
         return GOOD_EVENING
-    return resident
+    return GOOD_NIGHT
 
 
 def greeting_state(
     now: datetime,
     arrived_at: datetime | None,
     tz_name: str,
-    resident: str = DEFAULT_OWNER,
 ) -> dict:
     """Greeting fields for one presence-bar read.
 
@@ -59,7 +56,7 @@ def greeting_state(
         greeting = WELCOME_HOME
         reason = "arrival"
     else:
-        greeting = time_of_day_greeting(local_now, resident)
+        greeting = time_of_day_greeting(local_now)
         reason = "time_of_day"
     return {
         "greeting": greeting,
