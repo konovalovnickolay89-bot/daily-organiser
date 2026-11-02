@@ -51,6 +51,17 @@ WantedBy=multi-user.target
 
 `SEED_ON_START=true` fills an empty task list with household demo rows. Turn it off after real tasks exist, or the next empty database will be filled again.
 
+## Mistral assistant, later
+
+The assistant ships off. It stays off on the box until discovery-system, with Nick's yes:
+
+1. Confirms Cloudflare Access guards the public hostname. The app has no login. Without Access, anyone with the link could spend the key's credit and read the log through the assistant.
+2. Adds `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` to `/etc/daily-organiser.env`. Nick creates the agent with `python -m organiser.agent sync` (see `docs/mistral-agent.md`).
+3. Allows outbound HTTPS from the box to `api.mistral.ai`.
+4. Reinstalls `backend/requirements.txt` in the virtualenv. `httpx` is now a runtime dependency.
+
+Nothing is scheduled on the host. The display at home asks for the morning review and other reviews when the rules say one is due.
+
 ## Cloudflare, later
 
 When discovery-system adds it, a cloudflared ingress on that box can point `organiser.grok.me` at `http://127.0.0.1:8080`. Do not add that ingress in an application change.
