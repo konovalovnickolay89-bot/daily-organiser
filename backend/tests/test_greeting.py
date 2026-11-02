@@ -12,16 +12,16 @@ UTC = ZoneInfo("UTC")
 
 # (hour, minute, headline) on a Europe/London clock, with no arrival.
 BUCKETS = [
-    (0, 0, "Nick"),
-    (4, 59, "Nick"),
+    (0, 0, "Good night"),
+    (4, 59, "Good night"),
     (5, 0, "Good morning"),
     (11, 59, "Good morning"),
     (12, 0, "Good afternoon"),
     (16, 59, "Good afternoon"),
     (17, 0, "Good evening"),
     (21, 59, "Good evening"),
-    (22, 0, "Nick"),
-    (23, 30, "Nick"),
+    (22, 0, "Good night"),
+    (23, 30, "Good night"),
 ]
 
 
@@ -47,7 +47,7 @@ def test_buckets_use_london_civil_time_during_british_summer_time():
 
     # 03:59 UTC is 04:59 BST, still the quiet hour.
     quiet = greeting_state(datetime(2026, 7, 15, 3, 59, tzinfo=UTC), None, "Europe/London")
-    assert quiet["greeting"] == "Nick"
+    assert quiet["greeting"] == "Good night"
     assert quiet["greeting_reason"] == "time_of_day"
 
 
@@ -71,14 +71,14 @@ def test_arrival_overrides_time_of_day_until_the_hour_ends():
     assert ended["debounce_until"] == arrived + timedelta(hours=1)
 
 
-def test_arrival_overrides_the_quiet_hours_name():
+def test_arrival_overrides_good_night():
     arrived = _london(22, 30)
     during = greeting_state(_london(23, 29), arrived, "Europe/London")
     assert during["greeting"] == "Welcome home"
     assert during["greeting_reason"] == "arrival"
 
     ended = greeting_state(_london(23, 30), arrived, "Europe/London")
-    assert ended["greeting"] == "Nick"
+    assert ended["greeting"] == "Good night"
     assert ended["greeting_reason"] == "time_of_day"
 
 
@@ -121,7 +121,7 @@ def test_api_time_of_day_buckets(client, clock):
     assert summer["house_date"] == "2026-07-15"
 
     clock["now"] = datetime(2026, 7, 15, 3, 59, tzinfo=UTC)
-    assert client.get("/system").json()["greeting"] == "Nick"
+    assert client.get("/system").json()["greeting"] == "Good night"
 
 
 def test_api_arrival_precedence_and_debounce(client, clock):
@@ -160,9 +160,9 @@ def test_api_arrival_precedence_and_debounce(client, clock):
     assert _titles(client).count("Arrived home") == 2
 
 
-def test_api_quiet_hours_arrival_then_back_to_the_name(client, clock):
+def test_api_quiet_hours_arrival_then_back_to_good_night(client, clock):
     clock["now"] = _london(23, 10)
-    assert client.get("/system").json()["greeting"] == "Nick"
+    assert client.get("/system").json()["greeting"] == "Good night"
 
     arrived = client.post("/system/arrive").json()
     assert arrived["greeting"] == "Welcome home"
@@ -173,7 +173,7 @@ def test_api_quiet_hours_arrival_then_back_to_the_name(client, clock):
 
     clock["now"] = datetime(2026, 11, 2, 0, 10, tzinfo=LONDON)
     later = client.get("/system").json()
-    assert later["greeting"] == "Nick"
+    assert later["greeting"] == "Good night"
     assert later["greeting_reason"] == "time_of_day"
     assert later["house_date"] == "2026-11-02"
     assert _titles(client).count("Arrived home") == 1

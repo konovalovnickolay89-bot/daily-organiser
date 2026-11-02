@@ -2,7 +2,7 @@
 
 Home operations for Nick: a household log, a morning brief, and a quiet arrival screen. Tasks, commitments, and approvals carry an owner and a status. Events are the memory of what was recorded. The presence bar can pause the house.
 
-This is not a chat and not a sidekick. “Welcome home” is the arrival line, shown for one hour after the house records an arrival. At other times the presence bar follows the clock in Europe/London. From 22:00 to 04:59 the headline is Nick’s name; the date is already on the bar. Nothing here speaks, listens, or greets in a conversation. The morning brief stays the day’s tasks and commitments.
+This is not a chat and not a sidekick. “Welcome home” is the arrival line, shown for one hour after the house records an arrival. At other times the presence bar follows the clock in Europe/London. From 22:00 to 04:59 the headline is Good night; the date is already on the bar. Nothing here speaks, listens, or greets in a conversation. The morning brief stays the day’s tasks and commitments.
 
 Approvals stop at the log. Observe, advise, and prepare update a status. Execute can be approved and still does nothing outside this database: no message, no purchase, no booking.
 
@@ -160,7 +160,7 @@ Approve and skip return `effect.applied: false` and a short summary. The `action
 
 One home screen, in a dark charcoal palette: a thin centred presence bar, then two quiet panes.
 
-1. Presence bar across the top, centred. The headline comes from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Nick’s name, and the date stays beside Home. The status and Pause / Unpause stay on the bar.
+1. Presence bar across the top, centred. The headline comes from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. The status and Pause / Unpause stay on the bar.
 2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
 3. Right: pending approvals, proposed changes, then a short Today list. Proposed changes has one input line for the assistant and its cards, each with Apply and Not now. It shows “The assistant is off” until a key and an agent id are set.
 4. Corner: “A playlist is ready, when you want it.” It is text only. It does not play anything and it does not control the house.
