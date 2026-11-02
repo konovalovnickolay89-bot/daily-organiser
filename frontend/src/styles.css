@@ -561,12 +561,58 @@ details[open] > summary .chevron::before {
   text-align: left;
 }
 
-/* Proposed changes: one line in, cards out. Same quiet surface as the column. */
+/* Proposed changes. A raised tray in the right column when the assistant is on,
+   so the empty state still reads between Pending approvals and Today.
+   Cards sit one step lighter than the tray: title, then reason, then Apply. */
+
+.assistant {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pane .module.assistant.is-on {
+  --assistant-surface: #312c27;
+  --assistant-card: #3c362f;
+  margin-top: 18px;
+  padding: 16px 14px 14px;
+  border: 1px solid rgba(183, 208, 194, 0.38);
+  border-radius: 16px;
+  background: var(--assistant-surface);
+  box-shadow: inset 0 1px 0 rgba(243, 238, 230, 0.06);
+}
+
+.pane .module.assistant.is-on.is-paused {
+  --assistant-surface: #2e2a25;
+  border-color: rgba(224, 201, 168, 0.4);
+  background: var(--assistant-surface);
+}
+
+.pane .module.assistant.is-on + .module {
+  margin-top: 16px;
+}
+
+.assistant.is-on.has-cards .count {
+  color: var(--sage);
+  font-weight: 600;
+}
+
+.assistant .assistant-invite {
+  margin: 2px 0 14px;
+  color: #e4dacd;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
 
 .feed-form {
   display: flex;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.feed-form button {
+  flex: none;
 }
 
 /* width: 0 drops the browser's 20-character default, which widened the
@@ -575,12 +621,16 @@ details[open] > summary .chevron::before {
   flex: 1 1 0;
   width: 0;
   min-width: 0;
-  padding: 8px 14px;
-  border: 1px solid var(--line);
+  padding: 10px 14px;
+  border: 1px solid rgba(243, 238, 230, 0.22);
   border-radius: 999px;
   background: var(--sunken);
   color: var(--ink);
   font-size: 0.95rem;
+}
+
+.assistant.is-on .feed-form input {
+  background: #1e1b18;
 }
 
 .feed-form input::placeholder {
@@ -606,6 +656,79 @@ details[open] > summary .chevron::before {
 .assistant .reply {
   color: var(--ink);
   white-space: pre-line;
+}
+
+.proposal-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.proposal-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 14px 14px 12px;
+  border: 1px solid rgba(243, 238, 230, 0.16);
+  border-radius: 14px;
+  background: var(--assistant-card, #34302b);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 236, 0.05);
+}
+
+.proposal-kicker {
+  margin: 0 0 8px;
+}
+
+.proposal-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.16rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.proposal-reason {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 14px;
+}
+
+.proposal-actions .primary,
+.proposal-actions .not-now {
+  min-height: 40px;
+}
+
+.proposal-actions .primary {
+  padding: 8px 16px;
+}
+
+.proposal-actions .not-now {
+  border-color: rgba(243, 238, 230, 0.16);
+  background: transparent;
+  color: #d5c9bb;
+  font-weight: 500;
+}
+
+.proposal-actions .not-now:hover:not(:disabled) {
+  border-color: rgba(243, 238, 230, 0.28);
+  background: rgba(243, 238, 230, 0.05);
+  color: var(--ink);
 }
 
 .sr-only {
@@ -786,5 +909,16 @@ dialog.task-dialog .lede {
 
   .field-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The input stays put while the cards move, and leaves with this section. */
+  .assistant.is-on.has-cards .feed-form {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-right: -14px;
+    margin-left: -14px;
+    padding: 8px 14px 10px;
+    background: var(--assistant-surface);
   }
 }

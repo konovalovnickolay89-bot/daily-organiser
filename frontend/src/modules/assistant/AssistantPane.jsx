@@ -138,14 +138,29 @@ export function AssistantPane() {
   const enabled = Boolean(state?.enabled);
   const paused = Boolean(state?.paused);
   const replyLine = reply || state?.last_reply?.text || "";
+  // The invite is the empty state: it stays up with the input while nothing is proposed.
+  const restingEmpty = enabled && !paused && proposals.length === 0;
+  const sectionClass = [
+    "module",
+    "assistant",
+    enabled ? "is-on" : "",
+    paused ? "is-paused" : "",
+    proposals.length > 0 ? "has-cards" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <section className="module assistant" aria-labelledby="assistant-title" data-module="assistant">
+    <section className={sectionClass} aria-labelledby="assistant-title" data-module="assistant">
       <div className="module-head">
         <h2 id="assistant-title">Proposed changes</h2>
         {enabled && !paused && <p className="count">{waitingLabel(proposals.length)}</p>}
       </div>
-      <p className="lede">Apply makes that one change in the house log. Nothing is sent, bought, or booked.</p>
+      <p className={restingEmpty ? "lede assistant-invite" : "lede"}>
+        {restingEmpty
+          ? "Write a line for the log. Cards appear here."
+          : "Apply makes that one change in the house log. Nothing is sent, bought, or booked."}
+      </p>
       {state === null && !error && <p className="empty">Checking the assistant…</p>}
       {state && !enabled && <p className="empty">The assistant is off.</p>}
       {enabled && (
@@ -186,13 +201,13 @@ export function AssistantPane() {
       )}
       {reviewing && <p className="empty">Looking over the log…</p>}
       {proposals.length > 0 && (
-        <ul className="approval-list proposal-list">
+        <ul className="proposal-list">
           {proposals.map((proposal) => (
-            <li key={proposal.id} className="approval proposal" data-origin={proposal.origin}>
-              <p className="mode">{proposal.label}</p>
-              <h3>{proposal.summary}</h3>
-              <p>{proposal.reason}</p>
-              <div className="actions">
+            <li key={proposal.id} className="proposal-card" data-origin={proposal.origin}>
+              <p className="mode proposal-kicker">{proposal.label}</p>
+              <h3 className="proposal-title">{proposal.summary}</h3>
+              <p className="proposal-reason">{proposal.reason}</p>
+              <div className="proposal-actions">
                 <button
                   type="button"
                   className="primary"
@@ -203,7 +218,7 @@ export function AssistantPane() {
                 </button>
                 <button
                   type="button"
-                  className="ghost"
+                  className="ghost not-now"
                   disabled={pendingId === proposal.id}
                   onClick={() => decide(proposal, "dismiss")}
                 >
