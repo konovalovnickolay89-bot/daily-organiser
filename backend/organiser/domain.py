@@ -46,12 +46,53 @@ class GreetingReason(str, Enum):
     time_of_day = "time_of_day"
 
 
+class AgentTrigger(str, Enum):
+    """Why the Mistral assistant ran. Each value is a rule id in organiser/agent/rules.py."""
+
+    feed = "feed"
+    morning_review = "morning_review"
+    doing_stalled = "doing_stalled"
+    overdue_lingering = "overdue_lingering"
+    commitment_due_soon = "commitment_due_soon"
+
+
+PROACTIVE_TRIGGERS = (
+    AgentTrigger.morning_review.value,
+    AgentTrigger.doing_stalled.value,
+    AgentTrigger.overdue_lingering.value,
+    AgentTrigger.commitment_due_soon.value,
+)
+
+
+class ProposalAction(str, Enum):
+    """The only changes an applied proposal can make."""
+
+    create_task = "create_task"
+    update_task = "update_task"
+    create_commitment = "create_commitment"
+    update_commitment = "update_commitment"
+    add_note = "add_note"
+
+
+class ProposalStatus(str, Enum):
+    pending = "pending"
+    applied = "applied"
+    dismissed = "dismissed"
+    stale = "stale"
+
+
 DEFAULT_OWNER = "Nick"
 
 TASK_STATUS_LABELS = {
     TaskStatus.todo.value: "To do",
     TaskStatus.doing.value: "Doing",
     TaskStatus.done.value: "Done",
+}
+
+COMMITMENT_STATUS_LABELS = {
+    CommitmentStatus.open.value: "Open",
+    CommitmentStatus.kept.value: "Kept",
+    CommitmentStatus.dropped.value: "Dropped",
 }
 
 PRIORITY_LABELS = {

@@ -4,6 +4,8 @@ Daily Organiser is Nick’s home operations log: events, tasks, commitments, and
 
 The arrival screen may say “Welcome home”. That line is a presence bar, not a conversation.
 
+The Mistral assistant is a box and a list of cards, not a conversation: one entry, one short reply in the voice of a log, and no thread. See `docs/mistral-agent.md`.
+
 ## Hard rules
 
 1. Work on a feature branch and open a pull request to `main`. A person merges.
@@ -14,3 +16,5 @@ The arrival screen may say “Welcome home”. That line is a presence bar, not 
 6. Approvals stop at the log. Observe, advise, and prepare are stubs. Execute may be recorded and must not send, buy, book, or email. `effect_applied` stays false.
 7. PostgreSQL is the database. Do not add SQLite. Compose must not publish `5432` or any other Postgres host port. Evolving Cook already owns `127.0.0.1:5432`. The only published port is the API on `127.0.0.1:8080`.
 8. Never commit secrets or a `.env` file. The compose password is a local default only.
+9. The Mistral assistant reads the log through `backend/organiser/agent/functions.py` and only proposes. It never writes a row itself. An explicit Apply tap may make one allowlisted change to one task or commitment (create it, edit it, or add a dated note) in this database. Nothing leaves the house. Action requests and approvals still only record, and `effect_applied` stays false.
+10. Rules in `backend/organiser/agent/rules.py` decide when the assistant runs. GET routes never call Mistral. Nothing runs or shows while the house is paused. `MISTRAL_API_KEY` lives only in the environment, never in git, fixtures, or logs. The agent's instructions and function schemas live in `backend/organiser/agent/spec.py`; change them there and sync, not by hand in Mistral's console.

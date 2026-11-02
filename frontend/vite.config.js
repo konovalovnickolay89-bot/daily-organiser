@@ -20,6 +20,7 @@ export default defineConfig({
       "/brief": api,
       "/approvals": api,
       "/system": api,
+      "/agent": api,
     },
   },
 });
