@@ -1,62 +1,76 @@
-import { arrivalModules } from "./modules.js";
+import { useState } from "react";
+import { useHouse } from "../house/HouseContext.jsx";
 import { CatchUpStrip } from "../modules/catchup/CatchUpStrip.jsx";
 import { PresenceBar } from "../modules/presence/PresenceBar.jsx";
+import { Rail } from "./Rail.jsx";
+import { ThemeCard } from "./ThemeCard.jsx";
+import { arrivalModules } from "./modules.js";
+import { useHouseTheme } from "./theme.js";
 
-const KNOWN_SLOTS = new Set(["primary", "secondary", "corner"]);
+const KNOWN = new Set(["brief", "approvals", "today", "corner"]);
 
-function modulesIn(slot) {
-  return arrivalModules.filter((mod) => mod.slot === slot);
-}
+const PANELS = [
+  { id: "brief", label: "Brief" },
+  { id: "approvals", label: "Approvals" },
+  { id: "today", label: "Today" },
+];
 
-function Pane({ slot, className, label }) {
-  const modules = modulesIn(slot);
-  if (modules.length === 0) return null;
-  return (
-    <section className={className} aria-label={label} data-slot={slot}>
-      {modules.map((mod) => (
-        <mod.Component key={mod.id} />
-      ))}
-    </section>
-  );
-}
+const MODULE_ORDER = {
+  brief: ["morning-brief"],
+  approvals: ["approvals"],
+  today: ["today", "assistant"],
+  corner: ["quiet-media"],
+};
 
-function Corner() {
-  const modules = modulesIn("corner");
-  if (modules.length === 0) return null;
-  return (
-    <div className="corner" data-slot="corner">
-      {modules.map((mod) => (
-        <mod.Component key={mod.id} />
-      ))}
-    </div>
-  );
+function modulesIn(panel) {
+  const rank = new Map((MODULE_ORDER[panel] ?? []).map((id, index) => [id, index]));
+  return arrivalModules
+    .filter((mod) => mod.panel === panel)
+    .sort((a, b) => (rank.get(a.id) ?? 50) - (rank.get(b.id) ?? 50));
 }
 
 /**
- * Arrival screen shell.
- * Presence stays here. Everything else is a module in arrival/modules.js.
+ * Arrival screen.
+ * Icon rail, large greeting, then cream cards. Colour follows the house clock.
  */
 export function ArrivalShell() {
-  const extras = arrivalModules.filter((mod) => !KNOWN_SLOTS.has(mod.slot));
+  const { system } = useHouse();
+  const { choice, theme, choose } = useHouseTheme(system?.greeting);
+  const [view, setView] = useState("home");
+  const extras = arrivalModules.filter((mod) => !KNOWN.has(mod.panel));
+  const visibleExtras = extras.filter((mod) => view === "home" || view === mod.panel);
 
   return (
-    <main className="arrival">
-      <PresenceBar />
-      <CatchUpStrip />
-      <div className="desk-wrap">
-        <div className="desk">
-          <Pane slot="primary" className="pane pane-primary" label="Daily needs" />
-          <Pane slot="secondary" className="pane pane-secondary" label="Approvals, proposed changes, and today" />
-          <Corner />
-        </div>
-        {extras.length > 0 && (
-          <div className="extras">
-            {extras.map((mod) => (
-              <mod.Component key={mod.id} />
+    <div className="shell" data-theme={theme} data-view={view}>
+      <Rail view={view} onView={setView} />
+      <main className="stage">
+        <div className="stage-inner">
+          <PresenceBar />
+          <CatchUpStrip />
+          <div className="cards">
+            {PANELS.map((panel) => (
+              <section key={panel.id} className="card" data-panel={panel.id} aria-label={panel.label}>
+                {modulesIn(panel.id).map((mod) => (
+                  <mod.Component key={mod.id} />
+                ))}
+              </section>
             ))}
           </div>
-        )}
-      </div>
-    </main>
+          {modulesIn("corner").map((mod) => (
+            <mod.Component key={mod.id} />
+          ))}
+          {visibleExtras.length > 0 && (
+            <div className="extras">
+              {visibleExtras.map((mod) => (
+                <section key={mod.id} className="card" data-panel={mod.panel}>
+                  <mod.Component />
+                </section>
+              ))}
+            </div>
+          )}
+          <ThemeCard choice={choice} onChoose={choose} />
+        </div>
+      </main>
+    </div>
   );
 }

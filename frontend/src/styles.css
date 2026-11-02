@@ -1,22 +1,53 @@
-/* Variant 1 — a dark, calm house dashboard.
-   Warm charcoal, soft neutrals, and a thin centred presence bar.
-   Contrast stays gentle: nothing here is pure black or pure white. */
+/* Arrival shell.
+   Near-black canvas, cream cards, cream greeting, amber icons.
+   Evening and morning share the structure. html[data-theme] only shifts colour.
+   Greeting words stay on the server. */
 
-:root {
+html {
   color-scheme: dark;
-  --bg: #1c1a17;
-  --card: #2a2723;
-  --sunken: #191714;
-  --ink: #f3eee6;
-  --muted: #c4b9ab;
-  --line: rgba(243, 238, 230, 0.16);
-  --sage: #b7d0c2;
-  --sage-deep: #4d6e5c;
-  --pause: #e0c9a8;
-  --note: rgba(224, 201, 168, 0.16);
-  --shadow: 0 1px 0 rgba(255, 248, 236, 0.04) inset, 0 18px 40px rgba(0, 0, 0, 0.28);
+  --canvas: #050403;
+  --cream: #f3e6d4;
+  --cream-dim: #c4b29a;
+  --card: #eddcc6;
+  --ink-card: #1a1613;
+  --muted-card: #655d54;
+  --line-canvas: rgba(243, 230, 212, 0.14);
+  --line-card: rgba(26, 22, 19, 0.12);
+  --accent: #d39a4e;
+  --accent-deep: #b8833d;
+  --accent-ink: #8a5a1c;
+  --accent-soft: rgba(211, 154, 78, 0.2);
+  --sunken-card: #e2ccb0;
+  --note-card: rgba(166, 112, 42, 0.16);
+  --danger-canvas: #e7b4a8;
+  --danger-card: #8e3d32;
+  --card-shadow: 0 16px 40px rgba(0, 0, 0, 0.38);
+  --ink: var(--cream);
+  --muted: var(--cream-dim);
+  --line: var(--line-canvas);
+  --sunken: #100e0c;
+  --note: var(--note-card);
+  --danger: var(--danger-canvas);
   --serif: "Newsreader", "Iowan Old Style", Palatino, Georgia, "Liberation Serif", serif;
   --sans: "Inter", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+html[data-theme="morning"] {
+  --canvas: #1b1916;
+  --cream: #fffaf3;
+  --cream-dim: #e6d7c4;
+  --card: #fffaf3;
+  --ink-card: #1c1915;
+  --muted-card: #6a6158;
+  --line-canvas: rgba(255, 250, 243, 0.16);
+  --line-card: rgba(28, 25, 21, 0.1);
+  --accent: #f0c27a;
+  --accent-deep: #d4a45c;
+  --accent-ink: #8f621f;
+  --accent-soft: rgba(240, 194, 122, 0.22);
+  --sunken-card: #f4e7d4;
+  --note-card: rgba(184, 128, 48, 0.16);
+  --card-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -31,10 +62,8 @@ body,
 
 body {
   margin: 0;
-  color: var(--ink);
-  background:
-    radial-gradient(980px 360px at 50% -140px, rgba(224, 201, 168, 0.09), transparent 62%),
-    var(--bg);
+  color: var(--cream);
+  background: var(--canvas);
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.45;
@@ -52,29 +81,102 @@ textarea {
   color: inherit;
 }
 
+::selection {
+  background: var(--accent);
+  color: #1b140c;
+}
+
 :focus-visible {
-  outline: 2px solid var(--sage);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-.arrival {
+/* Left rail and main column. The greeting is not a centred bar. */
+
+.shell {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
+  align-items: stretch;
+  background: var(--canvas);
 }
 
-/* Thin presence bar — greeting, status, and Pause, centred and quiet. */
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex: none;
+  width: 76px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 0 16px;
+  border-right: 1px solid var(--line-canvas);
+  background: var(--canvas);
+  z-index: 4;
+}
+
+.rail-slot {
+  display: flex;
+}
+
+.rail-slot-end {
+  margin-top: auto;
+}
+
+.rail-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.rail-button svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.rail-button:hover {
+  color: var(--cream);
+  background: rgba(244, 236, 223, 0.06);
+}
+
+.rail-button[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.rail-button[aria-current="page"]:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.stage {
+  flex: 1;
+  min-width: 0;
+  padding: 40px 40px 72px 32px;
+}
+
+.stage-inner {
+  max-width: 1120px;
+}
+
+/* Large greeting. Cream on the canvas. Pause stays with it. */
 
 .presence {
-  text-align: center;
-  padding: 22px 20px 16px;
-  border-bottom: 1px solid var(--line);
-  background: radial-gradient(640px 160px at 50% 0%, rgba(243, 238, 230, 0.05), transparent 72%);
-}
-
-.presence[data-paused="true"] {
-  background: linear-gradient(180deg, rgba(198, 170, 134, 0.08), transparent 78%);
-  border-bottom-color: rgba(198, 170, 134, 0.28);
+  text-align: left;
+  padding: 4px 0 0;
+  border: 0;
+  background: none;
 }
 
 .eyebrow,
@@ -85,46 +187,46 @@ textarea {
   text-transform: uppercase;
   font-size: 0.68rem;
   font-weight: 500;
+}
+
+.eyebrow,
+.quiet-kicker {
   color: var(--muted);
 }
 
 .eyebrow-date {
   text-transform: none;
   letter-spacing: 0.01em;
-  font-size: 0.84rem;
+  font-size: 0.92rem;
   font-weight: 400;
 }
 
-h1 {
-  margin: 3px 0 0;
+.presence .greeting {
+  margin: 10px 0 0;
   font-family: var(--serif);
   font-weight: 500;
-  font-size: clamp(1.85rem, 3.4vw, 2.45rem);
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-  min-height: 1.05em;
+  font-size: clamp(3.5rem, 6.4vw, 5.6rem);
+  letter-spacing: -0.035em;
+  line-height: 0.96;
+  color: var(--cream);
+  min-height: 0.96em;
   overflow-wrap: break-word;
 }
 
 .presence-control {
-  margin: 12px auto 0;
-  display: inline-flex;
+  margin: 26px 0 0;
+  display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 8px 12px;
+  justify-content: flex-start;
+  gap: 12px 16px;
   max-width: 100%;
   min-width: 0;
-  padding: 5px 6px 5px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(243, 238, 230, 0.05);
-}
-
-.presence[data-paused="true"] .presence-control {
-  background: rgba(198, 170, 134, 0.08);
-  border-color: rgba(198, 170, 134, 0.32);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
 }
 
 .status {
@@ -133,8 +235,8 @@ h1 {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  color: var(--ink);
-  font-size: 0.92rem;
+  color: var(--cream);
+  font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: -0.011em;
 }
@@ -147,95 +249,73 @@ h1 {
   width: 0.48rem;
   height: 0.48rem;
   border-radius: 50%;
-  background: var(--sage);
-  box-shadow: 0 0 0 3px rgba(155, 184, 168, 0.18);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
   flex: none;
-}
-
-.presence[data-paused="true"] .status-mark {
-  background: var(--pause);
-  box-shadow: 0 0 0 3px rgba(212, 188, 154, 0.18);
 }
 
 .presence[data-state="error"] .status,
 .presence[data-state="loading"] .status {
-  color: var(--muted);
+  color: var(--cream-dim);
   font-weight: 500;
 }
 
 .presence[data-state="error"] .status {
-  color: #e7b7ab;
+  color: var(--danger-canvas);
 }
 
 .presence[data-state="error"] .status-mark,
 .presence[data-state="loading"] .status-mark {
-  background: var(--muted);
+  background: var(--cream-dim);
   box-shadow: none;
 }
 
 .presence[data-state="error"] .status-mark {
-  background: #e7b7ab;
+  background: var(--danger-canvas);
 }
 
-.status-note,
-.brief-note,
-.notice,
-.stub {
-  margin: 10px auto 0;
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
-.status-note {
-  max-width: 28rem;
-  padding: 0 12px;
+.presence .status-note {
+  margin: 12px 0 0;
+  max-width: 36rem;
+  padding: 0;
+  text-align: left;
+  color: var(--cream-dim);
+  font-size: 0.9rem;
 }
 
 .presence[data-paused="true"] .status-note {
-  color: var(--pause);
-}
-
-.notice,
-.brief-note {
-  margin: 0 0 12px;
-  background: var(--note);
-  color: #eadcc8;
-  border-radius: 12px;
-  padding: 8px 12px;
+  color: var(--accent);
 }
 
 .pause,
 .primary,
 .ghost {
   appearance: none;
-  border-radius: 999px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
 .pause {
   margin: 0;
   min-width: 5.6rem;
-  border: 1px solid var(--line);
+  min-height: 40px;
+  border: 1px solid var(--line-canvas);
   background: transparent;
-  color: var(--ink);
-  padding: 6px 14px;
+  color: var(--cream);
+  padding: 8px 14px;
   font-size: 0.86rem;
   font-weight: 600;
 }
 
-.pause[aria-pressed="true"] {
-  background: rgba(198, 170, 134, 0.16);
-  border-color: rgba(198, 170, 134, 0.45);
-  color: var(--pause);
+.pause:hover:not(:disabled) {
+  background: rgba(244, 236, 223, 0.08);
 }
 
-.pause:hover:not(:disabled),
-.ghost:hover:not(:disabled) {
-  background: rgba(236, 230, 220, 0.06);
-}
-
+.pause[aria-pressed="true"],
 .pause[aria-pressed="true"]:hover:not(:disabled) {
-  background: rgba(198, 170, 134, 0.22);
+  background: var(--accent);
+  border-color: transparent;
+  color: #1b140c;
 }
 
 .pause:disabled,
@@ -245,90 +325,123 @@ h1 {
   opacity: 0.5;
 }
 
-/* Catch up: a quiet strip under the bar, cards in the same voice as proposals. */
+/* Cream paper on the black canvas. Ink flips inside the card. */
 
-.catch-up {
-  width: min(1080px, calc(100% - 48px));
-  margin: 22px auto 0;
-  padding: 16px 22px 14px;
+.card,
+.catch-up,
+dialog.task-dialog {
+  --ink: var(--ink-card);
+  --muted: var(--muted-card);
+  --line: var(--line-card);
+  --sunken: var(--sunken-card);
+  --note: var(--note-card);
+  --danger: var(--danger-card);
+  color-scheme: light;
   background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
+  color: var(--ink-card);
+  border-radius: 12px;
 }
 
-.catch-up h2 {
-  font-size: 1.32rem;
+.card,
+.catch-up {
+  padding: 28px 30px 22px;
+  box-shadow: var(--card-shadow);
 }
 
-.catch-up .lede {
-  margin-bottom: 12px;
-}
-
-.catch-up .notice,
-.catch-up .error {
-  margin: 0 0 12px;
-}
-
-.catch-up-list {
+.cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px 14px;
-  margin-top: 0;
-}
-
-.catch-up .proposal {
-  margin: 0;
-  padding: 10px 12px 8px;
-  border-radius: 14px;
-  background: var(--sunken);
-}
-
-/* Two-pane desk under the bar. */
-
-.desk-wrap {
-  width: min(1080px, calc(100% - 48px));
-  margin: 28px auto 40px;
-  flex: 1;
-}
-
-.desk {
-  display: grid;
-  grid-template-columns: minmax(0, 1.22fr) minmax(280px, 0.84fr);
-  grid-template-areas:
-    "primary secondary"
-    "corner corner";
-  gap: 22px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.86fr);
+  gap: 24px;
+  margin-top: 44px;
   align-items: start;
 }
 
-.pane-primary {
-  grid-area: primary;
+.card[data-panel="today"] {
+  grid-column: 1 / -1;
 }
 
-.pane-secondary {
-  grid-area: secondary;
-}
-
-.corner {
-  grid-area: corner;
-  justify-self: end;
-  align-self: start;
-}
-
-.pane {
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  border-radius: 22px;
-  padding: 22px 24px 16px;
+.card {
   min-width: 0;
 }
 
-.module + .module {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
+.catch-up {
+  margin-top: 40px;
+}
+
+.catch-up + .cards {
+  margin-top: 24px;
+}
+
+.shell[data-view="brief"] .card:not([data-panel="brief"]),
+.shell[data-view="approvals"] .card:not([data-panel="approvals"]),
+.shell[data-view="tasks"] .card:not([data-panel="today"]),
+.shell[data-view="today"] .card:not([data-panel="today"]) {
+  display: none;
+}
+
+.shell[data-view="brief"] .card[data-panel="brief"],
+.shell[data-view="approvals"] .card[data-panel="approvals"],
+.shell[data-view="tasks"] .card[data-panel="today"],
+.shell[data-view="today"] .card[data-panel="today"] {
+  grid-column: 1 / -1;
+}
+
+.shell[data-view="tasks"] [data-module="assistant"] {
+  display: none;
+}
+
+.shell[data-view="settings"] .cards,
+.shell:not([data-view="home"]) .quiet-suggestion {
+  display: none;
+}
+
+.theme-card {
+  display: none;
+  max-width: 34rem;
+  margin-top: 44px;
+}
+
+.shell[data-view="settings"] .theme-card {
+  display: block;
+}
+
+.theme-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.theme-choice {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.theme-choice input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.theme-choice:has(input:checked) {
+  background: var(--accent);
+  border-color: transparent;
+  color: #1b140c;
+}
+
+.theme-choice:focus-within {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
 }
 
 .module-head {
@@ -342,14 +455,17 @@ h2 {
   margin: 0;
   font-family: var(--serif);
   font-weight: 500;
-  font-size: 1.55rem;
+  font-size: 1.7rem;
   letter-spacing: -0.02em;
   line-height: 1.15;
+  color: var(--ink);
   overflow-wrap: break-word;
 }
 
-.pane-secondary h2 {
-  font-size: 1.32rem;
+.card .module + .module {
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
 }
 
 .count {
@@ -372,13 +488,29 @@ h2 {
 
 .lede {
   margin: 8px 0 16px;
-  font-size: 0.94rem;
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 
 .error {
   margin: 0 0 12px;
-  color: #e7b7ab;
+  color: var(--danger);
+}
+
+.brief-note,
+.notice,
+.stub {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.notice,
+.brief-note {
+  background: var(--note);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 10px 12px;
 }
 
 .brief-fold {
@@ -454,6 +586,7 @@ details[open] > summary .chevron::before {
 .section-title {
   font-weight: 600;
   letter-spacing: -0.011em;
+  color: var(--ink);
 }
 
 .section-summary {
@@ -479,6 +612,12 @@ details[open] > summary .chevron::before {
 .item,
 .approval {
   padding: 12px 0 6px;
+}
+
+.approvals .approval + .approval {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .today-list .item {
@@ -530,7 +669,7 @@ details[open] > summary .chevron::before {
 }
 
 .item-button:hover {
-  background: rgba(243, 238, 230, 0.07);
+  background: rgba(26, 22, 19, 0.05);
 }
 
 .item-copy {
@@ -551,11 +690,11 @@ details[open] > summary .chevron::before {
 
 .item-button:hover .item-affordance,
 .item-button:focus-visible .item-affordance {
-  color: var(--sage);
+  color: var(--accent-ink);
 }
 
 .mode {
-  color: var(--sage);
+  color: var(--accent-ink);
   font-weight: 600;
   margin: 2px 0 6px;
 }
@@ -564,24 +703,25 @@ details[open] > summary .chevron::before {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .primary,
 .ghost {
-  padding: 7px 14px;
+  padding: 8px 14px;
   font-size: 0.9rem;
   font-weight: 600;
+  min-height: 40px;
 }
 
 .primary {
-  background: var(--sage-deep);
-  color: #f7f3ec;
-  border: 1px solid #6d8d7b;
+  background: var(--accent);
+  color: #1b140c;
+  border: 1px solid transparent;
 }
 
 .primary:hover:not(:disabled) {
-  background: #4a6b58;
+  background: var(--accent-deep);
 }
 
 .ghost {
@@ -590,54 +730,37 @@ details[open] > summary .chevron::before {
   color: var(--ink);
 }
 
+.ghost:hover:not(:disabled) {
+  background: rgba(26, 22, 19, 0.05);
+}
+
 .stub {
   color: var(--muted);
 }
 
-.approvals .status-note {
-  margin: 0 0 10px;
+.approvals .status-note,
+.assistant .status-note {
+  margin: 0 0 12px;
   padding: 0;
   text-align: left;
+  color: var(--muted);
 }
 
-/* Proposed changes. A raised tray in the right column when the assistant is on,
-   so the empty state still reads between Pending approvals and Today.
-   Cards sit one step lighter than the tray: title, then reason, then Apply. */
+/* Proposed changes sit in the today card. Apply and Not now stay on the card. */
 
 .assistant {
   min-width: 0;
   max-width: 100%;
 }
 
-.pane .module.assistant.is-on {
-  --assistant-surface: #312c27;
-  --assistant-card: #3c362f;
-  margin-top: 18px;
-  padding: 16px 14px 14px;
-  border: 1px solid rgba(183, 208, 194, 0.38);
-  border-radius: 16px;
-  background: var(--assistant-surface);
-  box-shadow: inset 0 1px 0 rgba(243, 238, 230, 0.06);
-}
-
-.pane .module.assistant.is-on.is-paused {
-  --assistant-surface: #2e2a25;
-  border-color: rgba(224, 201, 168, 0.4);
-  background: var(--assistant-surface);
-}
-
-.pane .module.assistant.is-on + .module {
-  margin-top: 16px;
-}
-
 .assistant.is-on.has-cards .count {
-  color: var(--sage);
+  color: var(--accent-ink);
   font-weight: 600;
 }
 
 .assistant .assistant-invite {
   margin: 2px 0 14px;
-  color: #e4dacd;
+  color: var(--ink);
   font-size: 0.98rem;
   line-height: 1.45;
 }
@@ -654,22 +777,17 @@ details[open] > summary .chevron::before {
   flex: none;
 }
 
-/* width: 0 drops the browser's 20-character default, which widened the
-   one-column phone desk; flex then fills the row. */
 .feed-form input {
   flex: 1 1 0;
   width: 0;
   min-width: 0;
+  min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid rgba(243, 238, 230, 0.22);
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   background: var(--sunken);
   color: var(--ink);
   font-size: 0.95rem;
-}
-
-.assistant.is-on .feed-form input {
-  background: #1e1b18;
 }
 
 .feed-form input::placeholder {
@@ -685,11 +803,6 @@ details[open] > summary .chevron::before {
 .assistant .empty,
 .assistant .error {
   margin: 0 0 10px;
-}
-
-.assistant .status-note {
-  padding: 0;
-  text-align: left;
 }
 
 .assistant .reply {
@@ -710,11 +823,10 @@ details[open] > summary .chevron::before {
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding: 14px 14px 12px;
-  border: 1px solid rgba(243, 238, 230, 0.16);
-  border-radius: 14px;
-  background: var(--assistant-card, #34302b);
-  box-shadow: inset 0 1px 0 rgba(255, 248, 236, 0.05);
+  padding: 16px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--sunken);
 }
 
 .proposal-kicker {
@@ -724,7 +836,7 @@ details[open] > summary .chevron::before {
 .proposal-title {
   margin: 0;
   font-family: var(--serif);
-  font-size: 1.16rem;
+  font-size: 1.2rem;
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.25;
@@ -735,7 +847,7 @@ details[open] > summary .chevron::before {
 .proposal-reason {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -748,26 +860,44 @@ details[open] > summary .chevron::before {
   margin-top: 14px;
 }
 
-.proposal-actions .primary,
 .proposal-actions .not-now {
-  min-height: 40px;
-}
-
-.proposal-actions .primary {
-  padding: 8px 16px;
-}
-
-.proposal-actions .not-now {
-  border-color: rgba(243, 238, 230, 0.16);
+  border-color: var(--line);
   background: transparent;
-  color: #d5c9bb;
+  color: var(--muted);
   font-weight: 500;
 }
 
 .proposal-actions .not-now:hover:not(:disabled) {
-  border-color: rgba(243, 238, 230, 0.28);
-  background: rgba(243, 238, 230, 0.05);
+  border-color: var(--line);
+  background: rgba(26, 22, 19, 0.05);
   color: var(--ink);
+}
+
+.catch-up h2 {
+  font-size: 1.45rem;
+}
+
+.catch-up .lede {
+  margin-bottom: 12px;
+}
+
+.catch-up .notice,
+.catch-up .error {
+  margin: 0 0 12px;
+}
+
+.catch-up-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 0;
+}
+
+.catch-up .proposal {
+  margin: 0;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: var(--sunken);
 }
 
 .sr-only {
@@ -783,11 +913,11 @@ details[open] > summary .chevron::before {
 }
 
 .quiet-suggestion {
-  max-width: 240px;
-  margin: 4px 8px 0 0;
-  color: #d2c7ba;
-  font-size: 0.88rem;
-  text-align: right;
+  max-width: 18rem;
+  margin: 28px 0 0;
+  color: var(--cream-dim);
+  font-size: 0.95rem;
+  text-align: left;
   font-family: var(--serif);
   font-style: italic;
   font-weight: 400;
@@ -799,18 +929,17 @@ details[open] > summary .chevron::before {
 }
 
 .quiet-kicker {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
   font-family: var(--sans);
   font-style: normal;
+  color: var(--cream-dim);
 }
 
 .extras {
   display: grid;
-  gap: 18px;
-  margin-top: 18px;
+  gap: 24px;
+  margin-top: 24px;
 }
-
-/* Task editor. A quiet panel, not a second page. */
 
 dialog.task-dialog {
   width: min(26.5rem, calc(100vw - 28px));
@@ -818,15 +947,12 @@ dialog.task-dialog {
   margin: auto;
   padding: 22px 22px 16px;
   overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: #322e29;
-  color: var(--ink);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line-card);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
 }
 
 dialog.task-dialog::backdrop {
-  background: rgba(8, 7, 6, 0.68);
+  background: rgba(7, 6, 5, 0.72);
 }
 
 dialog.task-dialog h2 {
@@ -836,6 +962,10 @@ dialog.task-dialog h2 {
 
 dialog.task-dialog .lede {
   margin-bottom: 16px;
+}
+
+dialog.task-dialog .eyebrow {
+  color: var(--muted);
 }
 
 .field {
@@ -892,47 +1022,51 @@ dialog.task-dialog .lede {
   border-top: 1px solid var(--line);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .presence-control {
-    transition: none;
+@media (min-width: 1100px) {
+  .stage {
+    padding: 52px 72px 96px 48px;
   }
 }
 
-@media (max-width: 800px) {
-  .presence {
-    padding: 16px 14px 12px;
-  }
-
-  .presence-control {
-    width: min(100%, 22rem);
-    padding: 8px 10px;
-  }
-
-  .catch-up,
-  .desk-wrap {
-    width: min(1080px, calc(100% - 24px));
-  }
-
-  .catch-up {
-    margin-top: 14px;
-    padding: 14px 16px 12px;
-  }
-
-  .desk-wrap {
-    margin-top: 16px;
-    margin-bottom: 28px;
-  }
-
-  .desk {
+@media (max-width: 980px) {
+  .cards {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "primary"
-      "secondary"
-      "corner";
+  }
+}
+
+@media (max-width: 720px) {
+  .shell {
+    flex-direction: column;
   }
 
-  .pane {
-    padding: 16px 16px 10px;
+  .rail {
+    position: sticky;
+    top: 0;
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 0;
+    padding: 8px 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-canvas);
+  }
+
+  .rail-slot-end {
+    margin-top: 0;
+  }
+
+  .stage {
+    padding: 28px 18px 48px;
+  }
+
+  .presence .greeting {
+    font-size: clamp(2.8rem, 14vw, 3.8rem);
+  }
+
+  .card,
+  .catch-up {
+    padding: 22px 18px 16px;
   }
 
   .brief-section > summary {
@@ -945,28 +1079,17 @@ dialog.task-dialog .lede {
     text-align: left;
   }
 
-  .corner {
-    justify-self: start;
-  }
-
-  .quiet-suggestion {
-    max-width: none;
-    margin: 0;
-    text-align: left;
-  }
-
   .field-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The input stays put while the cards move, and leaves with this section. */
   .assistant.is-on.has-cards .feed-form {
     position: sticky;
-    top: 0;
+    top: 60px;
     z-index: 2;
-    margin-right: -14px;
-    margin-left: -14px;
-    padding: 8px 14px 10px;
-    background: var(--assistant-surface);
+    margin-right: -8px;
+    margin-left: -8px;
+    padding: 8px;
+    background: var(--card);
   }
 }

@@ -30,7 +30,7 @@ export function PresenceBar() {
         Home
         {dateLabel && <span className="eyebrow-date"> · {dateLabel}</span>}
       </p>
-      <h1>{system?.greeting ?? ""}</h1>
+      <h1 className="greeting">{system?.greeting ?? ""}</h1>
       <div className="presence-control">
         <p className="status" role="status" aria-live="polite">
           <span className="status-mark" aria-hidden="true" />
