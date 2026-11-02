@@ -36,7 +36,6 @@ export function PresenceBar() {
           <span className="status-mark" aria-hidden="true" />
           <span className="status-text">{statusLine}</span>
         </p>
-        {note && <p className="status-note">{note}</p>}
         <button
           type="button"
           className="pause"
@@ -48,6 +47,7 @@ export function PresenceBar() {
           {paused ? "Unpause" : "Pause"}
         </button>
       </div>
+      {note && <p className="status-note">{note}</p>}
     </header>
   );
 }

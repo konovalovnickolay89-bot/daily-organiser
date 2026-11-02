@@ -154,7 +154,7 @@ Approve and skip return `effect.applied: false` and a short summary. The `action
 
 ## Arrival screen
 
-One home screen:
+One home screen, in a dark charcoal palette: a thin centred presence bar, then two quiet panes.
 
 1. Presence bar across the top, centred. The headline comes from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Nick’s name, and the date stays beside Home. The status and Pause / Unpause stay on the bar.
 2. Left: morning brief. Tasks and open commitments come from the API. Appointments, shopping, and weather are labelled as not connected.
