@@ -8,12 +8,20 @@ os.environ["DATABASE_URL"] = os.environ.get(
 )
 os.environ["SEED_ON_START"] = "false"
 os.environ["HOUSE_TIMEZONE"] = "Europe/London"
+# The assistant is off in tests unless a test turns it on with a fake. Environment
+# values beat a developer's .env, and the base URL cannot resolve, so no test can
+# spend a real key or send house data to Mistral.
+os.environ["MISTRAL_API_KEY"] = ""
+os.environ["MISTRAL_AGENT_ID"] = ""
+os.environ["MISTRAL_BASE_URL"] = "http://mistral.invalid"
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from psycopg import sql
 from sqlalchemy.engine.url import make_url
+
+from agent_fakes import ScriptedMistral, london
 
 from organiser.config import get_settings
 from organiser.db import get_engine, get_sessionmaker
@@ -59,3 +67,38 @@ def db(database):
 def client(database):
     with TestClient(app) as test_client:
         yield test_client
+
+
+# --- Mistral assistant -------------------------------------------------------
+
+
+@pytest.fixture
+def house_clock(monkeypatch):
+    """Freeze organiser.clock. Monday 2 November 2026, 08:00 in London, unless a test moves it."""
+    state = {"now": london(2026, 11, 2, 8, 0)}
+    monkeypatch.setattr("organiser.clock.current_time", lambda: state["now"])
+    return state
+
+
+@pytest.fixture
+def assistant_on(monkeypatch):
+    """A key and an agent id, so the assistant counts as set up. Nothing reaches Mistral."""
+    monkeypatch.setenv("MISTRAL_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("MISTRAL_AGENT_ID", "ag_test")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def mistral(assistant_on):
+    """Install a scripted Mistral for the API: ``fake = mistral([call(...)], [say(...)])``."""
+    from organiser.routes.agent import get_mistral
+
+    def install(*script) -> ScriptedMistral:
+        fake = ScriptedMistral(*script)
+        app.dependency_overrides[get_mistral] = lambda: fake
+        return fake
+
+    yield install
+    app.dependency_overrides.pop(get_mistral, None)

@@ -8,10 +8,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from organiser.domain import (
     ActionMode,
     ActionStatus,
+    AgentTrigger,
     CommitmentStatus,
     EventKind,
     GreetingReason,
     Priority,
+    ProposalAction,
+    ProposalStatus,
     TaskStatus,
 )
 
@@ -207,6 +210,74 @@ class SystemRead(APIModel):
     greeting_reason: GreetingReason
     arrived_at: datetime | None = None
     debounce_until: datetime | None = None
+
+
+class FeedRequest(APIModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class ReviewRequest(APIModel):
+    trigger: AgentTrigger
+    window_key: str = Field(min_length=1, max_length=160)
+
+
+class ProposalRead(APIModel):
+    id: UUID
+    origin: str
+    rule: AgentTrigger
+    label: str
+    action: ProposalAction
+    ref_type: str | None
+    ref_id: UUID | None
+    summary: str
+    reason: str
+    status: ProposalStatus
+    created_at: datetime
+    decided_at: datetime | None
+    applied_ref_id: UUID | None
+
+
+class DueRead(APIModel):
+    trigger: AgentTrigger
+    window_key: str
+    label: str
+
+
+class LastReply(APIModel):
+    text: str
+    at: datetime
+    trigger: AgentTrigger
+
+
+class AgentState(APIModel):
+    enabled: bool
+    paused: bool
+    as_of: datetime
+    house_date: date
+    due: DueRead | None
+    runs_left_today: int
+    proactive_left_today: int
+    last_reply: LastReply | None
+    proposals: list[ProposalRead]
+
+
+class AgentResult(APIModel):
+    run_id: UUID
+    trigger: AgentTrigger
+    reply: str | None
+    searched: bool
+    proposals: list[ProposalRead]
+
+
+class AppliedChange(APIModel):
+    ref_type: str
+    ref_id: UUID
+    summary: str
+
+
+class ApplyResult(APIModel):
+    proposal: ProposalRead
+    applied: AppliedChange
 
 
 def apply_changes(row: object, payload: BaseModel) -> None:

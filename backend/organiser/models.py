@@ -6,14 +6,19 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+_AGENT_TRIGGERS = "('feed', 'morning_review', 'doing_stalled', 'overdue_lingering', 'commitment_due_soon')"
 
 
 class Base(DeclarativeBase):
@@ -135,3 +140,77 @@ class SystemState(Base):
     # shows "Welcome home" only while this sits inside the one-hour window.
     arrived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class AgentRun(Base):
+    """One run of the Mistral assistant. The house keeps what went in and what came back.
+
+    ``(trigger, window_key)`` is unique, so a proactive review runs once per
+    window even with two screens open. Times come from the house clock, not
+    from Postgres, so the daily caps follow the frozen clock in tests.
+    """
+
+    __tablename__ = "agent_runs"
+    __table_args__ = (
+        CheckConstraint(f"trigger in {_AGENT_TRIGGERS}", name="ck_agent_runs_trigger"),
+        CheckConstraint("status in ('running', 'done', 'failed')", name="ck_agent_runs_status"),
+        UniqueConstraint("trigger", "window_key", name="uq_agent_runs_window"),
+        Index("ix_agent_runs_started_at", "started_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    trigger: Mapped[str] = mapped_column(String(32), nullable=False)
+    window_key: Mapped[str] = mapped_column(String(160), nullable=False)
+    input_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running", server_default="running")
+    searched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentProposal(Base):
+    """A change the assistant proposed. Nothing happens until Nick taps Apply.
+
+    Apply makes exactly ``changes`` to the named row, inside this database.
+    ``ref_updated_at`` is the row's stamp when proposed: if the row moved since,
+    Apply refuses and the proposal turns ``stale``.
+    """
+
+    __tablename__ = "agent_proposals"
+    __table_args__ = (
+        CheckConstraint("origin in ('feed', 'proactive')", name="ck_agent_proposals_origin"),
+        CheckConstraint(f"rule in {_AGENT_TRIGGERS}", name="ck_agent_proposals_rule"),
+        CheckConstraint(
+            "action in ('create_task', 'update_task', 'create_commitment', 'update_commitment', 'add_note')",
+            name="ck_agent_proposals_action",
+        ),
+        CheckConstraint(
+            "ref_type is null or ref_type in ('task', 'commitment')",
+            name="ck_agent_proposals_ref_type",
+        ),
+        CheckConstraint(
+            "status in ('pending', 'applied', 'dismissed', 'stale')",
+            name="ck_agent_proposals_status",
+        ),
+        Index("ix_agent_proposals_status", "status"),
+        Index("ix_agent_proposals_ref", "ref_type", "ref_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), nullable=False)
+    origin: Mapped[str] = mapped_column(String(16), nullable=False)
+    rule: Mapped[str] = mapped_column(String(32), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    ref_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    ref_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    changes: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    reason: Mapped[str] = mapped_column(String(300), nullable=False)
+    ref_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_ref_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
