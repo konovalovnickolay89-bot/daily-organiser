@@ -167,7 +167,7 @@ textarea {
 }
 
 .stage-inner {
-  max-width: 1120px;
+  max-width: 1280px;
 }
 
 /* Large greeting. Cream on the canvas. Pause stays with it. */
@@ -350,14 +350,30 @@ dialog.task-dialog {
 
 .cards {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.86fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr) minmax(250px, 0.92fr);
+  gap: 22px;
   margin-top: 44px;
   align-items: start;
 }
 
+.card[data-panel="brief"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
 .card[data-panel="today"] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.card[data-panel="reasoning"] {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.card[data-panel="approvals"] {
   grid-column: 1 / -1;
+  grid-row: 2;
 }
 
 .card {
@@ -474,6 +490,11 @@ h2 {
   font-size: 0.82rem;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.count.is-waiting {
+  color: var(--accent-ink);
+  font-weight: 600;
 }
 
 .lede,
@@ -746,7 +767,8 @@ details[open] > summary .chevron::before {
   color: var(--muted);
 }
 
-/* Proposed changes sit in the today card. Apply and Not now stay on the card. */
+/* The add line sits under Today. The working strip and the cards sit on the right.
+   Apply and Not now stay on the card. The Today view keeps the cards under the line. */
 
 .assistant {
   min-width: 0;
@@ -805,9 +827,65 @@ details[open] > summary .chevron::before {
   margin: 0 0 10px;
 }
 
-.assistant .reply {
+.assistant .reply,
+.reasoning .reply {
   color: var(--ink);
   white-space: pre-line;
+}
+
+.ticker {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.ticker-line {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.28rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.28;
+  color: var(--ink);
+}
+
+.ticker-line.is-settled {
+  color: var(--muted);
+}
+
+.ticker-line.is-current::before {
+  content: "";
+  display: inline-block;
+  width: 0.46rem;
+  height: 0.46rem;
+  margin-right: 0.55rem;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(-0.12rem);
+}
+
+.ticker-line.is-failed {
+  color: var(--danger);
+}
+
+.reasoning .reply {
+  margin: 14px 0 0;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+}
+
+.reasoning-proposals,
+.inline-proposals {
+  margin-top: 22px;
+}
+
+.reasoning-proposals {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.inline-proposals {
+  margin-top: 4px;
 }
 
 .proposal-list {
@@ -1031,6 +1109,14 @@ dialog.task-dialog .eyebrow {
 @media (max-width: 980px) {
   .cards {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card[data-panel="brief"],
+  .card[data-panel="today"],
+  .card[data-panel="reasoning"],
+  .card[data-panel="approvals"] {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 

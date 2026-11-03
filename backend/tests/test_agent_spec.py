@@ -40,6 +40,8 @@ def test_instructions_name_every_function_and_trigger():
     assert "Europe/London" in text
     assert "Not for the house log." in text
     assert "No greeting" in text
+    assert "journey source is not connected" in text
+    assert "travel to work" in text
 
 
 def test_agent_definition_has_search_five_functions_and_high_reasoning():

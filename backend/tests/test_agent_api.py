@@ -1,5 +1,6 @@
 """The assistant through the API, with a scripted Mistral and a frozen house clock."""
 
+import json
 from datetime import timedelta
 
 from sqlalchemy import select
@@ -154,7 +155,7 @@ def test_a_run_that_does_not_finish_leaves_nothing(client, db, house_clock, mist
         *[[call("get_state", call_id=f"call_{n}")] for n in range(6)],
     )
     response = _feed(client)
-    assert response.status_code == 502
+    assert response.status_code == 424
     assert response.json()["detail"] == "The assistant did not finish. Nothing was changed."
     assert _state(client)["proposals"] == []
     run = db.scalars(select(AgentRun)).one()
@@ -165,10 +166,113 @@ def test_a_run_that_does_not_finish_leaves_nothing(client, db, house_clock, mist
 def test_mistral_down_changes_nothing(client, db, house_clock, mistral):
     mistral([call("propose_change", FILTERS)], MistralUnavailable("Mistral could not be reached."))
     response = _feed(client)
-    assert response.status_code == 502
+    assert response.status_code == 424
     assert response.json()["detail"] == "The assistant could not be reached. Nothing was changed."
     assert _state(client)["proposals"] == []
     assert db.scalars(select(AgentRun)).one().status == "failed"
+
+
+def _events(body: str) -> list[tuple[str, dict]]:
+    found = []
+    for block in body.split("\n\n"):
+        if not block.strip():
+            continue
+        event = "message"
+        data = ""
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                event = line.split(":", 1)[1].strip()
+            elif line.startswith("data:"):
+                data += line.split(":", 1)[1].strip()
+        found.append((event, json.loads(data)))
+    return found
+
+
+def test_feed_stream_reports_steps_then_the_card(client, house_clock, mistral):
+    mistral(
+        [call("get_state")],
+        [call("search_items", {"text": "filter"})],
+        [call("propose_change", FILTERS)],
+        [say("Added 1 proposal.")],
+    )
+    response = client.post(
+        "/agent/feed",
+        json={"text": "need filters for the boiler before Friday"},
+        headers={"Accept": "text/event-stream"},
+    )
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+    events = _events(response.text)
+    steps = [data["step"] for kind, data in events if kind == "step"]
+    assert steps[0] == "received"
+    assert "calling" in steps
+    assert "reading" in steps
+    assert steps.index("received") < steps.index("calling") < steps.index("reading")
+    done = [data for kind, data in events if kind == "done"]
+    assert len(done) == 1
+    assert done[0]["reply"] == "Added 1 proposal."
+    assert done[0]["proposals"][0]["summary"] == "New task: Buy boiler filters · due Fri 6 Nov"
+    assert [proposal["id"] for proposal in _state(client)["proposals"]] == [done[0]["proposals"][0]["id"]]
+
+
+def test_feed_stream_failure_stays_in_the_page(client, db, house_clock, mistral):
+    mistral(
+        [call("propose_change", FILTERS)],
+        *[[call("get_state", call_id=f"call_{n}")] for n in range(6)],
+    )
+    response = client.post(
+        "/agent/feed",
+        json={"text": "need filters for the boiler before Friday"},
+        headers={"Accept": "text/event-stream"},
+    )
+    assert response.status_code == 200
+    events = _events(response.text)
+    errors = [data for kind, data in events if kind == "error"]
+    assert errors == [{"detail": "The assistant did not finish. Nothing was changed."}]
+    assert not any(kind == "done" for kind, _ in events)
+    assert _state(client)["proposals"] == []
+    assert db.scalars(select(AgentRun)).one().status == "failed"
+
+
+TRIP = {
+    "action": "create_task",
+    "changes": {"title": "Train to work", "due_on": "2026-11-03"},
+    "reason": "Leave the house at 7.",
+}
+JOURNEY = {
+    "action": "create_task",
+    "changes": {
+        "title": "Check journey tomorrow",
+        "detail": "Journey source is not connected. Nothing live was checked.",
+        "due_on": "2026-11-03",
+    },
+    "reason": "Journey source is not connected.",
+}
+
+
+def test_a_commute_asks_for_the_trip_and_a_journey_check(client, house_clock, mistral):
+    fake = mistral(
+        [call("get_state")],
+        [call("search_items", {"text": "work"})],
+        [call("propose_change", TRIP), call("propose_change", JOURNEY)],
+        [say("Added 2 proposals.")],
+    )
+    body = _feed(client, "Train to work tomorrow, leave at 7").json()
+    packet = fake.calls[0][2]
+    assert "Journey:" in packet
+    assert "journey source is not connected" in packet
+    summaries = [proposal["summary"] for proposal in body["proposals"]]
+    assert "New task: Train to work · due Tue 3 Nov" in summaries
+    assert "New task: Check journey tomorrow · due Tue 3 Nov" in summaries
+    assert body["proposals"][1]["reason"] == "Journey source is not connected."
+    assert client.get("/tasks").json()["items"] == []
+
+
+def test_a_commute_outside_the_house_does_not_ask_for_a_journey_check(client, house_clock, mistral):
+    fake = mistral([say("Not for the house log.")])
+    body = _feed(client, "commute with a guest tomorrow").json()
+    assert "Journey:" not in fake.calls[0][2]
+    assert body["proposals"] == []
 
 
 def test_feed_text_is_checked(client, house_clock, mistral):

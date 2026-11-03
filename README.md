@@ -141,7 +141,7 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/system/unpause` | Resume |
 | POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
 | GET | `/agent` | Assistant state: on or off, paused, the review that is due, runs left today, last reply, waiting cards. Never calls Mistral |
-| POST | `/agent/feed` | One entry from the box. The assistant may propose up to 3 cards. 409 paused, 503 off, 429 runs used, 502 Mistral failed |
+| POST | `/agent/feed` | One entry from the box. The assistant may propose up to 3 cards. 409 paused, 503 off, 429 runs used, 424 the assistant did not finish. `Accept: text/event-stream` sends the working steps, then the cards or one error. A failure is not a 502 |
 | POST | `/agent/review` | Run the review `GET /agent` says is due. Each window runs once |
 | POST | `/agent/proposals/{id}/apply` | Make exactly that change to one task or commitment, and log one line. 409 if paused, decided, or the item changed |
 | POST | `/agent/proposals/{id}/dismiss` | Not now. A proactive item rests for 72 hours |
@@ -162,7 +162,7 @@ One home screen. A thin icon rail on the left, a large greeting, then cream card
 
 1. Rail: thin line icons for Home, Brief, tasks, approvals, Today, and Settings. No illustrations.
 2. Greeting, large, at the top of the main area. The words come from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. Status and Pause / Unpause sit with the greeting.
-3. Cards: morning brief, pending approvals, and Today. Today includes the short task list and proposed changes. Proposed changes has one input line and cards, each with Apply and Not now. It shows “The assistant is off” until a key and an agent id are set. Appointments, shopping, and weather on the brief are labelled as not connected.
+3. Cards: morning brief, Today, and the assistant column, with pending approvals underneath. Today includes the short task list and the add line. The right-hand column is the working strip (Received, Reading the house log, Calling the assistant, Done or Failed) and then the cards, each with Apply and Not now. The next line replaces the strip. It shows “The assistant is off” until a key and an agent id are set. Appointments, shopping, and weather on the brief are labelled as not connected.
 4. Under the cards: “A playlist is ready, when you want it.” Text only. It does not play anything and it does not control the house.
 
 Colour follows the house clock. Good morning and Good afternoon use the brighter morning theme. Good evening and Good night use the deeper evening theme. “Welcome home” follows the London hour. Settings can hold morning or evening in this browser. That only recolors the chrome.
@@ -179,7 +179,7 @@ When the task table is empty and `SEED_ON_START` is true, the API inserts a smal
 
 The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set. `python -m organiser.agent sync` creates the agent in Mistral from `backend/organiser/agent/spec.py`; `show` prints the same values for Mistral's agent builder. [docs/mistral-agent.md](docs/mistral-agent.md) has the steps, the console values, and the rulebook.
 
-It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. Tests use a scripted fake and never reach Mistral.
+It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). A commute also asks for a journey check; the journey source is not connected. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. A feed that does not finish returns 424 with a short line, and the screen keeps that line. Tests use a scripted fake and never reach Mistral.
 
 ## What this does not do
 

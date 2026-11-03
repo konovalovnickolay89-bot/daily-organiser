@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     mistral_agent_id: str = ""
     mistral_model: str = "mistral-medium-latest"
     mistral_base_url: str = "https://api.mistral.ai"
-    mistral_timeout_seconds: float = 60.0
+    # One Mistral call. Together with the run deadline this stays inside the
+    # proxy's ~100s limit. See RUN_DEADLINE_SECONDS in agent/runner.py.
+    mistral_timeout_seconds: float = 25.0
     # "high" by default. Empty leaves the model's own default.
     mistral_reasoning_effort: str = "high"
     # Cost guard across every trigger, and the cap on proposals Nick did not ask for.

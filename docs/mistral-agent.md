@@ -4,7 +4,7 @@ The assistant reads the house log and proposes changes. Each proposal is a card 
 
 It speaks in two ways:
 
-- **When you write in the box** on the arrival screen ("need filters for the boiler before Friday"). You get one or two lines back and up to 3 cards.
+- **When you write in the box** on the arrival screen ("need filters for the boiler before Friday"). The right-hand column shows the working steps, then one or two lines and up to 3 cards. The next line replaces that strip. A commute or travel to work also asks for a card to check the journey. Nothing looks up live departures; the card says the journey source is not connected. If the run does not finish, the column says so and nothing is changed. That answer is HTTP 424, so the page stays in the app.
 - **On its own, by fixed rules**: a morning review, and items that have gone quiet. The rules live in `backend/organiser/agent/rules.py`, not in the model.
 
 ## Set it up
