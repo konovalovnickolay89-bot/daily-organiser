@@ -179,11 +179,14 @@ class AgentProposal(Base):
     Apply makes exactly ``changes`` to the named row, inside this database.
     ``ref_updated_at`` is the row's stamp when proposed: if the row moved since,
     Apply refuses and the proposal turns ``stale``.
+
+    ``origin`` ``ingest`` is a card from ``POST /agent/proposals``. It has no
+    Mistral run, so ``run_id`` is null. Apply still uses the same allowlist.
     """
 
     __tablename__ = "agent_proposals"
     __table_args__ = (
-        CheckConstraint("origin in ('feed', 'proactive')", name="ck_agent_proposals_origin"),
+        CheckConstraint("origin in ('feed', 'proactive', 'ingest')", name="ck_agent_proposals_origin"),
         CheckConstraint(f"rule in {_AGENT_TRIGGERS}", name="ck_agent_proposals_rule"),
         CheckConstraint(
             "action in ('create_task', 'update_task', 'create_commitment', 'update_commitment', 'add_note')",
@@ -202,7 +205,7 @@ class AgentProposal(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    run_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("agent_runs.id"), nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agent_runs.id"), nullable=True)
     origin: Mapped[str] = mapped_column(String(16), nullable=False)
     rule: Mapped[str] = mapped_column(String(32), nullable=False)
     label: Mapped[str] = mapped_column(String(80), nullable=False)

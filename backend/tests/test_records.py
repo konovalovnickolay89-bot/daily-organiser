@@ -16,6 +16,8 @@ def test_health_and_openapi(client):
         "/approvals",
         "/system/pause",
         "/system/unpause",
+        "/agent/activity",
+        "/agent/proposals",
     ):
         assert path in paths
 

@@ -314,10 +314,13 @@ def test_apply_adds_one_note_and_leaves_the_rest_of_the_log(client, db, house_cl
     assert again.json()["detail"] == "This has already been decided."
 
     events = client.get("/events").json()["items"]
-    assert len(events) == 1
-    assert events[0]["kind"] == "task"
-    assert events[0]["title"].startswith("Catch-up:")
-    assert "Nothing outside the house log was changed." in events[0]["body"]
+    catchup = [event for event in events if event["title"].startswith("Catch-up:")]
+    added = [event for event in events if event["title"].startswith("Added:")]
+    assert len(catchup) == 1
+    assert len(added) == 1
+    assert catchup[0]["kind"] == "task"
+    assert catchup[0]["title"].startswith("Catch-up:")
+    assert "Nothing outside the house log was changed." in catchup[0]["body"]
 
     pending = client.get("/action-requests").json()["items"]
     assert pending[0]["status"] == "pending"

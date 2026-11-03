@@ -14,6 +14,7 @@ from organiser.schemas import (
     CommitmentUpdate,
     apply_changes,
 )
+from organiser.services.activity import record_line
 
 router = APIRouter(prefix="/commitments", tags=["commitments"])
 
@@ -54,6 +55,12 @@ def list_commitments(
 def create_commitment(payload: CommitmentCreate, session: Session = Depends(get_db)) -> Commitment:
     row = Commitment(**_values(payload))
     session.add(row)
+    record_line(
+        session,
+        kind="commitment",
+        title=f"Added: {row.title}",
+        body="Added in the house log. Nothing outside it was changed.",
+    )
     session.commit()
     session.refresh(row)
     return row

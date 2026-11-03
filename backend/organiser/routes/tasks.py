@@ -11,6 +11,7 @@ from organiser.db import get_db
 from organiser.domain import Priority, TaskStatus
 from organiser.models import Task
 from organiser.schemas import TaskCreate, TaskList, TaskRead, TaskUpdate, apply_changes
+from organiser.services.activity import record_line
 from organiser.timeutil import house_today
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -74,6 +75,12 @@ def list_tasks(
 def create_task(payload: TaskCreate, session: Session = Depends(get_db)) -> Task:
     row = Task(**_values(payload))
     session.add(row)
+    record_line(
+        session,
+        kind="task",
+        title=f"Added: {row.title}",
+        body="Added in the house log. Nothing outside it was changed.",
+    )
     session.commit()
     session.refresh(row)
     return row

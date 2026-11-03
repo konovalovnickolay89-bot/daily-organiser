@@ -1,16 +1,19 @@
 """The Mistral assistant's routes.
 
-GET /agent only reads and never calls Mistral. The POST routes are explicit:
+GET /agent only reads and never calls Mistral. GET /agent/activity is the same
+kind of read: recent lines from the house log. POST /agent/proposals stores
+one pending card and does not call Mistral. The other POST routes are explicit:
 the box on the screen, a review the rules say is due, and Nick's two taps.
 """
 
 import json
 import logging
 from collections.abc import Iterator
+from datetime import datetime
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -18,7 +21,9 @@ from sqlalchemy.orm import Session
 
 from organiser import clock
 from organiser.agent.functions import RunContext
+from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
+from organiser.agent.runner import outside_home
 from organiser.agent.rules import (
     FEED_LABEL,
     FEED_PROPOSALS,
@@ -41,6 +46,7 @@ from organiser.config import get_settings
 from organiser.db import get_db, get_sessionmaker
 from organiser.models import AgentProposal, AgentRun
 from organiser.schemas import (
+    ActivityList,
     AgentResult,
     AgentState,
     AppliedChange,
@@ -48,9 +54,11 @@ from organiser.schemas import (
     DueRead,
     FeedRequest,
     LastReply,
+    ProposalIngest,
     ProposalRead,
     ReviewRequest,
 )
+from organiser.services.activity import list_activity, record_line
 from organiser.services.brief import morning_brief
 from organiser.services.system import ensure_system_state
 
@@ -157,6 +165,34 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
     )
 
 
+@router.get("/activity", response_model=ActivityList)
+def activity(
+    session: Session = Depends(get_db),
+    limit: int = Query(default=40, ge=1, le=100),
+    since: datetime | None = None,
+) -> ActivityList:
+    """Recent house-log lines for a curator. Read only. Never calls Mistral."""
+    return ActivityList(items=list_activity(session, limit=limit, since=since))
+
+
+@router.post("/proposals", response_model=ProposalRead, status_code=201)
+def propose(payload: ProposalIngest, session: Session = Depends(get_db)) -> ProposalRead:
+    """Store one pending task card. Does not create a task, and does not call Mistral."""
+    try:
+        proposal = ingest_proposal(
+            session,
+            title=payload.title,
+            due_on=payload.due_on,
+            reason=payload.reason,
+            source=payload.source,
+            now=_local_now(),
+        )
+    except IngestRefused as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from None
+    session.commit()
+    return _proposal(proposal)
+
+
 def _failure_detail(exc: Exception) -> str:
     if isinstance(exc, MistralUnavailable):
         return "The assistant could not be reached. Nothing was changed."
@@ -238,6 +274,27 @@ def _wants_stream(request: Request) -> bool:
     return "text/event-stream" in request.headers.get("accept", "")
 
 
+def _start_feed(session: Session, text: str, local_now) -> AgentRun:
+    """Accept one line from the box. The line is in the log even if the run fails."""
+    run = AgentRun(
+        trigger="feed",
+        window_key=f"feed:{uuid4()}",
+        input_text=text,
+        status="running",
+        started_at=local_now,
+    )
+    session.add(run)
+    if not outside_home(text):
+        record_line(
+            session,
+            kind="note",
+            title=f"Added: {text}",
+            body="Written in the box. Nothing was created until a card is applied.",
+        )
+    session.commit()
+    return run
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
@@ -273,15 +330,7 @@ def _feed_events(app, text: str) -> Iterator[str]:
         if ensure_system_state(session).paused:
             yield _sse("error", {"detail": PAUSED})
             return
-        run = AgentRun(
-            trigger="feed",
-            window_key=f"feed:{uuid4()}",
-            input_text=text,
-            status="running",
-            started_at=local_now,
-        )
-        session.add(run)
-        session.commit()
+        run = _start_feed(session, text, local_now)
         ctx = RunContext(
             session=session,
             now=local_now,
@@ -337,15 +386,7 @@ def feed(
 
     settings = get_settings()
     local_now = _local_now()
-    run = AgentRun(
-        trigger="feed",
-        window_key=f"feed:{uuid4()}",
-        input_text=payload.text,
-        status="running",
-        started_at=local_now,
-    )
-    session.add(run)
-    session.commit()
+    run = _start_feed(session, payload.text, local_now)
     ctx = RunContext(
         session=session,
         now=local_now,
