@@ -182,9 +182,14 @@ def _header(trigger: str, local_now: datetime, tz_name: str, limit: int) -> list
     return [f"Trigger: {trigger}", f"House time: {when} ({tz_name})", f"Proposal limit: {limit}"]
 
 
+def outside_home(text: str) -> bool:
+    """A hotel, a guest, a colleague, or an employer is not house business."""
+    return _OUTSIDE_HOME_RE.search(text) is not None
+
+
 def journey_note(text: str) -> str | None:
     """A commute asks for the trip and a journey check. Anything outside the house does not."""
-    if _OUTSIDE_HOME_RE.search(text) or not _JOURNEY_RE.search(text):
+    if outside_home(text) or not _JOURNEY_RE.search(text):
         return None
     return JOURNEY_NOTE
 

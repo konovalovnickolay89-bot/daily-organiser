@@ -216,6 +216,26 @@ class FeedRequest(APIModel):
     text: str = Field(min_length=1, max_length=1000)
 
 
+class ProposalIngest(APIModel):
+    """One task card from a curator. Apply creates it. This request does not."""
+
+    title: str = Field(min_length=1, max_length=200)
+    due_on: date | None = None
+    reason: str | None = Field(default=None, max_length=300)
+    source: str | None = Field(default=None, max_length=80)
+
+
+class ActivityItem(APIModel):
+    id: UUID
+    at: datetime
+    text: str
+    type: str
+
+
+class ActivityList(APIModel):
+    items: list[ActivityItem]
+
+
 class ReviewRequest(APIModel):
     trigger: AgentTrigger
     window_key: str = Field(min_length=1, max_length=160)

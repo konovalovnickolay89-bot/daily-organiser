@@ -9,6 +9,7 @@ from organiser import __version__
 from organiser.config import get_settings
 from organiser.db import (
     ensure_arrived_at_column,
+    ensure_ingest_proposals,
     ensure_last_looked_at_column,
     get_engine,
     get_sessionmaker,
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=get_engine())
     ensure_arrived_at_column()
     ensure_last_looked_at_column()
+    ensure_ingest_proposals()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)

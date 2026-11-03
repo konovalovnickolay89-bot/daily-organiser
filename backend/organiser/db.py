@@ -74,6 +74,23 @@ def ensure_arrived_at_column() -> None:
         )
 
 
+def ensure_ingest_proposals() -> None:
+    """Let a proposal exist without a Mistral run.
+
+    ``create_all`` does not alter an existing ``agent_proposals`` table.
+    Ingest cards use ``origin = 'ingest'`` and a null ``run_id``.
+    """
+    with get_engine().begin() as connection:
+        connection.execute(text("ALTER TABLE agent_proposals ALTER COLUMN run_id DROP NOT NULL"))
+        connection.execute(text("ALTER TABLE agent_proposals DROP CONSTRAINT IF EXISTS ck_agent_proposals_origin"))
+        connection.execute(
+            text(
+                "ALTER TABLE agent_proposals ADD CONSTRAINT ck_agent_proposals_origin "
+                "CHECK (origin in ('feed', 'proactive', 'ingest'))"
+            )
+        )
+
+
 def wait_for_database(attempts: int = 30, delay_seconds: float = 1.0) -> None:
     import time
 

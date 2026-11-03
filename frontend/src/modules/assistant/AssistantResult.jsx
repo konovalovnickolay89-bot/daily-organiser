@@ -94,7 +94,8 @@ export function AssistantResult({ heading = true }) {
   const { state, error, feedError, replyLine, notice, steps, proposals, reviewing, enabled, paused, sorting } =
     useAssistant();
   const loading = state === null && !error;
-  const showCards = enabled && !paused;
+  // A card from the curator is still a card when the assistant itself is off.
+  const showCards = !paused && (enabled || proposals.length > 0);
 
   return (
     <div className="assistant-result">

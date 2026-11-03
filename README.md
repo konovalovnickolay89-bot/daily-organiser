@@ -141,6 +141,8 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/system/unpause` | Resume |
 | POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
 | GET | `/agent` | Assistant state: on or off, paused, the review that is due, runs left today, last reply, waiting cards. Never calls Mistral |
+| GET | `/agent/activity` | Recent house-log lines for a curator: `id`, `at` (Europe/London, ISO-8601), `text`, `type`. Query: `limit` (default 40, max 100), `since` (lines strictly after that time). Newest first. Never calls Mistral. Types include `add`, `apply`, `catchup`, `pause`, `resume`, `arrival`, `approval`, `proposal`, `note` |
+| POST | `/agent/proposals` | One pending task card. Body: `title` (required), optional `due_on` (`YYYY-MM-DD`), `reason`, `source`. Does not create a task or call Mistral. 422 empty title, bad or past date, or anything outside the house. 409 paused, duplicate of an open task or commitment or a waiting card, or 10 cards already waiting. Apply and Not now are the routes below |
 | POST | `/agent/feed` | One entry from the box. The assistant may propose up to 3 cards. 409 paused, 503 off, 429 runs used, 424 the assistant did not finish. `Accept: text/event-stream` sends the working steps, then the cards or one error. A failure is not a 502 |
 | POST | `/agent/review` | Run the review `GET /agent` says is due. Each window runs once |
 | POST | `/agent/proposals/{id}/apply` | Make exactly that change to one task or commitment, and log one line. 409 if paused, decided, or the item changed |
