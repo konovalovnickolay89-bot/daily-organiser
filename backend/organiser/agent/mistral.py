@@ -28,7 +28,7 @@ class MistralClient:
         self,
         api_key: str,
         base_url: str = DEFAULT_BASE_URL,
-        timeout: float = 60.0,
+        timeout: float = 25.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         self._http = httpx.Client(

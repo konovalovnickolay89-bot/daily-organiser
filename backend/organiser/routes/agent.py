@@ -4,12 +4,14 @@ GET /agent only reads and never calls Mistral. The POST routes are explicit:
 the box on the screen, a review the rules say is due, and Nick's two taps.
 """
 
+import json
 import logging
 from collections.abc import Iterator
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -26,7 +28,7 @@ from organiser.agent.rules import (
     proactive_due,
     runs_today,
 )
-from organiser.agent.runner import RunFailed, feed_packet, morning_packet, run_agent, stale_packet
+from organiser.agent.runner import RunFailed, RunResult, feed_packet, iter_run, morning_packet, stale_packet
 from organiser.agent.service import (
     HousePaused,
     ProposalClosed,
@@ -36,7 +38,7 @@ from organiser.agent.service import (
     dismiss_proposal,
 )
 from organiser.config import get_settings
-from organiser.db import get_db
+from organiser.db import get_db, get_sessionmaker
 from organiser.models import AgentProposal, AgentRun
 from organiser.schemas import (
     AgentResult,
@@ -59,7 +61,15 @@ router = APIRouter(prefix="/agent", tags=["assistant"])
 PAUSED = "The house is paused. Nothing was sent to the assistant."
 OFF = "The assistant is off. Nothing was sent."
 SPENT = "The assistant has used its runs for today. Nothing was sent."
+FAILED = "The assistant did not finish. Nothing was changed."
 VISIBLE_PROPOSALS = 10
+
+
+class AssistantRunError(Exception):
+    """A run ended without a reply. The detail is safe to show on the screen."""
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
 
 
 def get_mistral() -> Iterator[MistralClient | None]:
@@ -147,33 +157,32 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
     )
 
 
-def _execute(
-    session: Session,
-    client: MistralClient,
-    run: AgentRun,
-    ctx: RunContext,
-    packet: str,
-) -> AgentResult:
-    run_id = run.id
-    try:
-        result = run_agent(client, get_settings().mistral_agent_id.strip(), ctx, packet)
-    except Exception as exc:
-        session.rollback()
-        failed = session.get(AgentRun, run_id)
-        if failed is not None:
-            failed.status = "failed"
-            failed.error = str(exc)[:200] or type(exc).__name__
-            failed.finished_at = clock.current_time()
-            session.commit()
-        if isinstance(exc, MistralUnavailable):
-            detail = "The assistant could not be reached. Nothing was changed."
-        elif isinstance(exc, RunFailed):
-            detail = f"{exc} Nothing was changed."
-        else:
-            logger.exception("Assistant run %s failed.", run_id)
-            detail = "The assistant run failed. Nothing was changed."
-        raise HTTPException(status_code=502, detail=detail) from None
+def _failure_detail(exc: Exception) -> str:
+    if isinstance(exc, MistralUnavailable):
+        return "The assistant could not be reached. Nothing was changed."
+    if isinstance(exc, RunFailed):
+        text = str(exc)
+        if text == "The assistant did not finish.":
+            return FAILED
+        if text == "The assistant took too long.":
+            return "The assistant took too long. Nothing was changed."
+        return f"{text} Nothing was changed."
+    return FAILED
 
+
+def _fail_run(session: Session, run_id: UUID, exc: Exception) -> None:
+    session.rollback()
+    failed = session.get(AgentRun, run_id)
+    if failed is not None:
+        failed.status = "failed"
+        failed.error = str(exc)[:200] or type(exc).__name__
+        failed.finished_at = clock.current_time()
+        session.commit()
+    if not isinstance(exc, (MistralUnavailable, RunFailed)):
+        logger.exception("Assistant run %s failed.", run_id)
+
+
+def _complete(session: Session, run: AgentRun, ctx: RunContext, result: RunResult) -> AgentResult:
     run.status = "done"
     run.reply = result.reply
     run.searched = result.searched
@@ -188,22 +197,146 @@ def _execute(
     )
 
 
-@router.post("/feed", response_model=AgentResult)
-def feed(
-    payload: FeedRequest,
-    session: Session = Depends(get_db),
-    client: MistralClient | None = Depends(get_mistral),
+def _execute(
+    session: Session,
+    client: MistralClient,
+    run: AgentRun,
+    ctx: RunContext,
+    packet: str,
 ) -> AgentResult:
-    """Hand the assistant one entry from the box. It may propose; it changes nothing."""
+    """Run to the end. A failure is 424, which the page can read. 502 is a proxy error page."""
+    run_id = run.id
+    try:
+        outcome: RunResult | None = None
+        for item in iter_run(client, get_settings().mistral_agent_id.strip(), ctx, packet):
+            if isinstance(item, RunResult):
+                outcome = item
+        if outcome is None:
+            raise RunFailed("The assistant did not finish.")
+    except Exception as exc:
+        _fail_run(session, run_id, exc)
+        raise AssistantRunError(_failure_detail(exc)) from None
+    return _complete(session, run, ctx, outcome)
+
+
+def _http_run_error(exc: AssistantRunError) -> HTTPException:
+    return HTTPException(status_code=424, detail=exc.detail)
+
+
+def _guard_feed(session: Session) -> None:
     settings = get_settings()
     local_now = _local_now()
     if ensure_system_state(session).paused:
         raise HTTPException(status_code=409, detail=PAUSED)
-    if client is None:
+    if not settings.assistant_enabled:
         raise HTTPException(status_code=503, detail=OFF)
     if runs_today(session, local_now, settings.house_timezone) >= settings.agent_runs_per_day:
         raise HTTPException(status_code=429, detail=SPENT)
 
+
+def _wants_stream(request: Request) -> bool:
+    return "text/event-stream" in request.headers.get("accept", "")
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def _acquire_client(app) -> tuple[MistralClient | None, object]:
+    """The test double when one is installed, otherwise a client this call closes."""
+    override = app.dependency_overrides.get(get_mistral)
+    if override is not None:
+        return override(), None
+    settings = get_settings()
+    if not settings.assistant_enabled:
+        return None, None
+    client = MistralClient(
+        settings.mistral_api_key.get_secret_value(),
+        settings.mistral_base_url,
+        settings.mistral_timeout_seconds,
+    )
+    return client, client.close
+
+
+def _feed_events(app, text: str) -> Iterator[str]:
+    """Steps, then the cards or one error. The status stays 200 so a proxy will not replace the body."""
+    yield _sse("step", {"step": "received"})
+    session = get_sessionmaker()()
+    close = None
+    try:
+        client, close = _acquire_client(app)
+        if client is None:
+            yield _sse("error", {"detail": OFF})
+            return
+        settings = get_settings()
+        local_now = _local_now()
+        if ensure_system_state(session).paused:
+            yield _sse("error", {"detail": PAUSED})
+            return
+        run = AgentRun(
+            trigger="feed",
+            window_key=f"feed:{uuid4()}",
+            input_text=text,
+            status="running",
+            started_at=local_now,
+        )
+        session.add(run)
+        session.commit()
+        ctx = RunContext(
+            session=session,
+            now=local_now,
+            tz_name=settings.house_timezone,
+            run=run,
+            origin="feed",
+            rule="feed",
+            label=FEED_LABEL,
+            max_proposals=FEED_PROPOSALS,
+        )
+        packet = feed_packet(local_now, settings.house_timezone, FEED_PROPOSALS, text)
+        try:
+            outcome: RunResult | None = None
+            for item in iter_run(client, settings.mistral_agent_id.strip(), ctx, packet):
+                if isinstance(item, str):
+                    yield _sse("step", {"step": item})
+                elif isinstance(item, RunResult):
+                    outcome = item
+            if outcome is None:
+                raise RunFailed("The assistant did not finish.")
+        except Exception as exc:
+            _fail_run(session, run.id, exc)
+            yield _sse("error", {"detail": _failure_detail(exc)})
+            return
+        yield _sse("done", _complete(session, run, ctx, outcome).model_dump(mode="json"))
+    finally:
+        if close is not None:
+            close()
+        session.close()
+
+
+@router.post("/feed", response_model=AgentResult)
+def feed(
+    payload: FeedRequest,
+    request: Request,
+    session: Session = Depends(get_db),
+    client: MistralClient | None = Depends(get_mistral),
+) -> AgentResult | StreamingResponse:
+    """Hand the assistant one entry from the box. It may propose; it changes nothing.
+
+    ``Accept: text/event-stream`` sends the steps as they happen, then the cards
+    or one error event. Anything else gets the same result as JSON.
+    """
+    _guard_feed(session)
+    if client is None:
+        raise HTTPException(status_code=503, detail=OFF)
+    if _wants_stream(request):
+        return StreamingResponse(
+            _feed_events(request.app, payload.text),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    settings = get_settings()
+    local_now = _local_now()
     run = AgentRun(
         trigger="feed",
         window_key=f"feed:{uuid4()}",
@@ -224,7 +357,10 @@ def feed(
         max_proposals=FEED_PROPOSALS,
     )
     packet = feed_packet(local_now, settings.house_timezone, FEED_PROPOSALS, payload.text)
-    return _execute(session, client, run, ctx, packet)
+    try:
+        return _execute(session, client, run, ctx, packet)
+    except AssistantRunError as exc:
+        raise _http_run_error(exc) from None
 
 
 @router.post("/review", response_model=AgentResult)
@@ -269,7 +405,10 @@ def review(
         packet = morning_packet(local_now, settings.house_timezone, due.max_proposals, brief)
     else:
         packet = stale_packet(local_now, settings.house_timezone, due.max_proposals, due.candidate)
-    return _execute(session, client, run, ctx, packet)
+    try:
+        return _execute(session, client, run, ctx, packet)
+    except AssistantRunError as exc:
+        raise _http_run_error(exc) from None
 
 
 @router.post("/proposals/{proposal_id}/apply", response_model=ApplyResult)
