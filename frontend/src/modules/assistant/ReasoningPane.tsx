@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listActivity, type ActivityLine } from "../../api/agent";
+import { inset } from "../../arrival/ui";
 import { useView } from "../../arrival/view";
 import { useHouse } from "../../house/HouseContext";
 import { AssistantResult } from "./AssistantResult";
@@ -31,7 +32,7 @@ export function ReasoningPane() {
   return (
     <section className="reasoning" aria-label="Assistant" data-module="reasoning">
       {lines.length > 0 && (
-        <ol className="m-0 mb-4 grid list-none gap-2 border-b border-[var(--line)] p-0 pb-4" aria-label="Recent activity">
+        <ol className={`${inset} mb-4 ml-0 mr-0 mt-0 grid list-none gap-2`} aria-label="Recent activity">
           {lines.map((line) => (
             <li key={line.id} className="text-sm leading-snug text-[var(--ink)]">
               {line.text}

@@ -78,6 +78,34 @@ test("keyboard focus stays visible outside the tube", async ({ page }) => {
   expect(ring.color).toBe("rgb(211, 154, 78)");
 });
 
+test("Proposed changes, Decisions, and recent activity use the Advice frame", async ({ page }) => {
+  await page.goto("/");
+  const frame = async (locator: ReturnType<typeof page.locator>) =>
+    locator.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return {
+        radius: style.borderTopLeftRadius,
+        border: style.borderTopWidth,
+        color: style.borderTopColor,
+        pad: style.paddingTop,
+      };
+    });
+
+  const advice = page.locator("[data-panel='reasoning'] .proposal-card").first();
+  await expect(advice).toBeVisible();
+  const expected = await frame(advice);
+  expect(expected.radius).toBe("24px");
+  expect(expected.border).toBe("2px");
+  expect(expected.pad).toBe("24px");
+
+  const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
+  const decisions = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Decisions" }) });
+  const activity = page.getByRole("list", { name: "Recent activity" });
+  expect(await frame(proposed)).toEqual(expected);
+  expect(await frame(decisions)).toEqual(expected);
+  expect(await frame(activity)).toEqual(expected);
+});
+
 test("inner panels, inputs, and pills use their own radii", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Approvals" }).click();

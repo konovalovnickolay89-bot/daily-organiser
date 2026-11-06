@@ -79,13 +79,26 @@ html[data-theme="morning"] {
   box-sizing: border-box;
 }
 
-/* Preflight is off, so a width alone does not paint. Borders stay solid. */
-.border,
-.border-t,
-.border-r,
-.border-b,
-.border-l {
+/* Preflight is off, so a width alone does not paint. Set style on the same side only,
+   or the other sides fall back to the 3px initial width and become a box. */
+.border {
   border-style: solid;
+}
+
+.border-t {
+  border-top-style: solid;
+}
+
+.border-r {
+  border-right-style: solid;
+}
+
+.border-b {
+  border-bottom-style: solid;
+}
+
+.border-l {
+  border-left-style: solid;
 }
 
 html,
