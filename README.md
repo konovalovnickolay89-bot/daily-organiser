@@ -217,7 +217,7 @@ discovery-system keeps secrets in the house environment file this app already us
 
 The diary requests only `calendar.events.readonly` and `calendar.calendarlist.readonly`. It must not request a write scope. Settings shows calendar names, not ids. It never shows a token, a coordinate, or a postcode.
 
-Weather comes from Open-Meteo. A postcode is turned into coordinates with postcodes.io and then forgotten. The brief credits Open-Meteo. If the location is missing, or either call fails, that section says so and the rest of the brief stays.
+Weather comes from Open-Meteo. A postcode is turned into coordinates with postcodes.io and then forgotten. A full postcode is tried first. A 404 tries the outcode, so a district code still resolves, and that miss is logged at warning without the value. The brief credits Open-Meteo. If the location is missing, or either call fails, that section says so and the rest of the brief stays.
 
 The commute uses the same house point. TfL’s journey planner is asked for an arrival at Wembley Park station (`940GZZLUWYP`) at the shift start, in the London wall clock, and the line status is read for disruptions on the lines in that journey. `2026-03-29` and `2026-10-25` follow Europe/London: a naive time that does not exist, or that happens twice, is refused until the push sends an offset. The two 01:30s on the autumn change are different instants and both may be stored. The key, the coordinates, and the postcode are not logged and not written on the shift. Outbound HTTPS, when the key is set: `api.tfl.gov.uk`. A postcode also uses `api.postcodes.io`, as weather does.
 

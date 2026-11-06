@@ -2,17 +2,21 @@
 
 import logging
 from datetime import datetime, timezone
+from urllib.parse import quote
 
+import httpx
 import pytest
+from pydantic import SecretStr
 from sqlalchemy import func, select
 
 from agent_fakes import call, london, say
 from organiser.agent.mistral import MistralUnavailable
 from organiser.agent.wording import write_notes
-from organiser.config import get_settings
+from organiser.config import Settings, get_settings
 from organiser.models import CommuteShift, ShoppingItem
 from organiser.routes.catchup import get_note_client
 from organiser.services.commute import ShiftRejected, tfl_clock, to_london
+from organiser.services.weather import home_coordinates
 
 TOKEN = "banto-token-placeholder"
 TFL = "tfl-key-placeholder"
@@ -567,6 +571,74 @@ def test_journey_degrades_when_the_key_or_the_call_fails(client, monkeypatch, ca
     assert LAT not in failed.text + caplog.text
     assert TFL not in caplog.text
     get_settings.cache_clear()
+
+
+def _postcode_settings() -> Settings:
+    return Settings(house_lat=SecretStr(""), house_lon=SecretStr(""), house_postcode=SecretStr(POSTCODE))
+
+
+def _mock_http(monkeypatch, handler):
+    """Stand in for postcodes.io. ``request_json`` still raises on a 404."""
+    real_client = httpx.Client
+
+    def factory(*args, **kwargs):
+        return real_client(transport=httpx.MockTransport(handler))
+
+    monkeypatch.setattr("organiser.services.outbound.httpx.Client", factory)
+
+
+def test_a_full_postcode_does_not_ask_for_the_outcode(monkeypatch, caplog):
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        assert request.method == "GET"
+        return httpx.Response(200, json={"result": {"latitude": 51.5, "longitude": -0.14}})
+
+    _mock_http(monkeypatch, handler)
+    with caplog.at_level(logging.WARNING, logger="organiser.services.weather"):
+        point = home_coordinates(_postcode_settings())
+    assert point == (51.5, -0.14)
+    assert seen == ["https://api.postcodes.io/postcodes/" + quote(POSTCODE)]
+    assert "missed" not in caplog.text
+    assert POSTCODE not in caplog.text
+
+
+def test_a_postcode_404_falls_back_to_the_outcode(monkeypatch, caplog):
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if "/outcodes/" in str(request.url):
+            return httpx.Response(200, json={"result": {"latitude": 51.2, "longitude": 0.1}})
+        return httpx.Response(404, json={"status": 404, "error": "Postcode not found"})
+
+    _mock_http(monkeypatch, handler)
+    with caplog.at_level(logging.WARNING, logger="organiser.services.weather"):
+        point = home_coordinates(_postcode_settings())
+    assert point == (51.2, 0.1)
+    assert seen == [
+        "https://api.postcodes.io/postcodes/" + quote(POSTCODE),
+        "https://api.postcodes.io/outcodes/" + quote(POSTCODE),
+    ]
+    assert "postcode lookup missed; trying the outcode" in caplog.text
+    assert "outcode lookup missed" not in caplog.text
+    assert POSTCODE not in caplog.text
+
+
+def test_a_missed_postcode_and_outcode_are_logged_without_the_value(monkeypatch, caplog):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"status": 404, "error": "Invalid postcode"})
+
+    _mock_http(monkeypatch, handler)
+    with caplog.at_level(logging.WARNING, logger="organiser.services.weather"):
+        point = home_coordinates(_postcode_settings())
+    assert point is None
+    assert "postcode lookup missed; trying the outcode" in caplog.text
+    assert "outcode lookup missed" in caplog.text
+    assert POSTCODE not in caplog.text
+    for record in caplog.records:
+        assert record.levelno == logging.WARNING
 
 
 def test_no_shift_today_says_so_when_the_push_is_configured(client, monkeypatch):
