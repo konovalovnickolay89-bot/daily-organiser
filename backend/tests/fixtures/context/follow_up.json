@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "purpose": "follow_up",
+  "theme": "morning",
+  "log_days": 7,
+  "trimmed": false,
+  "tasks": ["Book a hotel in Lisbon", "Put the bins out"],
+  "commitments": ["Collect the dry cleaning"],
+  "waiting": ["Waiting on the boiler filters"],
+  "log": ["Milk is low", "Old note"],
+  "memory": ["bins go out every Tuesday"],
+  "focus": "Put the bins out"
+}

@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 
 from organiser.jsonlog import COORD_PATTERN, POSTCODE_PATTERN
+from organiser.metrics import observe_mistral
 
 DEFAULT_BASE_URL = "https://api.mistral.ai"
 
@@ -83,7 +84,7 @@ class MistralClient:
             raise MistralUnavailable("Refused to send a location.")
         if re.search(r"\b(lat(?:itude)?|lon(?:gitude)?|postcode)\s*[:=]", text, re.IGNORECASE):
             raise MistralUnavailable("Refused to send a location.")
-        body = self._call("POST", "/v1/embeddings", {"model": model, "input": [text]})
+        body = observe_mistral(lambda: self._call("POST", "/v1/embeddings", {"model": model, "input": [text]}))
         data = body.get("data")
         if not isinstance(data, list) or not data or not isinstance(data[0], dict):
             raise MistralUnavailable("Mistral sent no embedding.")
@@ -94,10 +95,12 @@ class MistralClient:
 
     def complete(self, *, model: str, messages: list[dict], max_tokens: int = 80) -> str:
         """One short completion. Used for catch-up wording, not for an agent run."""
-        body = self._call(
-            "POST",
-            "/v1/chat/completions",
-            {"model": model, "temperature": 0.2, "max_tokens": max_tokens, "messages": messages},
+        body = observe_mistral(
+            lambda: self._call(
+                "POST",
+                "/v1/chat/completions",
+                {"model": model, "temperature": 0.2, "max_tokens": max_tokens, "messages": messages},
+            )
         )
         choices = body.get("choices")
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
@@ -107,6 +110,31 @@ class MistralClient:
         if not isinstance(content, str) or not content.strip():
             raise MistralUnavailable("Mistral sent no note.")
         return content.strip()
+
+    def transcribe(self, audio: bytes, *, model: str, media_type: str) -> str:
+        """One transcription. The audio bytes stay on this request and are not logged."""
+        if not audio:
+            raise MistralUnavailable("There was no audio.")
+        try:
+            response = self._http.post(
+                "/v1/audio/transcriptions",
+                data={"model": model},
+                files={"file": ("audio", audio, media_type or "application/octet-stream")},
+            )
+        except httpx.TimeoutException:
+            raise MistralUnavailable("Mistral did not answer in time.") from None
+        except httpx.HTTPError:
+            raise MistralUnavailable("Mistral could not be reached.") from None
+        if response.status_code >= 400:
+            raise MistralUnavailable(f"Mistral refused the call ({response.status_code}{_detail(response)}).")
+        try:
+            body = response.json()
+        except ValueError:
+            raise MistralUnavailable("Mistral sent something that is not JSON.") from None
+        text = body.get("text") if isinstance(body, dict) else None
+        if not isinstance(text, str) or not text.strip():
+            raise MistralUnavailable("Mistral sent no text.")
+        return text.strip()
 
 
 def _detail(response: httpx.Response) -> str:

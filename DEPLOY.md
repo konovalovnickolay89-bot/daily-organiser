@@ -106,6 +106,8 @@ Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for 
 - `/agent`, `/agent/activity`, `/agent/proposals`, `/catch-up`
 - `/memory` and `/memory/export`
 - `/commute/shift`
+- `/metrics`, `/system/status`, `/alerts`
+- `/voice/transcribe` when voice is on. It is 404 while `VOICE_INPUT_ENABLED` is unset
 
 Do not change Cloudflare, tunnels, or DNS from this repo. Access is the only login.
 
@@ -127,14 +129,28 @@ Add nothing secret to git. In the existing house file:
 | `WEBHOOK_SECRET_BANTO_X` | Reserve the name for the X relay. Do not set it until that source is registered. It does nothing now |
 | `SHOW_PLAYLIST_STUB` | Leave unset or `false`. The playlist line stays hidden. `true` shows the text only; nothing plays |
 | `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
+| `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows the mic on Smart Add only. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
+| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on, with the existing `MISTRAL_API_KEY` |
 
-Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. `/health` adds `version` (currently `0.2.0`) beside `status` and `database`.
+Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.3.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
 
-Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0004_memory` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
+Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0005_sprint6` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
 Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `api.tfl.gov.uk` (only if `TFL_APP_KEY` is set), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
 
-The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0004_memory` is recorded. Do not stamp over it.
+The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0005_sprint6` is recorded. Do not stamp over it.
+
+## Sprint 6, when discovery-system deploys it
+
+Do this after a backup. This repo does not install the unit, and it does not change Cloudflare, tunnels, or DNS.
+
+1. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0005_sprint6` is recorded. That adds `alert_dismissals`. Do not stamp over it. The process also creates the table on boot, so it starts before the version is moved.
+2. Rebuild the UI (`npm ci && npm run build` in `frontend/`) and restart the process. `/health` reports version `0.3.0`.
+3. Leave `VOICE_INPUT_ENABLED` unset until Nick wants the mic. When it is set, allow the existing outbound call to `api.mistral.ai`. No new secret. `MISTRAL_TRANSCRIBE_MODEL` defaults to `voxtral-mini`.
+4. Run `python -m organiser.agent sync` if the agent instructions should mention that a personal hotel stay is household life and Hilton, a guest, a colleague, an employer, or a work system is not.
+5. Cloudflare Access should cover `/metrics`, `/system/status`, `/alerts`, and `/voice/transcribe`. `/metrics` is counts and timings. Alert cards stay in the app: nothing is emailed or sent. A Mistral failure (3 or more in 15 minutes), a quiet activity poll (over 2 hours, Monday to Friday, 06:00–21:59 London), and a database error each show one card that can be dismissed.
+
+Rollback of the table: `alembic downgrade 0004_memory`. That drops `alert_dismissals`. The cards are computed, so they return on their own. Voice stays off when the flag is removed. No audio was stored, so there is nothing to delete.
 
 ## Mistral assistant, later
 

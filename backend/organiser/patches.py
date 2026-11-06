@@ -145,3 +145,20 @@ MEMORY_DOWNGRADE: tuple[str, ...] = (
     "DROP TABLE IF EXISTS memory_items",
     "DROP EXTENSION IF EXISTS vector",
 )
+
+# Sprint 6 alert dismissals. Alembic 0005 runs these statements. The process
+# also applies them on boot. A dismissal hides one incident. It sends nothing.
+ALERT_UPGRADE: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS alert_dismissals (
+        kind VARCHAR(32) PRIMARY KEY,
+        signature VARCHAR(80) NOT NULL,
+        dismissed_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        CONSTRAINT ck_alert_dismissals_kind CHECK (
+            kind in ('mistral_failing', 'activity_poll', 'database_error')
+        )
+    )
+    """,
+)
+
+ALERT_DOWNGRADE: tuple[str, ...] = ("DROP TABLE IF EXISTS alert_dismissals",)

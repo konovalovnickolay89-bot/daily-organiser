@@ -2,12 +2,24 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from organiser import __version__
+from organiser import clock as house_clock
 from organiser.agent.rules import runs_today
 from organiser.config import get_settings
 from organiser.db import get_db
-from organiser.schemas import AssistantSwitch, CalendarListRead, CalendarName, HouseFacts, SystemRead
+from organiser.metrics import METRICS
+from organiser.schemas import (
+    AssistantSwitch,
+    CalendarListRead,
+    CalendarName,
+    HouseFacts,
+    StatusRead,
+    SystemRead,
+)
 from organiser.services.diary import DiaryError, add_calendar, calendar_view, remove_calendar
 from organiser.services.system import (
     assistant_effective,
@@ -63,6 +75,32 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
         weather_location=_configured(settings.weather_location_configured),
         tfl=_configured(settings.tfl_configured),
         banto=_configured(settings.banto_configured),
+        voice_input="on" if settings.voice_input_enabled else "off",
+    )
+
+
+@router.get("/status", response_model=StatusRead)
+def status(session: Session = Depends(get_db)) -> StatusRead:
+    """Health, version, the last Mistral success, the last activity poll, and the database size.
+
+    This does not call Mistral. A failed size read is a database error and leaves the size empty.
+    """
+    now = house_clock.current_time()
+    size: int | None
+    try:
+        raw = session.execute(text("SELECT pg_database_size(current_database())")).scalar_one()
+        size = int(raw)
+    except SQLAlchemyError:
+        session.rollback()
+        METRICS.record_db_error(now)
+        size = None
+    health = "degraded" if size is None else METRICS.health(now)
+    return StatusRead(
+        health=health,
+        version=__version__,
+        last_mistral_success=METRICS.last_mistral_success,
+        last_activity_poll=METRICS.last_poll,
+        database_bytes=size,
     )
 
 

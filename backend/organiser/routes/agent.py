@@ -24,7 +24,7 @@ from organiser.agent.cards import date_passed_note
 from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
-from organiser.agent.context import build_context
+from organiser.agent.context import ContextEntry, build_context
 from organiser.agent.memory import (
     MEMORY_TEXT_LIMIT,
     classify_kind,
@@ -56,6 +56,7 @@ from organiser.agent.service import (
 from organiser.config import get_settings
 from organiser.db import get_db, get_sessionmaker
 from organiser.limits import LIMITS
+from organiser.metrics import METRICS
 from organiser.models import AgentProposal, AgentRun
 from organiser.schemas import (
     ActivityList,
@@ -211,6 +212,7 @@ def activity(
     since: datetime | None = None,
 ) -> ActivityList:
     """Recent house-log lines for a curator. Read only. Never calls Mistral."""
+    METRICS.record_poll(clock.current_time())
     return ActivityList(items=list_activity(session, limit=limit, since=since))
 
 
@@ -623,7 +625,24 @@ def review(
         brief = morning_brief(session, local_now.date(), paused)
         packet = morning_packet(local_now, settings.house_timezone, due.max_proposals, brief)
     else:
-        packet = stale_packet(local_now, settings.house_timezone, due.max_proposals, due.candidate)
+        candidate = due.candidate
+        kind = "commitment" if candidate.ref_type == "commitment" else "task"
+        focus = ContextEntry(
+            kind=kind,
+            id=str(candidate.ref_id),
+            title=candidate.title,
+            status=candidate.status,
+            due_on=candidate.due_on.isoformat() if candidate.due_on else None,
+        )
+        context = build_context(
+            session,
+            purpose="follow_up",
+            now=local_now,
+            query=candidate.title,
+            focus=focus,
+        )
+        ctx.memories_used = len(context.memory.items)
+        packet = stale_packet(local_now, settings.house_timezone, due.max_proposals, candidate, context)
     try:
         return _execute(session, client, run, ctx, packet)
     except AssistantRunError as exc:

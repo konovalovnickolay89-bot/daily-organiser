@@ -1,5 +1,7 @@
 import { request } from "./client";
-import type { HouseFacts, SystemState } from "./types";
+import type { HouseFacts, HouseStatus, SystemState } from "./types";
+
+export type { HouseStatus };
 
 export function getSystem() {
   return request<SystemState>("/system");
@@ -7,6 +9,10 @@ export function getSystem() {
 
 export function getHouseFacts() {
   return request<HouseFacts>("/system/facts");
+}
+
+export function getStatus() {
+  return request<HouseStatus>("/system/status");
 }
 
 export function pauseSystem() {

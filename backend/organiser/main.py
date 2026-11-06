@@ -13,6 +13,7 @@ from organiser.db import (
     ensure_arrived_at_column,
     ensure_ingest_proposals,
     ensure_last_looked_at_column,
+    ensure_alerts,
     ensure_memory,
     ensure_sprint2,
     ensure_sprint3,
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
     ensure_sprint2()
     ensure_sprint3()
     ensure_memory()
+    ensure_alerts()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)

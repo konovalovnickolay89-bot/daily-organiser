@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "purpose": "smart_add",
+  "theme": "morning",
+  "log_days": 3,
+  "trimmed": false,
+  "tasks": ["Book a hotel in Lisbon", "Put the bins out"],
+  "commitments": ["Collect the dry cleaning"],
+  "waiting": ["Waiting on the boiler filters"],
+  "log": ["Milk is low"],
+  "memory": ["the milk stays in the door"],
+  "focus": null
+}

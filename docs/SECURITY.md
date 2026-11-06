@@ -22,7 +22,7 @@ Every response, including `/health` and the built UI, sets:
 | `Referrer-Policy` | `no-referrer` |
 | `X-Frame-Options` | `DENY` |
 | `Content-Security-Policy` | `default-src 'self'`; images `self` and `data:`; style, font, script, and connect `self`; `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'` |
-| `Permissions-Policy` | camera, microphone, geolocation, and payment disabled |
+| `Permissions-Policy` | camera, geolocation, and payment disabled. Microphone is `self` so Smart Add can ask when voice is on. The button stays hidden until `VOICE_INPUT_ENABLED` |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
 | `X-Permitted-Cross-Domain-Policies` | `none` |
 
@@ -36,7 +36,7 @@ The theme boot script is `/theme-boot.js`, so the policy does not need `unsafe-i
 
 ## Home scope on inbound routes
 
-A hotel, a guest, a colleague, or an employer is refused with `422` and `Not for the house log.` on:
+Hilton, a guest, a colleague, an employer, or a work system is refused with `422` and `Not for the house log.` A personal hotel booking, such as a stay booked for the household, is allowed. The refusal is on:
 
 - `POST` and `PATCH` `/tasks`, `/commitments`, `/events`, `/action-requests`
 - `POST` `/shopping` and calendar names

@@ -8,7 +8,7 @@ Approvals stop at the log. Observe, advise, and prepare update a status. Execute
 
 A Mistral assistant reads the log and proposes changes as cards. Apply makes exactly the change on the card to one task or commitment in this database; Not now dismisses it. Fixed rules decide when it speaks on its own. See [docs/mistral-agent.md](docs/mistral-agent.md).
 
-Home only. No work systems, and no Hilton or guest data.
+Home only. No work systems, and no Hilton, guest, colleague, or employer data. A personal hotel booking for the household can stay.
 
 This is not a calendar. There is no month grid and no screen to create or edit a diary event. `/events` is the operational house log. A later brief may show today’s appointments as a read-only list. Applying a card does not write to a diary.
 
@@ -134,6 +134,11 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | Method | Path | What it does |
 | --- | --- | --- |
 | GET | `/health` | Process and database are up. The body includes `version` |
+| GET | `/metrics` | Prometheus text: request counts and latency by route, Mistral calls, failures and latency, activity-poll age, and the pending-proposal count. No house text |
+| GET | `/system/status` | Health, version, the last Mistral success, the last activity poll, and the database size in bytes. Never calls Mistral |
+| GET | `/alerts` | In-app alert cards. One per kind. Nothing is sent |
+| POST | `/alerts/{kind}/dismiss` | Hide the current incident of that kind. A later incident can show again |
+| POST | `/voice/transcribe` | One recording, in memory, to text for the Smart Add box. 404 unless `VOICE_INPUT_ENABLED`. Nothing is saved until Add |
 | GET, POST | `/tasks` | List and create. Filters: `status`, `priority`, `owner`, `due_on`, `scope=today` |
 | GET, PATCH, DELETE | `/tasks/{id}` | One task |
 | GET, POST | `/commitments` | List and create. Filter: `status`, `owner` |
@@ -199,7 +204,7 @@ When the task table is empty and `SEED_ON_START` is true, the API inserts a smal
 
 The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set, and the Settings switch is on. The switch is stored on the house and writes one activity line. It does not delete the keys. `python -m organiser.agent sync` creates the agent in Mistral from `backend/organiser/agent/spec.py`; `show` prints the same values for Mistral's agent builder. [docs/mistral-agent.md](docs/mistral-agent.md) has the steps, the console values, and the rulebook.
 
-It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). Smart Add and catch-up also build a typed context: the London time and theme, open tasks and commitments, the waiting list, a house-log window (3 days for Smart Add, 7 for catch-up), and up to 10 memories chosen by similarity and recency. A postcode or a coordinate is never included. “Remember …” and “forget …” in the box wait for Apply. Settings lists, searches, pins, forgets, and exports that memory. Anything outside the house is left out. Catch-up still chooses its cards in code; when the note cannot be written by the assistant the card says “Fallback used”. A commute in the box can still propose a trip. The live journey is the brief, from the rota push, not a guess on the card. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. This process also refuses more than 6 box lines in a minute. A feed that does not finish returns 424 with a short line, and the screen keeps that line. If Mistral cannot be reached, the add line hides for about a minute and a half. Tests use a scripted fake and never reach Mistral.
+It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). Smart Add, catch-up, and those follow-ups build a typed context, schema version 1: the London time and theme, open tasks and commitments, the waiting list, a house-log window (3 days for Smart Add, 7 for catch-up and follow-ups), a follow-up's focus line, and up to 10 memories chosen by similarity and recency. The home-scope filter runs once at build time. A token budget then drops the log, waiting cards, commitments, tasks, and memories, in that order. The log line is the counts. A postcode or a coordinate is never included. “Remember …” and “forget …” in the box wait for Apply. Settings lists, searches, pins, forgets, and exports that memory. Anything outside the house is left out. Catch-up still chooses its cards in code; when the note cannot be written by the assistant the card says “Fallback used”. A commute in the box can still propose a trip. The live journey is the brief, from the rota push, not a guess on the card. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. This process also refuses more than 6 box lines in a minute. A feed that does not finish returns 424 with a short line, and the screen keeps that line. If Mistral cannot be reached, the add line hides for about a minute and a half. Tests use a scripted fake and never reach Mistral.
 
 ## House file
 
@@ -208,6 +213,8 @@ discovery-system keeps secrets in the house environment file this app already us
 | Name | What it is for |
 | --- | --- |
 | `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Assistant. Empty keeps it off |
+| `VOICE_INPUT_ENABLED` | Mic on Smart Add. Default off. Audio is not stored. Text waits in the box until Add |
+| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on |
 | `ENABLE_DOCS`, `DOCS_BEHIND_ACCESS` | Both false on the house. Docs are served only when both are true, and only behind Cloudflare Access |
 | `HOUSE_LAT`, `HOUSE_LON` or `HOUSE_POSTCODE` | Weather and the commute origin. Coordinates win when both are set; otherwise the postcode is resolved and not logged or stored |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes are `calendar.events.readonly` and `calendar.calendarlist.readonly` |
@@ -233,4 +240,4 @@ Cloudflare Access has to cover the public hostname for both the arrival screen a
 
 ## What this does not do
 
-No merge to `main`, no deploy, no Cloudflare change, no voice, no playlist service, and no shopping that buys anything. The diary is a read-only list, not a calendar. The assistant proposes; it never sends, buys, books, or changes a row without Apply. The commute push does not book a train. Schema changes for a fresh database can use Alembic (`backend/alembic`, revision `0003_sprint3`). The running process still uses `create_all` plus a boot patch and does not replace a backup-and-upgrade on the live database.
+No merge to `main`, no deploy, no Cloudflare change, no wake word, no spoken reply, no playlist service, and no shopping that buys anything. The mic on Smart Add stays off unless `VOICE_INPUT_ENABLED`, and it only fills the box. The diary is a read-only list, not a calendar. The assistant proposes; it never sends, buys, books, or changes a row without Apply. The commute push does not book a train. Alert cards stay in the app. Schema changes for a fresh database can use Alembic (`backend/alembic`, revision `0005_sprint6`). The running process still uses `create_all` plus a boot patch and does not replace a backup-and-upgrade on the live database.

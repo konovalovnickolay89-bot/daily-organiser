@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useHouse } from "../house/HouseContext";
 import { AssistantProvider } from "../modules/assistant/AssistantContext";
+import { AlertCards } from "../modules/alerts/AlertCards";
 import { CatchUpStrip } from "../modules/catchup/CatchUpStrip";
 import { PresenceBar } from "../modules/presence/PresenceBar";
 import { UndoProvider } from "../modules/tasks/UndoToast";
@@ -64,6 +65,7 @@ export function ArrivalShell() {
               <div className="max-w-[1280px]">
                 <PresenceBar />
                 <CatchUpStrip />
+                <AlertCards />
                 <div className="cards mt-11 grid items-start gap-[22px] [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(250px,0.92fr)] max-[980px]:grid-cols-1">
                   {PANELS.map((panel) => (
                     <div key={panel.id} className={`${card} ${panel.place}`} data-panel={panel.id}>

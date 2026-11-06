@@ -1,7 +1,7 @@
 """Household memory: what may be stored, and which ten lines to hand to a run.
 
-Remember and forget are parsed here. Nothing is written until Apply, except
-``last_used_at`` on lines that were actually put in a context. Embeddings go
+Remember and forget are parsed here. Nothing is written until Apply.
+``last_used_at`` is stamped by the context builder on lines it kept. Embeddings go
 through the Mistral client when a key is set. A postcode or a coordinate is
 removed before that call. If the call cannot be made, retrieval uses words.
 """
@@ -48,7 +48,7 @@ _ROUTINE = re.compile(
     r"\b(every|each|usually|routine|always|weekday|weekends|mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b",
     re.IGNORECASE,
 )
-# Work, on top of the hotel, guest, colleague, and employer check.
+# Work, on top of the Hilton, guest, colleague, and employer check.
 _WORK = re.compile(
     r"\b(coworkers?|co-workers?|workmates?|workplace|payroll|work\s+emails?|work\s+phones?|at\s+work)\b",
     re.IGNORECASE,
@@ -69,7 +69,10 @@ class MemoryIntent:
 
 
 def outside_memory(text: str) -> bool:
-    """A hotel, a guest, a colleague, an employer, or work does not belong here."""
+    """Hilton, a guest, a colleague, an employer, or work does not belong here.
+
+    A personal hotel booking can. The house guard covers the same work words.
+    """
     return outside_home(text) or _WORK.search(text) is not None
 
 
@@ -189,7 +192,7 @@ def matching_to_forget(session: Session, query: str, *, limit: int = 10) -> list
 
 
 def retrieve_memories(session: Session, query: str, now: datetime, *, limit: int = 10) -> list[MemoryItem]:
-    """Up to ``limit`` lines for one context. Stamps ``last_used_at`` on those lines.
+    """Up to ``limit`` lines for one context. The caller stamps ``last_used_at``.
 
     Similarity comes from pgvector when a query embedding and stored embeddings
     exist. Otherwise the same blend uses word overlap. Lines that would be sent
@@ -218,10 +221,7 @@ def retrieve_memories(session: Session, query: str, now: datetime, *, limit: int
                 continue
         scored.append((_blend(similarity, row, now), row.pinned, _stamp(row), row))
     scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
-    chosen = [row for _, _, _, row in scored[:limit]]
-    for row in chosen:
-        row.last_used_at = now
-    return chosen
+    return [row for _, _, _, row in scored[:limit]]
 
 
 def _rows(session: Session) -> list[MemoryItem]:

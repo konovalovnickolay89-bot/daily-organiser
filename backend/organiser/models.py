@@ -377,6 +377,25 @@ class MemoryItem(Base):
     embedding: Mapped[list[float] | None] = mapped_column(Vector(MEMORY_EMBEDDING_DIM), nullable=True)
 
 
+class AlertDismissal(Base):
+    """One dismissed alert incident. The signature changes when the incident does.
+
+    This row does not send anything. It only hides that card.
+    """
+
+    __tablename__ = "alert_dismissals"
+    __table_args__ = (
+        CheckConstraint(
+            "kind in ('mistral_failing', 'activity_poll', 'database_error')",
+            name="ck_alert_dismissals_kind",
+        ),
+    )
+
+    kind: Mapped[str] = mapped_column(String(32), primary_key=True)
+    signature: Mapped[str] = mapped_column(String(80), nullable=False)
+    dismissed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class IntegrationStatus(Base):
     """Last outcome of a connection. A class name only: no body, postcode, or token."""
 
