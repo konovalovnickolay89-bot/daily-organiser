@@ -297,6 +297,47 @@ def test_add_note_refuses_repeats_and_overflow(db, ctx):
     assert overflow["ok"] is False and "full" in overflow["error"]
 
 
+def test_shopping_proposal_waits_for_apply(db, ctx):
+    from uuid import UUID
+
+    from organiser.agent.service import apply_proposal
+    from organiser.models import ShoppingItem
+
+    result = dispatch(
+        ctx(),
+        "propose_change",
+        {"action": "create_shopping_item", "changes": {"name": "Oat milk"}, "reason": "For the week."},
+    )
+    assert result["ok"] is True
+    assert result["card"] == "Add to shopping: Oat milk"
+    assert db.scalars(select(ShoppingItem)).all() == []
+
+    proposal, applied = apply_proposal(db, UUID(result["proposal_id"]), MONDAY_8)
+    db.flush()
+    rows = list(db.scalars(select(ShoppingItem)))
+    assert proposal.status == "applied"
+    assert [row.name for row in rows] == ["Oat milk"]
+    assert rows[0].ticked is False
+    assert applied["ref_type"] == "shopping"
+
+    allergen = dispatch(
+        ctx(),
+        "propose_change",
+        {
+            "action": "create_shopping_item",
+            "changes": {"name": "Bread", "allergen": "gluten"},
+            "reason": "No.",
+        },
+    )
+    assert allergen["ok"] is False
+    outside = dispatch(
+        ctx(),
+        "propose_change",
+        {"action": "create_shopping_item", "changes": {"name": "Guest soap"}, "reason": "No."},
+    )
+    assert outside["ok"] is False and "house log" in outside["error"]
+
+
 def test_dispatch_handles_unknown_names_and_bad_json(ctx):
     context = ctx()
     assert dispatch(context, "delete_everything", "{}") == {

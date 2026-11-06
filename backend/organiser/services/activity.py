@@ -34,6 +34,8 @@ def activity_type(kind: str, title: str) -> str:
         return "add"
     if title.startswith("Proposed:"):
         return "proposal"
+    if title.startswith("Assistant switched"):
+        return "assistant"
     if kind == "approval":
         return "approval"
     return kind

@@ -38,6 +38,7 @@ from organiser.agent.service import (
     HousePaused,
     ProposalClosed,
     ProposalNotFound,
+    ProposalRefused,
     ProposalStale,
     apply_proposal,
     dismiss_proposal,
@@ -121,7 +122,9 @@ def _due(session: Session, local_now) -> tuple[Due | None, object]:
 def get_agent(session: Session = Depends(get_db)) -> AgentState:
     settings = get_settings()
     local_now = _local_now()
-    paused = ensure_system_state(session).paused
+    row = ensure_system_state(session)
+    paused = row.paused
+    enabled = settings.assistant_enabled and row.assistant_enabled
     session.commit()
     due, snapshot = _due(session, local_now)
 
@@ -151,7 +154,7 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
     ).first()
 
     return AgentState(
-        enabled=settings.assistant_enabled,
+        enabled=enabled,
         paused=paused,
         as_of=local_now,
         house_date=local_now.date(),
@@ -262,9 +265,10 @@ def _http_run_error(exc: AssistantRunError) -> HTTPException:
 def _guard_feed(session: Session) -> None:
     settings = get_settings()
     local_now = _local_now()
-    if ensure_system_state(session).paused:
+    row = ensure_system_state(session)
+    if row.paused:
         raise HTTPException(status_code=409, detail=PAUSED)
-    if not settings.assistant_enabled:
+    if not settings.assistant_enabled or not row.assistant_enabled:
         raise HTTPException(status_code=503, detail=OFF)
     if runs_today(session, local_now, settings.house_timezone) >= settings.agent_runs_per_day:
         raise HTTPException(status_code=429, detail=SPENT)
@@ -413,11 +417,12 @@ def review(
     """Run the one review GET /agent said is due. Each window runs once."""
     settings = get_settings()
     local_now = _local_now()
-    paused = ensure_system_state(session).paused
+    row = ensure_system_state(session)
+    paused = row.paused
     session.commit()
     if paused:
         raise HTTPException(status_code=409, detail=PAUSED)
-    if client is None:
+    if client is None or not row.assistant_enabled:
         raise HTTPException(status_code=503, detail=OFF)
     due, _ = _due(session, local_now)
     if due is None or due.trigger != payload.trigger.value or due.window_key != payload.window_key:
@@ -470,6 +475,9 @@ def apply(proposal_id: UUID, session: Session = Depends(get_db)) -> ApplyResult:
             status_code=409,
             detail="The item changed since this was proposed. Nothing was applied.",
         ) from None
+    except ProposalRefused as exc:
+        session.commit()
+        raise HTTPException(status_code=422, detail=exc.detail) from None
     session.commit()
     return ApplyResult(proposal=_proposal(proposal), applied=AppliedChange(**applied))
 

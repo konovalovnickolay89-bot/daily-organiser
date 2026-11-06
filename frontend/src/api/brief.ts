@@ -5,6 +5,8 @@ export type BriefItem = {
   title: string;
   detail?: string | null;
   meta?: string | null;
+  ref?: string | null;
+  ticked?: boolean | null;
 };
 
 export type BriefSection = {
@@ -13,6 +15,7 @@ export type BriefSection = {
   placeholder?: boolean;
   summary: string;
   items: BriefItem[];
+  footnote?: string | null;
 };
 
 export type MorningBrief = {

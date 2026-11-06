@@ -1,13 +1,22 @@
 from datetime import datetime
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from organiser.agent.rules import runs_today
 from organiser.config import get_settings
 from organiser.db import get_db
-from organiser.schemas import HouseFacts, SystemRead
-from organiser.services.system import ensure_system_state, present_system, record_arrival, set_paused
+from organiser.schemas import AssistantSwitch, CalendarListRead, CalendarName, HouseFacts, SystemRead
+from organiser.services.diary import DiaryError, add_calendar, calendar_view, remove_calendar
+from organiser.services.system import (
+    assistant_effective,
+    ensure_system_state,
+    present_system,
+    record_arrival,
+    set_assistant_enabled,
+    set_paused,
+)
 from organiser.timeutil import house_now
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -42,16 +51,51 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
     """
     settings = get_settings()
     local_now = current_time()
+    row = ensure_system_state(session)
     used = runs_today(session, local_now, settings.house_timezone)
+    switch = "on" if row.assistant_enabled else "off"
     return HouseFacts(
         timezone=settings.house_timezone,
-        assistant="on" if settings.assistant_enabled else "off",
+        assistant="on" if assistant_effective(row, settings.assistant_enabled) else "off",
+        assistant_switch=switch,
         runs_left_today=max(0, settings.agent_runs_per_day - used),
         diary=_configured(settings.diary_configured),
         weather_location=_configured(settings.weather_location_configured),
         tfl=_configured(settings.tfl_configured),
         banto=_configured(settings.banto_configured),
     )
+
+
+@router.post("/assistant", response_model=HouseFacts)
+def set_assistant(payload: AssistantSwitch, session: Session = Depends(get_db)) -> HouseFacts:
+    """Turn the assistant on or off without removing its keys. One log line."""
+    set_assistant_enabled(session, payload.enabled)
+    session.commit()
+    return house_facts(session)
+
+
+@router.get("/calendars", response_model=CalendarListRead)
+def list_calendars(session: Session = Depends(get_db)) -> CalendarListRead:
+    """Diary names for Settings. No provider id, token, or secret."""
+    return CalendarListRead.model_validate(calendar_view(session, get_settings()))
+
+
+@router.post("/calendars", response_model=CalendarListRead)
+def attach_calendar(payload: CalendarName, session: Session = Depends(get_db)) -> CalendarListRead:
+    try:
+        body = add_calendar(session, get_settings(), payload.name)
+    except DiaryError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.detail) from None
+    return CalendarListRead.model_validate(body)
+
+
+@router.delete("/calendars/{subscription_id}", response_model=CalendarListRead)
+def detach_calendar(subscription_id: UUID, session: Session = Depends(get_db)) -> CalendarListRead:
+    try:
+        body = remove_calendar(session, get_settings(), subscription_id)
+    except DiaryError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.detail) from None
+    return CalendarListRead.model_validate(body)
 
 
 @router.post("/pause", response_model=SystemRead)

@@ -43,8 +43,9 @@ services:
       # Empty keeps it off. See docs/mistral-agent.md.
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       MISTRAL_AGENT_ID: ${MISTRAL_AGENT_ID:-}
-      # Local default is docs off, matching the house. Set ENABLE_DOCS=true to debug.
+      # Docs stay off unless both are true. Access has to cover them before either is set.
       ENABLE_DOCS: ${ENABLE_DOCS:-false}
+      DOCS_BEHIND_ACCESS: ${DOCS_BEHIND_ACCESS:-false}
       # Empty unless the shell or a local .env sets them. Never commit real values.
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}

@@ -15,6 +15,9 @@ PATHS = (
     "/system/facts",
     "/agent/activity",
     "/agent/proposals",
+    "/shopping",
+    "/system/assistant",
+    "/system/calendars",
 )
 
 
@@ -25,8 +28,21 @@ def test_docs_are_off_unless_enabled(client):
     assert client.get("/openapi.json").status_code == 404
 
 
+def test_docs_stay_off_without_the_access_flag(database, monkeypatch):
+    monkeypatch.setenv("ENABLE_DOCS", "true")
+    monkeypatch.setenv("DOCS_BEHIND_ACCESS", "false")
+    get_settings.cache_clear()
+    try:
+        with TestClient(create_app()) as docs_client:
+            assert docs_client.get("/docs").status_code == 404
+            assert docs_client.get("/openapi.json").status_code == 404
+    finally:
+        get_settings.cache_clear()
+
+
 def test_docs_list_the_house_routes_when_enabled(database, monkeypatch):
     monkeypatch.setenv("ENABLE_DOCS", "true")
+    monkeypatch.setenv("DOCS_BEHIND_ACCESS", "true")
     get_settings.cache_clear()
     try:
         with TestClient(create_app()) as docs_client:

@@ -3,8 +3,11 @@ from datetime import date
 from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
 
+from organiser.config import get_settings
 from organiser.domain import PRIORITY_LABELS, TASK_STATUS_LABELS
-from organiser.models import Commitment, Task
+from organiser.models import Commitment, ShoppingItem, Task
+from organiser.services.diary import appointments_section
+from organiser.services.weather import weather_section
 from organiser.timeutil import utcnow
 
 
@@ -48,6 +51,34 @@ def _task_summary(tasks: list[Task], today: date) -> str:
     if undated:
         parts.append(f"{undated} with no date")
     return ", ".join(parts)
+
+
+def _shopping_section(session: Session) -> dict:
+    rows = list(session.scalars(select(ShoppingItem).order_by(ShoppingItem.ticked.asc(), ShoppingItem.created_at.asc())))
+    needed = sum(1 for row in rows if not row.ticked)
+    if not rows:
+        summary = "Shopping list is empty."
+    elif needed == 0:
+        summary = "All ticked off."
+    elif needed == 1:
+        summary = "1 to get"
+    else:
+        summary = f"{needed} to get"
+    return {
+        "key": "shopping",
+        "title": "Shopping",
+        "placeholder": False,
+        "summary": summary,
+        "items": [
+            {
+                "id": row.id,
+                "title": row.name,
+                "meta": "Got" if row.ticked else "To get",
+                "ticked": row.ticked,
+            }
+            for row in rows
+        ],
+    }
 
 
 def _commitment_meta(commitment: Commitment) -> str:
@@ -118,26 +149,8 @@ def morning_brief(session: Session, today: date, paused: bool) -> dict:
                     for commitment in commitments
                 ],
             },
-            {
-                "key": "appointments",
-                "title": "Appointments",
-                "placeholder": True,
-                "summary": "No diary is connected. Appointments will show here when one is.",
-                "items": [],
-            },
-            {
-                "key": "shopping",
-                "title": "Shopping",
-                "placeholder": True,
-                "summary": "No shop is connected. Nothing is ordered from this screen.",
-                "items": [],
-            },
-            {
-                "key": "weather",
-                "title": "Weather",
-                "placeholder": True,
-                "summary": "Weather is not connected. A forecast will sit here later.",
-                "items": [],
-            },
+            appointments_section(session, get_settings(), utcnow()),
+            _shopping_section(session),
+            weather_section(session, get_settings(), utcnow()),
         ],
     }

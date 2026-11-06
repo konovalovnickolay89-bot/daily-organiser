@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { getMorningBrief } from "../../api/brief";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { CommitmentEditor } from "../commitments/CommitmentEditor";
 import { TaskEditor } from "../tasks/TaskEditor.jsx";
 import { BriefSection } from "./BriefSection.jsx";
 import { Disclosure } from "./Disclosure.jsx";
+import { ShoppingList } from "./ShoppingList";
 
 const OPEN_KEYS = new Set(["tasks", "commitments"]);
 
@@ -58,7 +60,7 @@ export function MorningBrief() {
               {error.message}
             </p>
           ) : (
-            <p className="empty">Opening the brief…</p>
+            <LoadingSkeleton label="Opening the brief…" />
           )}
         </>
       )}
@@ -83,15 +85,19 @@ export function MorningBrief() {
             </p>
           )}
           {brief.note && <p className="brief-note">{brief.note}</p>}
-          {(brief.sections ?? []).map((section) => (
-            <BriefSection
-              key={section.key}
-              section={section}
-              startOpen={OPEN_KEYS.has(section.key) && !section.placeholder}
-              onOpenTask={section.key === "tasks" ? setTaskId : undefined}
-              onOpenCommitment={section.key === "commitments" ? setCommitmentId : undefined}
-            />
-          ))}
+          {(brief.sections ?? []).map((section) =>
+            section.key === "shopping" ? (
+              <ShoppingList key="shopping" section={section} />
+            ) : (
+              <BriefSection
+                key={section.key}
+                section={section}
+                startOpen={OPEN_KEYS.has(section.key) && !section.placeholder}
+                onOpenTask={section.key === "tasks" ? setTaskId : undefined}
+                onOpenCommitment={section.key === "commitments" ? setCommitmentId : undefined}
+              />
+            ),
+          )}
         </Disclosure>
       )}
       {taskId && <TaskEditor taskId={taskId} onClose={() => setTaskId(null)} />}

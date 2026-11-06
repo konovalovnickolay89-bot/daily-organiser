@@ -142,6 +142,9 @@ class SystemState(Base):
     # Last time the arrival screen recorded a look. Catch-up measures the gap
     # from here. A paused house does not move it.
     last_looked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Software switch. Keys still have to be set before the assistant runs.
+    # Default on, so a house that already has keys stays on until someone turns it off.
+    assistant_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
@@ -189,7 +192,8 @@ class AgentProposal(Base):
         CheckConstraint("origin in ('feed', 'proactive', 'ingest')", name="ck_agent_proposals_origin"),
         CheckConstraint(f"rule in {_AGENT_TRIGGERS}", name="ck_agent_proposals_rule"),
         CheckConstraint(
-            "action in ('create_task', 'update_task', 'create_commitment', 'update_commitment', 'add_note')",
+            "action in ('create_task', 'update_task', 'create_commitment', 'update_commitment', "
+            "'add_note', 'create_shopping_item')",
             name="ck_agent_proposals_action",
         ),
         CheckConstraint(
@@ -272,3 +276,50 @@ class CatchUpItem(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ShoppingItem(Base):
+    """A line on the house shopping list. A name and a tick. No allergen field."""
+
+    __tablename__ = "shopping_items"
+    __table_args__ = (
+        CheckConstraint("char_length(name) > 0", name="ck_shopping_items_name"),
+        Index("ix_shopping_items_ticked", "ticked"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    ticked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class CalendarSubscription(Base):
+    """A read-only diary chosen in Settings. The provider id stays in this table."""
+
+    __tablename__ = "calendar_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("provider", "calendar_id", name="uq_calendar_subscriptions_calendar"),
+        CheckConstraint("provider = 'google'", name="ck_calendar_subscriptions_provider"),
+        CheckConstraint("char_length(display_name) > 0", name="ck_calendar_subscriptions_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False, default="google", server_default="google")
+    calendar_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class IntegrationStatus(Base):
+    """Last outcome of a connection. A class name only: no body, postcode, or token."""
+
+    __tablename__ = "integration_status"
+    __table_args__ = (CheckConstraint("name in ('weather', 'diary')", name="ck_integration_status_name"),)
+
+    name: Mapped[str] = mapped_column(String(32), primary_key=True)
+    last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

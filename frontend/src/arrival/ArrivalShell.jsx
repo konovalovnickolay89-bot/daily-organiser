@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useHouse } from "../house/HouseContext.jsx";
 import { AssistantProvider } from "../modules/assistant/AssistantContext.jsx";
+import { UndoProvider } from "../modules/tasks/UndoToast";
 import { CatchUpStrip } from "../modules/catchup/CatchUpStrip.jsx";
 import { PresenceBar } from "../modules/presence/PresenceBar.jsx";
 import { Rail } from "./Rail.jsx";
@@ -9,13 +10,12 @@ import { arrivalModules } from "./modules.js";
 import { useHouseTheme } from "./theme";
 import { ViewProvider } from "./view";
 
-const KNOWN = new Set(["brief", "approvals", "today", "reasoning", "corner"]);
+const KNOWN = new Set(["brief", "today", "reasoning", "corner"]);
 
 const PANELS = [
   { id: "brief", label: "Brief" },
   { id: "today", label: "Today" },
-  { id: "reasoning", label: "Assistant" },
-  { id: "approvals", label: "Approvals" },
+  { id: "reasoning", label: "Decisions" },
 ];
 
 const MODULE_ORDER = {
@@ -46,9 +46,13 @@ export function ArrivalShell() {
   return (
     <ViewProvider view={view}>
       <AssistantProvider>
+        <UndoProvider>
         <div className="shell" data-theme={theme} data-view={view}>
+          <a className="skip-link" href="#main">
+            Skip to content
+          </a>
           <Rail view={view} onView={setView} />
-          <main className="stage">
+          <main id="main" className="stage" tabIndex={-1}>
             <div className="stage-inner">
               <PresenceBar />
               <CatchUpStrip />
@@ -77,6 +81,7 @@ export function ArrivalShell() {
             </div>
           </main>
         </div>
+        </UndoProvider>
       </AssistantProvider>
     </ViewProvider>
   );

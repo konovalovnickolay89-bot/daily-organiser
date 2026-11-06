@@ -24,7 +24,7 @@ export function BriefSection({ section, startOpen = false, onOpenTask, onOpenCom
       {section.placeholder ? (
         <p className="placeholder-copy">{section.summary}</p>
       ) : section.items.length === 0 ? (
-        <p className="empty">Nothing in this section.</p>
+        <p className="empty">{section.summary}</p>
       ) : (
         <ul className="item-list">
           {section.items.map((item) =>
@@ -37,7 +37,7 @@ export function BriefSection({ section, startOpen = false, onOpenTask, onOpenCom
                 onOpen={() => openItem(item.id)}
               />
             ) : (
-              <li key={item.id ?? item.title} className="item">
+              <li key={item.ref ?? item.id ?? item.title} className="item">
                 <h3>{item.title}</h3>
                 {item.meta && <p className="meta">{item.meta}</p>}
                 {item.detail && <p>{item.detail}</p>}
@@ -46,6 +46,7 @@ export function BriefSection({ section, startOpen = false, onOpenTask, onOpenCom
           )}
         </ul>
       )}
+      {section.footnote && <p className="meta">{section.footnote}</p>}
     </Disclosure>
   );
 }

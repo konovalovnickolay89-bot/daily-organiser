@@ -181,6 +181,9 @@ class BriefItem(APIModel):
     title: str
     detail: str | None = None
     meta: str | None = None
+    # Stable key for a diary row. Not a provider id.
+    ref: str | None = None
+    ticked: bool | None = None
 
 
 class BriefSection(APIModel):
@@ -189,6 +192,7 @@ class BriefSection(APIModel):
     placeholder: bool = False
     summary: str
     items: list[BriefItem]
+    footnote: str | None = None
 
 
 class MorningBrief(APIModel):
@@ -216,12 +220,60 @@ class HouseFacts(APIModel):
     """Settings card. Configured or not. Never a secret, coordinate, postcode, or calendar id."""
 
     timezone: str
+    # Effective: keys are set and the switch is on.
     assistant: str
+    # The persisted switch, even when a key is missing.
+    assistant_switch: str
     runs_left_today: int
     diary: str
     weather_location: str
     tfl: str
     banto: str
+
+
+class AssistantSwitch(BaseModel):
+    """The Settings switch. Extra fields are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool
+
+
+class ShoppingCreate(APIModel):
+    """A shop line. Names only. An allergen field is rejected."""
+
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
+    name: str = Field(min_length=1, max_length=80)
+
+
+class ShoppingRead(APIModel):
+    id: UUID
+    name: str
+    ticked: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ShoppingList(APIModel):
+    items: list[ShoppingRead]
+
+
+class CalendarEntry(APIModel):
+    """A diary name. The provider id is not on this card."""
+
+    id: UUID | None = None
+    name: str
+    enabled: bool = True
+
+
+class CalendarListRead(APIModel):
+    configured: bool
+    using_primary: bool
+    items: list[CalendarEntry]
+
+
+class CalendarName(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
 
 
 class FeedRequest(APIModel):

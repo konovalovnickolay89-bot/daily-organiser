@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { getTask, updateTask } from "../../api/tasks";
+import { createTask, deleteTask, getTask, updateTask } from "../../api/tasks";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { useHouseDialog } from "../../lib/dialog";
 import { PRIORITY_LABELS, STATUS_LABELS } from "../../lib/labels";
+import { useUndo } from "./UndoToast";
 
 const PRIORITIES = ["low", "medium", "high"];
 const STATUSES = ["todo", "doing", "done"];
@@ -28,6 +29,7 @@ function bodyFrom(form, status) {
  */
 export function TaskEditor({ taskId, onClose }) {
   const { refresh } = useHouse();
+  const offerUndo = useUndo();
   const { dialogRef, requestClose } = useHouseDialog(onClose);
   const titleRef = useRef(null);
   const focused = useRef(false);
@@ -41,6 +43,7 @@ export function TaskEditor({ taskId, onClose }) {
   const [loadError, setLoadError] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,12 +85,22 @@ export function TaskEditor({ taskId, onClose }) {
       titleRef.current?.focus();
       return;
     }
+    const previous = form.status;
     setBusy(true);
     setError(null);
     try {
       await updateTask(taskId, next.body);
       refresh();
       requestClose();
+      if (status === "done" && previous !== "done") {
+        offerUndo({
+          message: "Marked done.",
+          undo: async () => {
+            await updateTask(taskId, { status: previous });
+            refresh();
+          },
+        });
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -96,6 +109,29 @@ export function TaskEditor({ taskId, onClose }) {
   }
 
   const alreadyDone = form?.status === "done";
+
+  async function removeTask() {
+    if (!form || busy) return;
+    const snapshot = bodyFrom(form);
+    if (snapshot.error) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteTask(taskId);
+      refresh();
+      requestClose();
+      offerUndo({
+        message: "Task deleted.",
+        undo: async () => {
+          await createTask(snapshot.body);
+          refresh();
+        },
+      });
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+    }
+  }
 
   return (
     <dialog ref={dialogRef} className="task-dialog" aria-labelledby={headingId}>
@@ -195,6 +231,17 @@ export function TaskEditor({ taskId, onClose }) {
               </select>
             </label>
           </div>
+          {confirmingDelete ? (
+            <div className="actions task-actions">
+              <p className="lede">Delete this task? You can undo it for a few seconds.</p>
+              <button type="button" className="ghost danger-text" disabled={busy} onClick={() => void removeTask()}>
+                Delete
+              </button>
+              <button type="button" className="ghost" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+                Keep
+              </button>
+            </div>
+          ) : (
           <div className="actions task-actions">
             <button
               type="button"
@@ -207,10 +254,14 @@ export function TaskEditor({ taskId, onClose }) {
             <button type="submit" className="ghost" disabled={busy}>
               {busy ? "Saving…" : "Save"}
             </button>
+            <button type="button" className="ghost" disabled={busy} onClick={() => setConfirmingDelete(true)}>
+              Delete
+            </button>
             <button type="button" className="ghost" disabled={busy} onClick={requestClose}>
               Dismiss
             </button>
           </div>
+          )}
         </form>
       )}
     </dialog>

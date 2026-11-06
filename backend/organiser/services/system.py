@@ -62,6 +62,37 @@ def record_arrival(session: Session, now: datetime, tz_name: str) -> SystemState
     return row
 
 
+def set_assistant_enabled(session: Session, enabled: bool) -> SystemState:
+    """Persist the Settings switch and write one log line when it changes."""
+    row = ensure_system_state(session)
+    if row.assistant_enabled == enabled:
+        return row
+    row.assistant_enabled = enabled
+    row.updated_at = utcnow()
+    if enabled:
+        record_event(
+            session,
+            kind="system",
+            title="Assistant switched on",
+            body="The assistant switch was turned on in Settings. Nothing was sent.",
+            owner=DEFAULT_OWNER,
+        )
+    else:
+        record_event(
+            session,
+            kind="system",
+            title="Assistant switched off",
+            body="The assistant switch was turned off in Settings. Nothing was sent.",
+            owner=DEFAULT_OWNER,
+        )
+    return row
+
+
+def assistant_effective(row: SystemState, keys_present: bool) -> bool:
+    """Keys and the switch both have to be on. Pause is checked separately."""
+    return bool(keys_present and row.assistant_enabled)
+
+
 def set_paused(session: Session, paused: bool) -> SystemState:
     row = ensure_system_state(session)
     if row.paused == paused:

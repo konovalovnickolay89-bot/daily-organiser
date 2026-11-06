@@ -11,6 +11,7 @@ from organiser.db import (
     ensure_arrived_at_column,
     ensure_ingest_proposals,
     ensure_last_looked_at_column,
+    ensure_sprint2,
     get_engine,
     get_sessionmaker,
     wait_for_database,
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
     ensure_arrived_at_column()
     ensure_last_looked_at_column()
     ensure_ingest_proposals()
+    ensure_sprint2()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)
@@ -59,7 +61,9 @@ _DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    docs_on = settings.enable_docs
+    # Both switches. ENABLE_DOCS alone does not publish /docs.
+    # DOCS_BEHIND_ACCESS means this process is only reached through Cloudflare Access.
+    docs_on = settings.enable_docs and settings.docs_behind_access
     app = FastAPI(
         title="Daily Organiser",
         version=__version__,

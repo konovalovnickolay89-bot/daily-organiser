@@ -21,6 +21,7 @@ SECRET_TEXT = (LOCATION, OTHER_LOCATION, POSTCODE, CLIENT_ID, CLIENT_SECRET, REF
 FACT_KEYS = {
     "timezone",
     "assistant",
+    "assistant_switch",
     "runs_left_today",
     "diary",
     "weather_location",
@@ -62,6 +63,7 @@ def test_house_facts_when_nothing_is_configured(client, reload_settings):
     assert set(body) == FACT_KEYS
     assert body["timezone"] == "Europe/London"
     assert body["assistant"] == "off"
+    assert body["assistant_switch"] == "on"
     assert body["runs_left_today"] == 12
     assert body["diary"] == "not configured"
     assert body["weather_location"] == "not configured"

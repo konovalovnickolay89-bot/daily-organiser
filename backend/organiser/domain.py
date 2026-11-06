@@ -72,6 +72,7 @@ class ProposalAction(str, Enum):
     create_commitment = "create_commitment"
     update_commitment = "update_commitment"
     add_note = "add_note"
+    create_shopping_item = "create_shopping_item"
 
 
 class ProposalStatus(str, Enum):

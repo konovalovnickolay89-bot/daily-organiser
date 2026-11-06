@@ -25,6 +25,30 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install, typecheck, and build
+      - name: Install, lint, test, and build
         working-directory: frontend
-        run: npm ci && npm run build
+        run: npm ci && npm run lint && npm run test && npm run build
+
+  e2e:
+    name: Playwright smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the API
+        run: docker compose up -d --build db api
+      - name: Wait for health
+        run: |
+          for _ in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8080/health && exit 0
+            sleep 2
+          done
+          docker compose logs api
+          exit 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Browser smoke
+        working-directory: frontend
+        run: npm ci && npx playwright install --with-deps chromium && npx playwright test
