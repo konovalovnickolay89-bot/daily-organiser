@@ -111,6 +111,23 @@ def test_reply_text_drops_thinking_and_keeps_text():
     assert function_calls(response) == []
 
 
+def test_complete_reads_the_chat_message_and_hides_the_key():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "  Bins are due today.  "}}]})
+
+    client = _client(handler)
+    assert client.complete(model="mistral-small-latest", messages=[{"role": "user", "content": "Bins"}]) == (
+        "Bins are due today."
+    )
+    assert seen["path"] == "/v1/chat/completions"
+    assert seen["body"]["model"] == "mistral-small-latest"
+    assert KEY not in json.dumps(seen["body"])
+
+
 def test_plain_string_reply_and_no_reply():
     assert message_text({"outputs": [{"type": "message.output", "content": "Paused."}]}) == "Paused."
     assert message_text({"outputs": []}) is None

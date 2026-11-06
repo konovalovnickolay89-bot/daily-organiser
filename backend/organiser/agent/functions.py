@@ -453,10 +453,6 @@ def propose_change(ctx: RunContext, args: dict) -> dict:
         raise Refused(_first_error(exc)) from None
     clean: dict = validated.model_dump(mode="json", exclude_unset=True)
 
-    due = clean.get("due_on")
-    if due and date.fromisoformat(due) < ctx.today:
-        raise Refused(f"due_on {due} is before today ({ctx.today.isoformat()}). Pick today or later.")
-
     if action.startswith("create_"):
         if query.id:
             raise Refused("Leave out id when creating.")

@@ -1,17 +1,22 @@
 """Catch-up on the arrival screen.
 
-GET only reads. POST /catch-up/look records a look and may open one pass.
-Apply and Not now are the two taps. Neither calls Mistral, and neither
-sends, buys, or books.
+GET only reads and never calls Mistral. POST /catch-up/look records a look and
+may open one pass. When the assistant is on, that pass asks Mistral for the
+note wording. If it is off or does not answer, the template is used and the
+card is marked. Apply and Not now are the two taps. Neither sends, buys, or books.
 """
 
+from collections.abc import Iterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from organiser import clock
-from organiser.db import get_db
+from organiser.agent.mistral import MistralClient
+from organiser.agent.wording import write_notes
+from organiser.config import get_settings
+from organiser.db import get_db, get_sessionmaker
 from organiser.schemas import AppliedChange, CatchUpApplyResult, CatchUpItemRead, CatchUpRead
 from organiser.services.catchup import (
     CatchUpClosed,
@@ -23,11 +28,48 @@ from organiser.services.catchup import (
     read_catchup,
     record_look,
 )
+from organiser.services.system import ensure_system_state
 
 router = APIRouter(prefix="/catch-up", tags=["catch-up"])
 
 PAUSED = "The house is paused. Nothing was changed."
 STALE = "The item changed since this was prepared. Nothing was applied."
+
+
+def get_note_client() -> Iterator[MistralClient | None]:
+    """A client for catch-up wording, or None when the assistant is off."""
+    settings = get_settings()
+    if not settings.assistant_enabled:
+        yield None
+        return
+    session = get_sessionmaker()()
+    try:
+        enabled = ensure_system_state(session).assistant_enabled
+        session.commit()
+    finally:
+        session.close()
+    if not enabled:
+        yield None
+        return
+    client = MistralClient(
+        settings.mistral_api_key.get_secret_value(),
+        settings.mistral_base_url,
+        settings.mistral_timeout_seconds,
+    )
+    try:
+        yield client
+    finally:
+        client.close()
+
+
+def _writer(client: MistralClient | None):
+    if client is None:
+        return None
+
+    def write(drafts):
+        return write_notes(client, get_settings(), drafts)
+
+    return write
 
 
 def _read(payload: dict) -> CatchUpRead:
@@ -49,9 +91,12 @@ def get_catchup(session: Session = Depends(get_db)) -> CatchUpRead:
 
 
 @router.post("/look", response_model=CatchUpRead)
-def look(session: Session = Depends(get_db)) -> CatchUpRead:
+def look(
+    session: Session = Depends(get_db),
+    client: MistralClient | None = Depends(get_note_client),
+) -> CatchUpRead:
     """Record a look. After a gap, prepare one catch-up. Two tabs share it."""
-    payload = record_look(session, clock.current_time())
+    payload = record_look(session, clock.current_time(), _writer(client))
     session.commit()
     return _read(payload)
 

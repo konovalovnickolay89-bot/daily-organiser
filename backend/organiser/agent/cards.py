@@ -10,6 +10,23 @@ from organiser.domain import COMMITMENT_STATUS_LABELS, PRIORITY_LABELS, TASK_STA
 
 SUMMARY_LIMIT = 240
 DETAIL_LIMIT = 4000
+DATE_PASSED = "This date has passed."
+
+
+def date_passed_note(changes: dict | None, today: date) -> str | None:
+    """A line for a card whose due date is already in the past. Apply still stands."""
+    if not isinstance(changes, dict):
+        return None
+    raw = changes.get("due_on")
+    if not isinstance(raw, str):
+        return None
+    try:
+        due = date.fromisoformat(raw)
+    except ValueError:
+        return None
+    if due < today:
+        return DATE_PASSED
+    return None
 
 
 def clip(text: str, limit: int = SUMMARY_LIMIT) -> str:

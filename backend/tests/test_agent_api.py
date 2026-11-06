@@ -40,6 +40,7 @@ def _set_updated_at(db, task_id, when):
 def test_off_without_a_key_and_nothing_is_sent(client, house_clock):
     state = _state(client)
     assert state["enabled"] is False
+    assert state["reachable"] is False
     assert state["due"] is None
     assert state["proposals"] == []
     response = _feed(client)
@@ -95,6 +96,7 @@ def test_feed_turns_text_into_one_card(client, db, house_clock, mistral):
     assert [p["id"] for p in state["proposals"]] == [card["id"]]
     assert state["last_reply"]["text"] == body["reply"]
     assert state["runs_left_today"] == 11
+    assert state["reachable"] is True
 
     run = db.scalars(select(AgentRun)).one()
     assert run.status == "done"
@@ -103,14 +105,14 @@ def test_feed_turns_text_into_one_card(client, db, house_clock, mistral):
 
 def test_refusals_go_back_to_the_model_not_to_the_screen(client, house_clock, mistral):
     fake = mistral(
-        [call("propose_change", {**FILTERS, "changes": {"title": "Buy boiler filters", "due_on": "2026-10-01"}})],
+        [call("propose_change", {**FILTERS, "changes": {"title": "Buy boiler filters", "due_on": "next week"}})],
         [call("propose_change", FILTERS)],
         [say("Added 1 proposal.")],
     )
     body = _feed(client).json()
     assert len(body["proposals"]) == 1
     first, second = fake.results()
-    assert first["ok"] is False and "before today" in first["error"]
+    assert first["ok"] is False and "due_on" in first["error"]
     assert second["ok"] is True
 
 
@@ -169,6 +171,7 @@ def test_mistral_down_changes_nothing(client, db, house_clock, mistral):
     assert response.status_code == 424
     assert response.json()["detail"] == "The assistant could not be reached. Nothing was changed."
     assert _state(client)["proposals"] == []
+    assert _state(client)["reachable"] is False
     assert db.scalars(select(AgentRun)).one().status == "failed"
 
 
@@ -260,7 +263,7 @@ def test_a_commute_asks_for_the_trip_and_a_journey_check(client, house_clock, mi
     body = _feed(client, "Train to work tomorrow, leave at 7").json()
     packet = fake.calls[0][2]
     assert "Journey:" in packet
-    assert "journey source is not connected" in packet
+    assert "Do not invent disruptions" in packet
     summaries = [proposal["summary"] for proposal in body["proposals"]]
     assert "New task: Train to work · due Tue 3 Nov" in summaries
     assert "New task: Check journey tomorrow · due Tue 3 Nov" in summaries

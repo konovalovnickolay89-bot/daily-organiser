@@ -76,6 +76,11 @@ def _mark(session: Session, *, ok: bool, error_class: str | None) -> None:
     session.commit()
 
 
+def home_coordinates(settings: Settings) -> tuple[float, float] | None:
+    """The house point, or nothing. The values are not logged and not returned."""
+    return _coordinates(settings)
+
+
 def _coordinates(settings: Settings) -> tuple[float, float] | None:
     """Resolve the house point. The values are not logged and not returned."""
     kind = settings.home_location_kind

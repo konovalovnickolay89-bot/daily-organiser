@@ -4,7 +4,7 @@ The assistant reads the house log and proposes changes. Each proposal is a card 
 
 It speaks in two ways:
 
-- **When you write in the box** on the arrival screen ("need filters for the boiler before Friday"). The right-hand column shows the working steps, then one or two lines and up to 3 cards. The next line replaces that strip. A commute or travel to work also asks for a card to check the journey. Nothing looks up live departures; the card says the journey source is not connected. If the run does not finish, the column says so and nothing is changed. That answer is HTTP 424, so the page stays in the app.
+- **When you write in the box** on the arrival screen ("need filters for the boiler before Friday", or "buy oat milk"). The right-hand column shows up to five recent log lines, then the working steps, then one or two lines and up to 3 cards. That column is not a chat. The next line replaces the strip. A shop line is a name only, and it waits for Apply. A commute or travel to work can propose the trip. The live journey is the brief, from the rota, and the card must not invent one. If the run does not finish, the column says so and nothing is changed. That answer is HTTP 424, so the page stays in the app. If Mistral cannot be reached, the add line hides until a later try.
 - **On its own, by fixed rules**: a morning review, and items that have gone quiet. The rules live in `backend/organiser/agent/rules.py`, not in the model.
 
 ## Set it up
@@ -80,6 +80,8 @@ Always:
 | Commitment change | Sets any of title, detail, due date, status |
 | Note | Adds one dated line to the item's detail |
 | Shop item | Creates one shopping line from the name. No allergen information |
+
+Catch-up notes are a separate short completion, not one of these runs. The template is used when that call cannot be made, and the card is marked “Fallback used”. A date before today is kept on the card. The screen says “This date has passed.” Apply and Not now stay.
 
 Never: deleting, changing the owner, or anything outside this database. A date before today is refused. If the item changed after the card was made, Apply refuses and the card goes away. Each Apply writes one line to the house log.
 

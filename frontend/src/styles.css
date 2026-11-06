@@ -977,6 +977,31 @@ details[open] > summary .chevron::before {
   overflow-wrap: anywhere;
 }
 
+.proposal-note,
+.fallback-mark {
+  margin: 8px 0 0;
+  color: var(--accent-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.activity-lines {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+
+.activity-lines li {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
 .proposal-actions {
   display: flex;
   flex-wrap: wrap;

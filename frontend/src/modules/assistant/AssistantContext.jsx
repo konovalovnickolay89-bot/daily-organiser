@@ -104,6 +104,7 @@ export function AssistantProvider({ children }) {
       if (!mounted.current) return;
       setSteps((current) => noteStep(current, "failed"));
       setFeedError(err?.message || "The assistant did not finish. Nothing was changed.");
+      await load();
     } finally {
       if (mounted.current) setSorting(false);
     }
@@ -135,6 +136,7 @@ export function AssistantProvider({ children }) {
   }
 
   const enabled = Boolean(state?.enabled);
+  const reachable = Boolean(state?.reachable);
   const paused = Boolean(state?.paused);
   const proposals = state?.proposals ?? [];
   const replyLine = reply || (steps.length === 0 ? state?.last_reply?.text || "" : "");
@@ -153,6 +155,7 @@ export function AssistantProvider({ children }) {
     reviewing,
     pendingId,
     enabled,
+    reachable,
     paused,
     proposals,
     submit,

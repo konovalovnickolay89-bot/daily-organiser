@@ -1,11 +1,13 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import case, or_, select
 from sqlalchemy.orm import Session
 
+from organiser import clock
 from organiser.config import get_settings
 from organiser.domain import PRIORITY_LABELS, TASK_STATUS_LABELS
 from organiser.models import Commitment, ShoppingItem, Task
+from organiser.services.commute import commute_section
 from organiser.services.diary import appointments_section
 from organiser.services.weather import weather_section
 from organiser.timeutil import utcnow
@@ -87,7 +89,7 @@ def _commitment_meta(commitment: Commitment) -> str:
     return f"Due {_day_month(commitment.due_on)} · {commitment.owner}"
 
 
-def morning_brief(session: Session, today: date, paused: bool) -> dict:
+def morning_brief(session: Session, today: date, paused: bool, now: datetime | None = None) -> dict:
     tasks = list(
         session.scalars(
             select(Task)
@@ -111,6 +113,7 @@ def morning_brief(session: Session, today: date, paused: bool) -> dict:
     note = None
     if paused:
         note = "The house is paused. This brief is only a reading."
+    moment = now or clock.current_time()
 
     return {
         "title": "Morning brief",
@@ -149,6 +152,7 @@ def morning_brief(session: Session, today: date, paused: bool) -> dict:
                     for commitment in commitments
                 ],
             },
+            commute_section(session, get_settings(), today, moment),
             appointments_section(session, get_settings(), utcnow()),
             _shopping_section(session),
             weather_section(session, get_settings(), utcnow()),

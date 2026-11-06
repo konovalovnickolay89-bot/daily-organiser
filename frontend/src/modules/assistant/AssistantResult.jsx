@@ -6,10 +6,11 @@ import { MODE_LABELS } from "../../lib/labels";
 import { orderedSteps, STEP_LABEL } from "./steps.js";
 import { useAssistant } from "./AssistantContext.jsx";
 
-function Ticker({ steps, enabled, paused, loading, known }) {
+function Ticker({ steps, enabled, reachable, paused, loading, known }) {
   if (loading) return <p className="ticker-line is-settled">Checking the assistant…</p>;
   if (!known) return null;
   if (!enabled) return <p className="ticker-line">The assistant is off.</p>;
+  if (!reachable) return <p className="ticker-line">The assistant is down.</p>;
   if (paused) {
     return (
       <div className="ticker" role="status">
@@ -136,6 +137,7 @@ function DecisionList({ hideEmpty }) {
           <p className="mode proposal-kicker">{proposal.label}</p>
           <h3 className="proposal-title">{proposal.summary}</h3>
           <p className="proposal-reason">{proposal.reason}</p>
+          {proposal.date_note && <p className="proposal-note">{proposal.date_note}</p>}
           <DecisionButtons
             busy={pendingId === proposal.id}
             onApply={() => decide(proposal, "apply")}
@@ -153,7 +155,7 @@ function DecisionList({ hideEmpty }) {
  * There is no thread.
  */
 export function AssistantResult({ heading = true }) {
-  const { state, error, feedError, replyLine, notice, steps, proposals, reviewing, enabled, paused, sorting } =
+  const { state, error, feedError, replyLine, notice, steps, proposals, reviewing, enabled, reachable, paused, sorting } =
     useAssistant();
   const loading = state === null && !error;
   // Approvals and proposals share this list, including when the assistant is off.
@@ -161,7 +163,14 @@ export function AssistantResult({ heading = true }) {
 
   return (
     <div className="assistant-result">
-      <Ticker steps={steps} enabled={enabled} paused={paused} loading={loading} known={state !== null} />
+      <Ticker
+        steps={steps}
+        enabled={enabled}
+        reachable={reachable}
+        paused={paused}
+        loading={loading}
+        known={state !== null}
+      />
       {!paused && replyLine && (
         <p className="notice reply" role="status">
           {replyLine}

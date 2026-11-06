@@ -63,6 +63,21 @@ def db(database):
         session.close()
 
 
+@pytest.fixture(autouse=True)
+def _reset_process_guards():
+    from organiser.agent.reach import reset as reset_reach
+    from organiser.limits import LIMITS
+    from organiser.services.commute import clear_cache
+
+    LIMITS.reset()
+    reset_reach()
+    clear_cache()
+    yield
+    LIMITS.reset()
+    reset_reach()
+    clear_cache()
+
+
 @pytest.fixture
 def client(database):
     with TestClient(app) as test_client:

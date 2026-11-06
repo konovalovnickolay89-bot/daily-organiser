@@ -188,7 +188,6 @@ def test_create_task_stores_a_pending_card_and_changes_nothing_else(db, ctx):
         ({"action": "create_commitment", "changes": {"title": "Pay", "priority": "high"}}, "Not: priority"),
         ({"action": "delete_task", "changes": {"title": "Bins"}}, "action"),
         ({"action": "create_task", "changes": {}}, "changes is empty"),
-        ({"action": "create_task", "changes": {"title": "Bins", "due_on": "2026-11-01"}}, "is before today"),
         ({"action": "create_task", "changes": {"title": "Bins", "due_on": "next week"}}, "due_on"),
         ({"action": "create_task", "changes": {"title": "Bins"}, "id": str(uuid4())}, "Leave out id"),
         ({"action": "update_task", "changes": {"status": "done"}}, "id is required"),
