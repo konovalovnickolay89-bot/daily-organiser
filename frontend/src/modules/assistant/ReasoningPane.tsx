@@ -32,9 +32,9 @@ export function ReasoningPane() {
   return (
     <section className="reasoning" aria-label="Assistant" data-module="reasoning">
       {lines.length > 0 && (
-        <ol className={`${inset} mb-4 ml-0 mr-0 mt-0 grid list-none gap-2`} aria-label="Recent activity">
+        <ol className={`${inset} tube-log mb-4 ml-0 mr-0 mt-0 grid list-none gap-2`} aria-label="Recent activity">
           {lines.map((line) => (
-            <li key={line.id} className="text-sm leading-snug text-[var(--ink)]">
+            <li key={line.id} className="font-mono text-sm leading-normal">
               {line.text}
             </li>
           ))}

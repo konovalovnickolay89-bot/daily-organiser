@@ -104,6 +104,24 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
   expect(await frame(proposed)).toEqual(expected);
   expect(await frame(decisions)).toEqual(expected);
   expect(await frame(activity)).toEqual(expected);
+
+  const log = await activity.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const line = el.querySelector("li");
+    const text = line ? getComputedStyle(line) : style;
+    return {
+      fill: style.backgroundColor,
+      color: text.color,
+      size: text.fontSize,
+      family: text.fontFamily,
+    };
+  });
+  const adviceFill = await advice.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(log.fill).toBe("rgb(44, 34, 27)");
+  expect(log.fill).not.toBe(adviceFill);
+  expect(log.color).toBe("rgb(196, 178, 154)");
+  expect(log.size).toBe("14px");
+  expect(log.family.toLowerCase()).toContain("ibm plex mono");
 });
 
 test("inner panels, inputs, and pills use their own radii", async ({ page }) => {
