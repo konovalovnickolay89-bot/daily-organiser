@@ -11,6 +11,7 @@ from organiser.db import get_db
 from organiser.domain import Priority, TaskStatus
 from organiser.models import Task
 from organiser.schemas import TaskCreate, TaskList, TaskRead, TaskUpdate, apply_changes
+from organiser.scope import require_house_fields
 from organiser.services.activity import record_line
 from organiser.timeutil import house_today
 
@@ -73,6 +74,7 @@ def list_tasks(
 
 @router.post("", response_model=TaskRead, status_code=201)
 def create_task(payload: TaskCreate, session: Session = Depends(get_db)) -> Task:
+    require_house_fields(payload, "title", "detail", "owner")
     row = Task(**_values(payload))
     session.add(row)
     record_line(
@@ -93,6 +95,7 @@ def get_task(task_id: UUID, session: Session = Depends(get_db)) -> Task:
 
 @router.patch("/{task_id}", response_model=TaskRead)
 def update_task(task_id: UUID, payload: TaskUpdate, session: Session = Depends(get_db)) -> Task:
+    require_house_fields(payload, "title", "detail", "owner")
     row = _get(session, task_id)
     apply_changes(row, payload)
     session.commit()

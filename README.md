@@ -18,7 +18,9 @@ A curator polls `GET /agent/activity` and may file one task card with `POST /age
 
 The rota can push one commute with `POST /commute/shift`. The body is only `start`, `end`, and `location_label`, and the only label kept is `Wembley`, which means Wembley Park. The origin is home. No names, no staff ids, and no guest or hotel text are stored. The brief then asks TfL for the journey and for line disruptions. A missing token or key leaves a short line and changes nothing else.
 
-The live house is [https://organiser.apidiscoverysolution.uk](https://organiser.apidiscoverysolution.uk). Cloudflare Access is the only login. This app has no accounts. `organiser.grok.me` is not this service. See `DEPLOY.md`.
+The live house is [https://organiser.apidiscoverysolution.uk](https://organiser.apidiscoverysolution.uk). Cloudflare Access is the only login. This app has no accounts. `organiser.grok.me` is not this service. See `DEPLOY.md` and [docs/SECURITY.md](docs/SECURITY.md).
+
+Logs are JSON, one object a line. A request line is the method, the path, the status, and how long it took. It does not include the body, a postcode, a coordinate, or a secret.
 
 ## Layout
 
@@ -131,7 +133,7 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 
 | Method | Path | What it does |
 | --- | --- | --- |
-| GET | `/health` | Process and database are up |
+| GET | `/health` | Process and database are up. The body includes `version` |
 | GET, POST | `/tasks` | List and create. Filters: `status`, `priority`, `owner`, `due_on`, `scope=today` |
 | GET, PATCH, DELETE | `/tasks/{id}` | One task |
 | GET, POST | `/commitments` | List and create. Filter: `status`, `owner` |
@@ -166,6 +168,7 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/catch-up/items/{id}/apply` | Add the note on that card to one task or commitment |
 | POST | `/catch-up/items/{id}/dismiss` | Not now. That item rests for 72 hours |
 | POST | `/commute/shift` | One rota shift. Header `Authorization: Bearer <BANTO_COMMUTE_TOKEN>`. Body is only `start`, `end`, and `location_label`. The label must be `Wembley`. 503 when the token is unset, 401 when it does not match, 422 for any other field or label, 429 after 12 pushes in an hour from this process. Nothing but those three fields is stored |
+| POST | `/hooks/{source}` | Signed inbound webhook. HMAC-SHA256 of `{timestamp}.{raw body}` with that source's secret, a timestamp header, and a five-minute window. A signature is accepted once in that window. Only `banto` / `commute` is registered, and it uses the same shift check. Unknown sources and events are refused and not stored |
 
 Task status is `todo`, `doing`, or `done`. Priority is `low`, `medium`, or `high`. Commitment status is `open`, `kept`, or `dropped`. An action mode is `observe`, `advise`, `prepare`, or `execute`. An action status is `pending`, `approved`, or `skipped`. Owner defaults to `Nick`.
 
@@ -180,7 +183,7 @@ One home screen. A thin icon rail on the left, a large greeting, then cream card
 1. Rail: thin line icons for Home, Brief, tasks, approvals, Today, and Settings. No illustrations.
 2. Greeting, large, at the top of the main area. The words come from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. Status and Pause / Unpause sit with the greeting.
 3. Cards: morning brief, Today, and the assistant column. Today includes the task list and the add line. The right-hand column starts with the five newest lines from `GET /agent/activity?limit=5`, then the working strip (Received, Reading the house log, Calling the assistant, Done or Failed), then one Decisions list. That column is not a chat. Proposals and pending approvals share the list. Each card is Apply or Not now. A past due date adds “This date has passed.” and does not remove the card. Apply on a proposal makes the allowlisted change, including a shopping line. Apply on an approval only records the decision. The next line replaces the strip. The strip shows “The assistant is off” until a key, an agent id, and the Settings switch are all on, and “The assistant is down” when a call has just failed. The add line is hidden in both of those cases. The brief shows the commute, appointments (read only), shopping (names and ticks), and weather, or a short line when that section is not set.
-4. Under the cards: “A playlist is ready, when you want it.” Text only. It does not play anything and it does not control the house.
+4. Under the cards, only when `SHOW_PLAYLIST_STUB=true`: “A playlist is ready, when you want it.” The line is hidden by default. Text only. It does not play anything and it does not control the house.
 
 Colour follows the house clock. Good morning and Good afternoon use the brighter morning theme. Good evening and Good night use the deeper evening theme. “Welcome home” follows the London hour. Settings can hold morning or evening in this browser. That only recolors the chrome.
 
@@ -196,7 +199,7 @@ When the task table is empty and `SEED_ON_START` is true, the API inserts a smal
 
 The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set, and the Settings switch is on. The switch is stored on the house and writes one activity line. It does not delete the keys. `python -m organiser.agent sync` creates the agent in Mistral from `backend/organiser/agent/spec.py`; `show` prints the same values for Mistral's agent builder. [docs/mistral-agent.md](docs/mistral-agent.md) has the steps, the console values, and the rulebook.
 
-It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). A commute in the box can still propose a trip. The live journey is the brief, from the rota push, not a guess on the card. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. This process also refuses more than 6 box lines in a minute. A feed that does not finish returns 424 with a short line, and the screen keeps that line. If Mistral cannot be reached, the add line hides for about a minute and a half. Tests use a scripted fake and never reach Mistral.
+It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). Smart Add and catch-up also build a typed context: the London time and theme, open tasks and commitments, the waiting list, a house-log window (3 days for Smart Add, 7 for catch-up), and an empty memory slot of 10. Anything outside the house is left out. Catch-up still chooses its cards in code; when the note cannot be written by the assistant the card says “Fallback used”. A commute in the box can still propose a trip. The live journey is the brief, from the rota push, not a guess on the card. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. This process also refuses more than 6 box lines in a minute. A feed that does not finish returns 424 with a short line, and the screen keeps that line. If Mistral cannot be reached, the add line hides for about a minute and a half. Tests use a scripted fake and never reach Mistral.
 
 ## House file
 
@@ -211,6 +214,9 @@ discovery-system keeps secrets in the house environment file this app already us
 | `GOOGLE_CALENDAR_IDS` | Which calendars to read until Settings stores a list. Blank means `primary` |
 | `TFL_APP_KEY` | Journey check for a Wembley commute. Empty leaves “Journey check is not connected.” Register a free Unified API key and put it only in the house file |
 | `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired and the brief says the commute is not connected |
+| `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Empty keeps that door closed |
+| `WEBHOOK_SECRET_BANTO_X` | Reserved for the X relay. Not a source yet. Leave empty |
+| `SHOW_PLAYLIST_STUB` | `true` shows the quiet playlist line. Default is off. It still does not play |
 | `RATE_FEED_PER_MINUTE` | Optional. Default 6. Burst limit for the box, in this process |
 | `RATE_INGEST_PER_MINUTE` | Optional. Default 30. Burst limit for `POST /agent/proposals` |
 | `RATE_COMMUTE_PER_HOUR` | Optional. Default 12. Burst limit for the shift push |

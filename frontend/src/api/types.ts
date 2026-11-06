@@ -59,6 +59,53 @@ export type SystemState = {
   greeting_reason: string;
   arrived_at: string | null;
   debounce_until: string | null;
+  playlist_stub?: boolean;
+};
+
+export type Proposal = {
+  id: string;
+  origin: string;
+  label: string;
+  summary: string;
+  reason: string;
+  date_note?: string | null;
+};
+
+export type AgentDue = {
+  trigger: string;
+  window_key: string;
+  label?: string;
+};
+
+export type AgentState = {
+  enabled: boolean;
+  paused: boolean;
+  reachable?: boolean;
+  proposals: Proposal[];
+  due: AgentDue | null;
+  last_reply: { text: string } | null;
+};
+
+export type ApprovalItem = {
+  id: string;
+  mode: string;
+  title: string;
+  detail?: string | null;
+};
+
+export type CatchUpCard = {
+  id: string;
+  rule: string;
+  label: string;
+  summary: string;
+  reason: string;
+  fallback_used?: boolean;
+};
+
+export type CatchUpState = {
+  paused: boolean;
+  quiet: boolean;
+  items: CatchUpCard[];
 };
 
 export type HouseFacts = {
@@ -74,11 +121,5 @@ export type HouseFacts = {
 
 export type FeedResult = {
   reply?: string | null;
-  proposals?: unknown[];
-};
-
-export type AgentDue = {
-  trigger: string;
-  window_key: string;
-  label?: string;
+  proposals?: Proposal[];
 };

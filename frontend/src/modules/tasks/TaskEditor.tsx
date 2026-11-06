@@ -1,14 +1,26 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createTask, deleteTask, getTask, updateTask } from "../../api/tasks";
-import { useHouse } from "../../house/HouseContext.jsx";
+import type { Priority, TaskStatus, TaskWrite } from "../../api/types";
+import { cx, dialog, errorText, fieldInput, fieldLabel, ghost, heading, lede, primary } from "../../arrival/ui";
+import { DatePassedNote } from "../../components/DatePassedNote";
+import { useHouse } from "../../house/HouseContext";
 import { useHouseDialog } from "../../lib/dialog";
+import { asError } from "../../lib/errors";
 import { PRIORITY_LABELS, STATUS_LABELS } from "../../lib/labels";
 import { useUndo } from "./UndoToast";
 
-const PRIORITIES = ["low", "medium", "high"];
-const STATUSES = ["todo", "doing", "done"];
+const PRIORITIES: Priority[] = ["low", "medium", "high"];
+const STATUSES: TaskStatus[] = ["todo", "doing", "done"];
 
-function bodyFrom(form, status) {
+type TaskForm = {
+  title: string;
+  detail: string;
+  due_on: string;
+  priority: Priority;
+  status: TaskStatus;
+};
+
+function bodyFrom(form: TaskForm, status?: TaskStatus): { body: TaskWrite } | { error: string } {
   const title = form.title.trim();
   if (!title) return { error: "Give the task a title." };
   return {
@@ -25,13 +37,12 @@ function bodyFrom(form, status) {
 /**
  * Lightweight edit surface for one task.
  * Dismiss, Escape, and the backdrop close it without writing.
- * Save and Mark done use PATCH /tasks/{id}.
  */
-export function TaskEditor({ taskId, onClose }) {
-  const { refresh } = useHouse();
+export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () => void }) {
+  const { refresh, system } = useHouse();
   const offerUndo = useUndo();
   const { dialogRef, requestClose } = useHouseDialog(onClose);
-  const titleRef = useRef(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const focused = useRef(false);
   const headingId = useId();
   const titleFieldId = useId();
@@ -39,9 +50,9 @@ export function TaskEditor({ taskId, onClose }) {
   const dueFieldId = useId();
   const priorityFieldId = useId();
   const statusFieldId = useId();
-  const [form, setForm] = useState(null);
-  const [loadError, setLoadError] = useState(null);
-  const [error, setError] = useState(null);
+  const [form, setForm] = useState<TaskForm | null>(null);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -59,8 +70,8 @@ export function TaskEditor({ taskId, onClose }) {
         });
         setLoadError(null);
       })
-      .catch((err) => {
-        if (!cancelled) setLoadError(err);
+      .catch((err: unknown) => {
+        if (!cancelled) setLoadError(asError(err));
       });
     return () => {
       cancelled = true;
@@ -73,14 +84,14 @@ export function TaskEditor({ taskId, onClose }) {
     titleRef.current?.focus();
   }, [form]);
 
-  function update(key, value) {
-    setForm((current) => ({ ...current, [key]: value }));
+  function update<K extends keyof TaskForm>(key: K, value: TaskForm[K]) {
+    setForm((current) => (current ? { ...current, [key]: value } : current));
   }
 
-  async function save(status) {
+  async function save(status?: TaskStatus) {
     if (!form || busy) return;
     const next = bodyFrom(form, status);
-    if (next.error) {
+    if ("error" in next) {
       setError(new Error(next.error));
       titleRef.current?.focus();
       return;
@@ -101,8 +112,8 @@ export function TaskEditor({ taskId, onClose }) {
           },
         });
       }
-    } catch (err) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(asError(err));
     } finally {
       setBusy(false);
     }
@@ -113,7 +124,7 @@ export function TaskEditor({ taskId, onClose }) {
   async function removeTask() {
     if (!form || busy) return;
     const snapshot = bodyFrom(form);
-    if (snapshot.error) return;
+    if ("error" in snapshot) return;
     setBusy(true);
     setError(null);
     try {
@@ -127,47 +138,50 @@ export function TaskEditor({ taskId, onClose }) {
           refresh();
         },
       });
-    } catch (err) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(asError(err));
       setBusy(false);
     }
   }
 
   return (
-    <dialog ref={dialogRef} className="task-dialog" aria-labelledby={headingId}>
-      <p className="eyebrow">Task</p>
-      <h2 id={headingId}>Edit task</h2>
-      <p className="lede">Change the title, detail, date, or status. Dismiss leaves it as it is.</p>
+    <dialog ref={dialogRef} className={cx(dialog, "task-dialog")} aria-labelledby={headingId}>
+      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Task</p>
+      <h2 id={headingId} className={cx(heading, "mt-1")}>
+        Edit task
+      </h2>
+      <p className={lede}>Change the title, detail, date, or status. Dismiss leaves it as it is.</p>
       {loadError && (
         <>
-          <p className="error" role="alert">
+          <p className={errorText} role="alert">
             {loadError.message}
           </p>
-          <div className="actions task-actions">
-            <button type="button" className="ghost" onClick={requestClose}>
+          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+            <button type="button" className={ghost} onClick={requestClose}>
               Dismiss
             </button>
           </div>
         </>
       )}
-      {!form && !loadError && <p className="empty">Opening the task…</p>}
+      {!form && !loadError && <p className="text-[0.9rem] text-[var(--muted)]">Opening the task…</p>}
       {form && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            save();
+            void save();
           }}
         >
           {error && (
-            <p className="error" role="alert">
+            <p className={errorText} role="alert">
               {error.message}
             </p>
           )}
-          <label className="field" htmlFor={titleFieldId}>
-            <span>Title</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={titleFieldId}>
+            <span className={fieldLabel}>Title</span>
             <input
               ref={titleRef}
               id={titleFieldId}
+              className={fieldInput}
               type="text"
               value={form.title}
               maxLength={200}
@@ -177,10 +191,11 @@ export function TaskEditor({ taskId, onClose }) {
               onChange={(event) => update("title", event.target.value)}
             />
           </label>
-          <label className="field" htmlFor={detailFieldId}>
-            <span>Detail</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={detailFieldId}>
+            <span className={fieldLabel}>Detail</span>
             <textarea
               id={detailFieldId}
+              className={cx(fieldInput, "min-h-[4.5rem] resize-y py-2")}
               rows={3}
               value={form.detail}
               maxLength={4000}
@@ -188,25 +203,28 @@ export function TaskEditor({ taskId, onClose }) {
               onChange={(event) => update("detail", event.target.value)}
             />
           </label>
-          <label className="field" htmlFor={dueFieldId}>
-            <span>Due</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={dueFieldId}>
+            <span className={fieldLabel}>Due</span>
             <input
               id={dueFieldId}
+              className={fieldInput}
               type="date"
               value={form.due_on}
               disabled={busy}
               onChange={(event) => update("due_on", event.target.value)}
             />
-            <span className="field-hint">Leave blank if there is no date.</span>
+            <span className="text-[0.78rem] font-normal normal-case tracking-normal text-[var(--muted)]">Leave blank if there is no date.</span>
+            <DatePassedNote dueOn={form.due_on} houseDate={system?.house_date} />
           </label>
-          <div className="field-row">
-            <label className="field" htmlFor={priorityFieldId}>
-              <span>Priority</span>
+          <div className="grid grid-cols-2 gap-3 max-[720px]:grid-cols-1">
+            <label className="mb-3 flex flex-col gap-[5px]" htmlFor={priorityFieldId}>
+              <span className={fieldLabel}>Priority</span>
               <select
                 id={priorityFieldId}
+                className={fieldInput}
                 value={form.priority}
                 disabled={busy}
-                onChange={(event) => update("priority", event.target.value)}
+                onChange={(event) => update("priority", event.target.value as Priority)}
               >
                 {PRIORITIES.map((value) => (
                   <option key={value} value={value}>
@@ -215,13 +233,14 @@ export function TaskEditor({ taskId, onClose }) {
                 ))}
               </select>
             </label>
-            <label className="field" htmlFor={statusFieldId}>
-              <span>Status</span>
+            <label className="mb-3 flex flex-col gap-[5px]" htmlFor={statusFieldId}>
+              <span className={fieldLabel}>Status</span>
               <select
                 id={statusFieldId}
+                className={fieldInput}
                 value={form.status}
                 disabled={busy}
-                onChange={(event) => update("status", event.target.value)}
+                onChange={(event) => update("status", event.target.value as TaskStatus)}
               >
                 {STATUSES.map((value) => (
                   <option key={value} value={value}>
@@ -232,35 +251,30 @@ export function TaskEditor({ taskId, onClose }) {
             </label>
           </div>
           {confirmingDelete ? (
-            <div className="actions task-actions">
-              <p className="lede">Delete this task? You can undo it for a few seconds.</p>
-              <button type="button" className="ghost danger-text" disabled={busy} onClick={() => void removeTask()}>
+            <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+              <p className={lede}>Delete this task? You can undo it for a few seconds.</p>
+              <button type="button" className={cx(ghost, "text-[var(--danger)]")} disabled={busy} onClick={() => void removeTask()}>
                 Delete
               </button>
-              <button type="button" className="ghost" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+              <button type="button" className={ghost} disabled={busy} onClick={() => setConfirmingDelete(false)}>
                 Keep
               </button>
             </div>
           ) : (
-          <div className="actions task-actions">
-            <button
-              type="button"
-              className="primary"
-              disabled={busy || alreadyDone}
-              onClick={() => save("done")}
-            >
-              {alreadyDone ? "Done" : "Mark done"}
-            </button>
-            <button type="submit" className="ghost" disabled={busy}>
-              {busy ? "Saving…" : "Save"}
-            </button>
-            <button type="button" className="ghost" disabled={busy} onClick={() => setConfirmingDelete(true)}>
-              Delete
-            </button>
-            <button type="button" className="ghost" disabled={busy} onClick={requestClose}>
-              Dismiss
-            </button>
-          </div>
+            <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+              <button type="button" className={primary} disabled={busy || alreadyDone} onClick={() => void save("done")}>
+                {alreadyDone ? "Done" : "Mark done"}
+              </button>
+              <button type="submit" className={ghost} disabled={busy}>
+                {busy ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className={ghost} disabled={busy} onClick={() => setConfirmingDelete(true)}>
+                Delete
+              </button>
+              <button type="button" className={ghost} disabled={busy} onClick={requestClose}>
+                Dismiss
+              </button>
+            </div>
           )}
         </form>
       )}

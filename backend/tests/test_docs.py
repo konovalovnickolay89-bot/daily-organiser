@@ -19,6 +19,8 @@ PATHS = (
     "/commute/shift",
     "/system/assistant",
     "/system/calendars",
+    "/commute/shift",
+    "/hooks/{source}",
 )
 
 

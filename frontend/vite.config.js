@@ -22,6 +22,9 @@ export default defineConfig({
       "/system": api,
       "/agent": api,
       "/catch-up": api,
+      "/shopping": api,
+      "/hooks": api,
+      "/commute": api,
     },
   },
 });

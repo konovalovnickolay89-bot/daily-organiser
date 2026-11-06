@@ -1,3 +1,8 @@
+type RailProps = {
+  view: string;
+  onView: (view: string) => void;
+};
+
 const ITEMS = [
   { id: "home", label: "Home" },
   { id: "brief", label: "Brief" },
@@ -7,15 +12,16 @@ const ITEMS = [
   { id: "settings", label: "Settings", spaced: true },
 ];
 
-function Icon({ name }) {
+function Icon({ name }: { name: string }) {
   const props = {
     viewBox: "0 0 24 24",
     "aria-hidden": true,
     fill: "none",
     stroke: "currentColor",
     strokeWidth: 1.6,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "block h-[22px] w-[22px]",
   };
 
   if (name === "home") {
@@ -68,14 +74,17 @@ function Icon({ name }) {
   );
 }
 
-export function Rail({ view, onView }) {
+export function Rail({ view, onView }: RailProps) {
   return (
-    <nav className="rail" aria-label="House">
+    <nav
+      className="rail sticky top-0 z-[4] flex h-screen w-[76px] shrink-0 flex-col items-center gap-1.5 border-r border-[var(--line-canvas)] bg-canvas px-0 pb-4 pt-[18px] max-[720px]:h-auto max-[720px]:w-full max-[720px]:flex-row max-[720px]:justify-between max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:px-2.5 max-[720px]:py-2"
+      aria-label="House"
+    >
       {ITEMS.map((item) => (
-        <span key={item.id} className={item.spaced ? "rail-slot rail-slot-end" : "rail-slot"}>
+        <span key={item.id} className={item.spaced ? "mt-auto flex max-[720px]:mt-0" : "flex"}>
           <button
             type="button"
-            className="rail-button"
+            className="calm grid h-11 w-11 place-items-center rounded-house border-0 bg-transparent p-0 text-accent hover:bg-[rgba(244,236,223,0.06)] hover:text-cream aria-[current=page]:bg-[var(--accent-soft)] aria-[current=page]:text-accent aria-[current=page]:hover:bg-[var(--accent-soft)] aria-[current=page]:hover:text-accent"
             title={item.label}
             aria-current={view === item.id ? "page" : undefined}
             onClick={() => onView(item.id)}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { listActivity } from "../../api/agent";
+import { listActivity, type ActivityLine } from "../../api/agent";
 import { useView } from "../../arrival/view";
-import { useHouse } from "../../house/HouseContext.jsx";
-import { AssistantResult } from "./AssistantResult.jsx";
+import { useHouse } from "../../house/HouseContext";
+import { AssistantResult } from "./AssistantResult";
 
 /**
  * Right-hand column. A few recent log lines, then the working strip, then the cards.
@@ -11,7 +11,7 @@ import { AssistantResult } from "./AssistantResult.jsx";
 export function ReasoningPane() {
   const view = useView();
   const { tick } = useHouse();
-  const [lines, setLines] = useState([]);
+  const [lines, setLines] = useState<ActivityLine[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,11 +29,13 @@ export function ReasoningPane() {
 
   if (view !== "home" && view !== "approvals") return null;
   return (
-    <section className="module reasoning" aria-label="Assistant" data-module="reasoning">
+    <section className="reasoning" aria-label="Assistant" data-module="reasoning">
       {lines.length > 0 && (
-        <ol className="activity-lines" aria-label="Recent activity">
+        <ol className="m-0 mb-4 grid list-none gap-1.5 border-b border-[var(--line)] p-0 pb-3.5" aria-label="Recent activity">
           {lines.map((line) => (
-            <li key={line.id}>{line.text}</li>
+            <li key={line.id} className="text-[0.92rem] leading-snug text-[var(--ink)]">
+              {line.text}
+            </li>
           ))}
         </ol>
       )}

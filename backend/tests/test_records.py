@@ -1,10 +1,12 @@
 from datetime import date, timedelta
 
+from organiser import __version__
+
 
 def test_health_and_openapi(client):
     health = client.get("/health")
     assert health.status_code == 200
-    assert health.json() == {"status": "ok", "database": "ok"}
+    assert health.json() == {"status": "ok", "database": "ok", "version": __version__}
     assert client.get("/openapi.json").status_code == 404
     assert client.get("/docs").status_code == 404
 

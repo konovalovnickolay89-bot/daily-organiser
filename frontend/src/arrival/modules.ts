@@ -1,8 +1,9 @@
-import { AssistantPane } from "../modules/assistant/AssistantPane.jsx";
-import { ReasoningPane } from "../modules/assistant/ReasoningPane.jsx";
-import { MorningBrief } from "../modules/brief/MorningBrief.jsx";
-import { QuietSuggestion } from "../modules/media/QuietSuggestion.jsx";
-import { TodayList } from "../modules/tasks/TodayList.jsx";
+import type { ComponentType } from "react";
+import { AssistantPane } from "../modules/assistant/AssistantPane";
+import { ReasoningPane } from "../modules/assistant/ReasoningPane";
+import { MorningBrief } from "../modules/brief/MorningBrief";
+import { QuietSuggestion } from "../modules/media/QuietSuggestion";
+import { TodayList } from "../modules/tasks/TodayList";
 
 /**
  * Arrival screen registry.
@@ -11,12 +12,9 @@ import { TodayList } from "../modules/tasks/TodayList.jsx";
  *   "brief"      — brief card
  *   "today"      — today card (tasks, then the add line)
  *   "reasoning"  — working strip and proposal cards
- *   "corner"     — quiet line under the cards
- *
- * A later module is added here and talks to src/api.
- * Any other panel is rendered under the cards.
+ *   "corner"     — quiet line under the cards, when the playlist flag is on
  */
-export const arrivalModules = [
+export const arrivalModules: Array<{ id: string; panel: string; Component: ComponentType }> = [
   { id: "morning-brief", panel: "brief", Component: MorningBrief },
   { id: "today", panel: "today", Component: TodayList },
   { id: "assistant", panel: "today", Component: AssistantPane },

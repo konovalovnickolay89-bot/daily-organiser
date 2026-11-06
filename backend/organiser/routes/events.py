@@ -8,6 +8,7 @@ from organiser.db import get_db
 from organiser.domain import EventKind
 from organiser.models import Event
 from organiser.schemas import EventCreate, EventList, EventRead, EventUpdate, apply_changes
+from organiser.scope import require_house_fields
 from organiser.timeutil import utcnow
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -46,6 +47,7 @@ def list_events(
 
 @router.post("", response_model=EventRead, status_code=201)
 def create_event(payload: EventCreate, session: Session = Depends(get_db)) -> Event:
+    require_house_fields(payload, "title", "body", "owner")
     row = Event(**_values(payload))
     session.add(row)
     session.commit()
@@ -60,6 +62,7 @@ def get_event(event_id: UUID, session: Session = Depends(get_db)) -> Event:
 
 @router.patch("/{event_id}", response_model=EventRead)
 def update_event(event_id: UUID, payload: EventUpdate, session: Session = Depends(get_db)) -> Event:
+    require_house_fields(payload, "title", "body", "owner")
     row = _get(session, event_id)
     apply_changes(row, payload)
     session.commit()

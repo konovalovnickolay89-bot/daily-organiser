@@ -1,10 +1,10 @@
 import { ApiError, request } from "./client";
-import type { AgentDue, FeedResult } from "./types";
+import type { AgentDue, AgentState, FeedResult } from "./types";
 
 const ASSISTANT_FAILED = "The assistant did not finish. Nothing was changed.";
 
 export function getAgent() {
-  return request("/agent");
+  return request<AgentState>("/agent");
 }
 
 export type ActivityLine = {
@@ -132,7 +132,7 @@ export function runReview(due: AgentDue) {
 }
 
 export function applyProposal(id: string) {
-  return request(`/agent/proposals/${id}/apply`, { method: "POST" });
+  return request<{ applied: { summary: string } }>(`/agent/proposals/${id}/apply`, { method: "POST" });
 }
 
 export function dismissProposal(id: string) {

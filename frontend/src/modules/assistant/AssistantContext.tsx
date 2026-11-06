@@ -1,33 +1,54 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { applyProposal, dismissProposal, feedAgent, getAgent, runReview } from "../../api/agent";
-import { useHouse } from "../../house/HouseContext.jsx";
-import { noteStep } from "./steps.js";
+import type { AgentDue, AgentState, Proposal } from "../../api/types";
+import { useHouse } from "../../house/HouseContext";
+import { asError } from "../../lib/errors";
+import { noteStep, type StepName } from "./steps";
 
-// GET /agent only reads. Re-read it every minute so a screen left open notices
-// when the rules make a review due, the way the presence bar refreshes itself.
 const AGENT_REFRESH_MS = 60_000;
 
-const AssistantContext = createContext(null);
+type AssistantValue = {
+  state: AgentState | null;
+  error: Error | null;
+  feedError: string | null;
+  text: string;
+  setText: (value: string) => void;
+  replyLine: string;
+  notice: string;
+  setNotice: (value: string) => void;
+  steps: StepName[];
+  sorting: boolean;
+  reviewing: boolean;
+  pendingId: string | null;
+  enabled: boolean;
+  reachable: boolean;
+  paused: boolean;
+  proposals: Proposal[];
+  submit: (event: FormEvent) => Promise<void>;
+  decide: (proposal: Proposal, action: "apply" | "dismiss") => Promise<void>;
+};
 
-function addedLabel(count) {
+const AssistantContext = createContext<AssistantValue | null>(null);
+
+function addedLabel(count: number) {
   if (count === 0) return "Nothing to add.";
   if (count === 1) return "1 proposal added.";
   return `${count} proposals added.`;
 }
 
-export function AssistantProvider({ children }) {
+export function AssistantProvider({ children }: { children: ReactNode }) {
   const { tick, refresh } = useHouse();
-  const [state, setState] = useState(null);
-  const [error, setError] = useState(null);
-  const [feedError, setFeedError] = useState(null);
+  const [state, setState] = useState<AgentState | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [reply, setReply] = useState("");
   const [notice, setNotice] = useState("");
-  const [steps, setSteps] = useState([]);
+  const [steps, setSteps] = useState<StepName[]>([]);
   const [sorting, setSorting] = useState(false);
   const [reviewing, setReviewing] = useState(false);
-  const [pendingId, setPendingId] = useState(null);
-  const reviewed = useRef(new Set());
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const reviewed = useRef(new Set<string>());
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -44,42 +65,41 @@ export function AssistantProvider({ children }) {
         setState(data);
         setError(null);
       }
-    } catch (err) {
-      if (mounted.current) setError(err);
+    } catch (err: unknown) {
+      if (mounted.current) setError(asError(err));
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [tick, load]);
 
   useEffect(() => {
-    const id = window.setInterval(load, AGENT_REFRESH_MS);
+    const id = window.setInterval(() => void load(), AGENT_REFRESH_MS);
     return () => window.clearInterval(id);
   }, [load]);
 
-  // A review the rules say is due runs once per window from this screen.
-  // The server checks again, so a second screen gets a quiet refusal.
   useEffect(() => {
     const due = state?.due;
     if (!due || !state.enabled || state.paused || sorting) return;
     if (reviewed.current.has(due.window_key)) return;
     reviewed.current.add(due.window_key);
     setReviewing(true);
-    runReview(due)
+    runReview(due as AgentDue)
       .then((result) => {
-        if (mounted.current && result.reply) setReply(result.reply);
+        const replyText = (result as { reply?: string }).reply;
+        if (mounted.current && replyText) setReply(replyText);
       })
       .catch(() => {})
       .finally(() => {
         if (mounted.current) {
           setReviewing(false);
-          load();
+          void load();
         }
       });
   }, [state, sorting, load]);
 
-  async function submit(event) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     const value = text.trim();
     if (!value || sorting) return;
@@ -100,17 +120,17 @@ export function AssistantProvider({ children }) {
       setReply(result.reply || addedLabel(result.proposals?.length ?? 0));
       setSteps((current) => noteStep(current, "done"));
       await load();
-    } catch (err) {
+    } catch (err: unknown) {
       if (!mounted.current) return;
       setSteps((current) => noteStep(current, "failed"));
-      setFeedError(err?.message || "The assistant did not finish. Nothing was changed.");
+      setFeedError(asError(err).message || "The assistant did not finish. Nothing was changed.");
       await load();
     } finally {
       if (mounted.current) setSorting(false);
     }
   }
 
-  async function decide(proposal, action) {
+  async function decide(proposal: Proposal, action: "apply" | "dismiss") {
     setPendingId(proposal.id);
     setError(null);
     try {
@@ -120,15 +140,11 @@ export function AssistantProvider({ children }) {
         refresh();
       } else {
         await dismissProposal(proposal.id);
-        setNotice(
-          proposal.origin === "proactive"
-            ? "Not now. That item rests for 72 hours."
-            : "Dismissed. Nothing changed.",
-        );
+        setNotice(proposal.origin === "proactive" ? "Not now. That item rests for 72 hours." : "Dismissed. Nothing changed.");
         await load();
       }
-    } catch (err) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(asError(err));
       await load();
     } finally {
       setPendingId(null);
@@ -141,7 +157,7 @@ export function AssistantProvider({ children }) {
   const proposals = state?.proposals ?? [];
   const replyLine = reply || (steps.length === 0 ? state?.last_reply?.text || "" : "");
 
-  const value = {
+  const value: AssistantValue = {
     state,
     error,
     feedError,
@@ -165,7 +181,7 @@ export function AssistantProvider({ children }) {
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
 }
 
-export function useAssistant() {
+export function useAssistant(): AssistantValue {
   const value = useContext(AssistantContext);
   if (!value) throw new Error("Assistant is outside its provider.");
   return value;

@@ -91,6 +91,14 @@ class Settings(BaseSettings):
     tfl_app_key: SecretStr = SecretStr("")
     banto_commute_token: SecretStr = SecretStr("")
 
+    # Signed inbound webhooks. Empty means that source answers 503.
+    # WEBHOOK_SECRET_BANTO_X is reserved for the X relay and is not a source yet.
+    webhook_secret_banto: SecretStr = SecretStr("")
+    webhook_secret_banto_x: SecretStr = SecretStr("")
+
+    # The quiet playlist line stays off until this is set. It still does not play.
+    show_playlist_stub: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

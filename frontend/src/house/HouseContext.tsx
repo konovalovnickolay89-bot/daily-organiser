@@ -1,17 +1,25 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getSystem, pauseSystem, unpauseSystem } from "../api/system";
+import type { SystemState } from "../api/types";
+import { asError } from "../lib/errors";
 
-const HouseContext = createContext(null);
+type HouseValue = {
+  tick: number;
+  system: SystemState | null;
+  error: Error | null;
+  busy: boolean;
+  refresh: () => void;
+  togglePause: () => Promise<void>;
+};
 
-// The headline follows the server clock and the one-hour arrival window.
-// Refresh the presence state on its own so a screen left open drops
-// "Welcome home" when that hour ends, without reloading the desk.
+const HouseContext = createContext<HouseValue | null>(null);
+
 const SYSTEM_REFRESH_MS = 60_000;
 
-export function HouseProvider({ children }) {
+export function HouseProvider({ children }: { children: ReactNode }) {
   const [tick, setTick] = useState(0);
-  const [system, setSystem] = useState(null);
-  const [error, setError] = useState(null);
+  const [system, setSystem] = useState<SystemState | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
 
@@ -28,8 +36,8 @@ export function HouseProvider({ children }) {
           setError(null);
         }
       })
-      .catch((err) => {
-        if (!cancelled) setError(err);
+      .catch((err: unknown) => {
+        if (!cancelled) setError(asError(err));
       });
     return () => {
       cancelled = true;
@@ -45,8 +53,8 @@ export function HouseProvider({ children }) {
           setSystem(data);
           setError(null);
         })
-        .catch((err) => {
-          if (!busyRef.current) setError(err);
+        .catch((err: unknown) => {
+          if (!busyRef.current) setError(asError(err));
         });
     }, SYSTEM_REFRESH_MS);
     return () => window.clearInterval(id);
@@ -61,8 +69,8 @@ export function HouseProvider({ children }) {
       setSystem(next);
       setError(null);
       setTick((value) => value + 1);
-    } catch (err) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(asError(err));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -77,7 +85,7 @@ export function HouseProvider({ children }) {
   return <HouseContext.Provider value={value}>{children}</HouseContext.Provider>;
 }
 
-export function useHouse() {
+export function useHouse(): HouseValue {
   const value = useContext(HouseContext);
   if (!value) {
     throw new Error("useHouse must be used inside HouseProvider");
