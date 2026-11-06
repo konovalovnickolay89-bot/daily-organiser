@@ -1,8 +1,10 @@
-"""The context a later Mistral read can take. Building it changes no row.
+"""The context a Mistral read can take.
 
-Smart Add sees three days of the house log. Catch-up sees seven. Memory is a
-placeholder of ten empty slots. A hotel, a guest, a colleague, or an employer
-is left out before the text is assembled.
+Smart Add sees three days of the house log. Catch-up sees seven. Memory is at
+most ten lines, chosen for the query by similarity and recency. A hotel, a
+guest, a colleague, an employer, a postcode, or a coordinate is left out
+before the text is assembled. The only write is ``last_used_at`` on the lines
+that were included.
 """
 
 from datetime import datetime, timedelta
@@ -13,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from organiser.agent.memory import redact_for_model, retrieve_memories
 from organiser.agent.runner import outside_home
 from organiser.config import get_settings
 from organiser.models import AgentProposal, Commitment, Event, Task
@@ -34,13 +37,22 @@ class ContextEntry(BaseModel):
     at: str | None = None
 
 
-class MemorySlot(BaseModel):
-    """Reserved for a later memory. Nothing is read or written here yet."""
+class MemoryContextItem(BaseModel):
+    """One memory in the slot. No embedding, postcode, or coordinate."""
 
     model_config = ConfigDict(extra="forbid")
 
+    id: str
+    kind: Literal["preference", "fact", "routine"]
+    text: str
+    pinned: bool
+
+
+class MemorySlot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     limit: int
-    items: list[ContextEntry]
+    items: list[MemoryContextItem]
 
 
 class HouseContext(BaseModel):
@@ -74,7 +86,13 @@ def _iso(value: datetime | None) -> str | None:
     return value.isoformat(timespec="seconds")
 
 
-def build_context(session: Session, *, purpose: Purpose, now: datetime) -> HouseContext:
+def build_context(
+    session: Session,
+    *,
+    purpose: Purpose,
+    now: datetime,
+    query: str | None = None,
+) -> HouseContext:
     """Assemble one context. Read only. The caller does not have to send it on."""
     settings = get_settings()
     local = now.astimezone(ZoneInfo(settings.house_timezone))
@@ -153,5 +171,31 @@ def build_context(session: Session, *, purpose: Purpose, now: datetime) -> House
         waiting=waiting,
         log=log,
         log_days=log_days,
-        memory=MemorySlot(limit=MEMORY_LIMIT, items=[]),
+        memory=_memory_slot(session, purpose=purpose, now=now, query=query, tasks=tasks, commitments=commitments),
     )
+
+
+def _memory_slot(
+    session: Session,
+    *,
+    purpose: Purpose,
+    now: datetime,
+    query: str | None,
+    tasks: list[ContextEntry],
+    commitments: list[ContextEntry],
+) -> MemorySlot:
+    if purpose == "catch_up":
+        search = query or " ".join(item.title for item in [*tasks[:8], *commitments[:8]])
+    else:
+        search = query or ""
+    search = search[:500]
+    rows = retrieve_memories(session, search, now, limit=MEMORY_LIMIT) if search.strip() else []
+    items: list[MemoryContextItem] = []
+    for row in rows:
+        shown = redact_for_model(row.text)
+        if not shown:
+            continue
+        items.append(
+            MemoryContextItem(id=str(row.id), kind=row.kind, text=shown, pinned=row.pinned)  # type: ignore[arg-type]
+        )
+    return MemorySlot(limit=MEMORY_LIMIT, items=items)

@@ -306,6 +306,12 @@ class ReviewRequest(APIModel):
     window_key: str = Field(min_length=1, max_length=160)
 
 
+class MemoryMatch(APIModel):
+    id: UUID
+    kind: str
+    text: str
+
+
 class ProposalRead(APIModel):
     id: UUID
     origin: str
@@ -321,6 +327,50 @@ class ProposalRead(APIModel):
     decided_at: datetime | None
     applied_ref_id: UUID | None
     date_note: str | None = None
+    memories_used: int | None = None
+    matches: list[MemoryMatch] = Field(default_factory=list)
+
+
+class ApplySelection(BaseModel):
+    """Optional confirm list for a forget card. Other cards ignore it."""
+
+    model_config = ConfigDict(extra="ignore")
+    memory_ids: list[UUID] | None = None
+
+
+class MemoryCreate(APIModel):
+    kind: str = "fact"
+    text: str = Field(min_length=1, max_length=400)
+
+    @field_validator("kind")
+    @classmethod
+    def _kind(cls, value: str) -> str:
+        if value not in ("preference", "fact", "routine"):
+            raise ValueError("Kind must be preference, fact, or routine.")
+        return value
+
+
+class MemoryPin(APIModel):
+    pinned: bool
+
+
+class MemoryRead(APIModel):
+    id: UUID
+    kind: str
+    text: str
+    source: str
+    created_at: datetime
+    last_used_at: datetime | None
+    pinned: bool
+
+
+class MemoryList(APIModel):
+    items: list[MemoryRead]
+
+
+class MemoryExport(APIModel):
+    exported_at: datetime
+    items: list[MemoryRead]
 
 
 class DueRead(APIModel):

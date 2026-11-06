@@ -64,7 +64,7 @@ export function AssistantPane() {
             type="text"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="A date, a bill, a thing to buy…"
+            placeholder="A date, a bill, or remember …"
             maxLength={1000}
             autoComplete="off"
             disabled={paused || sorting}

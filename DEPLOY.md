@@ -68,6 +68,33 @@ PYTHONPATH=. alembic upgrade head
 
 Do not stamp `0002` in place of that upgrade. A fresh empty database can also `alembic upgrade head` from an empty `alembic_version`. This repo does not run that command itself.
 
+### Memory needs pgvector (`0004_memory`)
+
+Compose now uses `pgvector/pgvector:pg16`, not `postgres:16-alpine`. The Alpine image has no `vector` type, and this process runs `CREATE EXTENSION vector` on boot before it builds `memory_items`. If the extension is missing, boot fails. discovery-system has to make the database able to load pgvector **before** this revision starts.
+
+- Docker database: change that service's image to `pgvector/pgvector:pg16` (PostgreSQL 16 with pgvector). Do not publish `5432` or any other Postgres port. Evolving Cook still owns `127.0.0.1:5432`.
+- System PostgreSQL 16 (no Docker): install the matching package, `postgresql-16-pgvector` on Debian, into **this app's** cluster. Do not install it into Evolving Cook's cluster, and do not change its port. The migration role needs permission to run `CREATE EXTENSION vector` in this database.
+- Take a backup first.
+- Then record the revision. Do not stamp over it:
+
+```bash
+cd /opt/daily-organiser/backend
+PYTHONPATH=. alembic upgrade head
+```
+
+`0004_memory` creates the extension, `memory_items` (id, kind, text, source, created_at, last_used_at, pinned, embedding `vector(1024)`), an HNSW index, and `agent_proposals.memories_used`. It also allows the proposal actions `remember` and `forget`. The statements are idempotent. The boot patch applies the same SQL, so the process can start before the version is moved, but only after pgvector is installed.
+
+Rollback, after another backup if the memories should be kept:
+
+```bash
+cd /opt/daily-organiser/backend
+PYTHONPATH=. alembic downgrade 0003_sprint3
+```
+
+That deletes remember and forget cards, drops `memory_items` (the memories are gone), drops `memories_used`, restores the previous proposal action check, and runs `DROP EXTENSION vector` in this database only. It does not put the rows back. Restore the backup for that. The image `postgres:16-alpine` can be used again only after this downgrade, because that image cannot read a `vector` column. Staying on `pgvector/pgvector:pg16` after the downgrade is also safe.
+
+No new secret. Embeddings use the existing `MISTRAL_API_KEY` and call `POST /v1/embeddings` on `api.mistral.ai` with model `mistral-embed` (`MISTRAL_EMBED_MODEL` can override the name). If the key is empty or Mistral does not answer, memory still works and retrieval uses words. The postcode and the coordinates are never sent in that call or in the memory slot. `python -m organiser.agent sync` again if the agent instructions should mention the memory slot.
+
 ## Ask for discovery-system
 
 Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for both HTML and JSON, including:
@@ -77,6 +104,7 @@ Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for 
 - `/system` and `/system/facts`
 - `/tasks`, `/commitments`, `/events`, `/brief`, `/approvals`, `/action-requests`
 - `/agent`, `/agent/activity`, `/agent/proposals`, `/catch-up`
+- `/memory` and `/memory/export`
 - `/commute/shift`
 
 Do not change Cloudflare, tunnels, or DNS from this repo. Access is the only login.
@@ -88,7 +116,8 @@ Add nothing secret to git. In the existing house file:
 | Name | This sprint |
 | --- | --- |
 | `ENABLE_DOCS`, `DOCS_BEHIND_ACCESS` | Leave both unset or `false`. Docs come on only when both are true, and only behind Access |
-| `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Already in use, or empty to keep the assistant off. Settings can also switch it off without deleting the keys |
+| `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Already in use, or empty to keep the assistant off. Settings can also switch it off without deleting the keys. The same key is used for embeddings. Empty keeps memory on words only |
+| `MISTRAL_EMBED_MODEL` | Optional. Default `mistral-embed` (1024 dimensions). Do not point this at a different size without a migration |
 | `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Weather. Do not commit or log the value. Coordinates win when both are set. A postcode is resolved through postcodes.io and not stored |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
 | `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
@@ -101,11 +130,11 @@ Add nothing secret to git. In the existing house file:
 
 Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. `/health` adds `version` (currently `0.2.0`) beside `status` and `database`.
 
-Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0003_sprint3` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
+Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0004_memory` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
 Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `api.tfl.gov.uk` (only if `TFL_APP_KEY` is set), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
 
-The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0003_sprint3` is recorded. Do not stamp over it.
+The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0004_memory` is recorded. Do not stamp over it.
 
 ## Mistral assistant, later
 

@@ -131,8 +131,11 @@ export function runReview(due: AgentDue) {
   });
 }
 
-export function applyProposal(id: string) {
-  return request<{ applied: { summary: string } }>(`/agent/proposals/${id}/apply`, { method: "POST" });
+export function applyProposal(id: string, memoryIds?: string[]) {
+  return request<{ applied: { summary: string } }>(`/agent/proposals/${id}/apply`, {
+    method: "POST",
+    body: memoryIds ? { memory_ids: memoryIds } : undefined,
+  });
 }
 
 export function dismissProposal(id: string) {

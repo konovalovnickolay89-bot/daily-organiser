@@ -92,3 +92,8 @@ export function useHouse(): HouseValue {
   }
   return value;
 }
+
+/** Zero outside the provider, so a settings panel can render in a test. */
+export function useHouseTick(): number {
+  return useContext(HouseContext)?.tick ?? 0;
+}

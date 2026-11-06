@@ -80,6 +80,8 @@ Always:
 | Commitment change | Sets any of title, detail, due date, status |
 | Note | Adds one dated line to the item's detail |
 | Shop item | Creates one shopping line from the name. No allergen information |
+| Remember | Saves one household memory: a preference, a fact, or a routine |
+| Forget | Deletes only the matching lines confirmed on the card, and writes one audit line |
 
 Catch-up notes are a separate short completion, not one of these runs. The template is used when that call cannot be made, and the card is marked “Fallback used”. A date before today is kept on the card. The screen says “This date has passed.” Apply and Not now stay.
 
@@ -113,7 +115,10 @@ This is for discovery-system. The repo changes nothing on the host.
 3. The box needs outbound HTTPS to `api.mistral.ai`.
 4. Reinstall `backend/requirements.txt` in the virtualenv: `httpx` is now a runtime dependency.
 
+## Memory
+
+Household memory lives in this database (`memory_items`, pgvector). It is not a graph and it does not use Graphiti. Remember and forget in the box wait for Apply. Settings can list, search, pin, forget, and export JSON. Embeddings use the existing `MISTRAL_API_KEY` and `mistral-embed`. With no key, or if that call fails, retrieval uses words. A postcode or a coordinate is not sent. See `DEPLOY.md` before the house database is changed.
+
 ## Not yet
 
-- **Memory (Graphiti).** It needs a graph database on the box, which is a host change for discovery-system.
 - **Arrival and Sunday reviews.** These were not chosen.

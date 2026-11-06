@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { approveRequest, listApprovals, skipRequest } from "../../api/approvals";
-import type { ApprovalItem } from "../../api/types";
+import type { ApprovalItem, Proposal } from "../../api/types";
 import { cx, errorText, ghost, heading, lede, notice, primary } from "../../arrival/ui";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouse } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 import { MODE_LABELS } from "../../lib/labels";
+import { usedMemoriesLabel } from "../memory/copy";
 import { useAssistant } from "./AssistantContext";
 import { orderedSteps, STEP_LABEL, type StepName } from "./steps";
 
@@ -71,16 +72,79 @@ function Ticker({
   );
 }
 
-function DecisionButtons({ busy, onApply, onDismiss }: { busy: boolean; onApply: () => void; onDismiss: () => void }) {
+function DecisionButtons({
+  busy,
+  applyDisabled = false,
+  onApply,
+  onDismiss,
+}: {
+  busy: boolean;
+  applyDisabled?: boolean;
+  onApply: () => void;
+  onDismiss: () => void;
+}) {
   return (
     <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
-      <button type="button" className={primary} disabled={busy} onClick={onApply}>
+      <button type="button" className={primary} disabled={busy || applyDisabled} onClick={onApply}>
         Apply
       </button>
       <button type="button" className={cx(ghost, "font-medium text-[var(--muted)]")} disabled={busy} onClick={onDismiss}>
         Not now
       </button>
     </div>
+  );
+}
+
+function ProposalCard({
+  proposal,
+  busy,
+  onApply,
+  onDismiss,
+}: {
+  proposal: Proposal;
+  busy: boolean;
+  onApply: (memoryIds?: string[]) => void;
+  onDismiss: () => void;
+}) {
+  const matches = proposal.action === "forget" ? proposal.matches ?? [] : [];
+  const [chosen, setChosen] = useState<string[]>(() => matches.map((item) => item.id));
+  const used = usedMemoriesLabel(proposal.memories_used);
+
+  function toggle(id: string) {
+    setChosen((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  return (
+    <li className="proposal-card w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-origin={proposal.origin} data-kind="proposal">
+      <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">{proposal.label}</p>
+      <h3 className="serif m-0 text-[1.2rem] font-medium leading-[1.25] tracking-[-0.02em] text-[var(--ink)] [overflow-wrap:anywhere]">{proposal.summary}</h3>
+      <p className="mt-2 text-[0.9rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">{proposal.reason}</p>
+      {used && <p className="mt-2 text-[0.9rem] font-semibold leading-snug text-accent-ink">{used}</p>}
+      {matches.length > 0 && (
+        <ul className="m-0 mt-3 grid list-none gap-1 p-0">
+          {matches.map((match) => (
+            <li key={match.id}>
+              <label className="flex min-h-11 items-center gap-3 text-[0.95rem] text-[var(--ink)]">
+                <input
+                  className="h-6 w-6 accent-accent"
+                  type="checkbox"
+                  checked={chosen.includes(match.id)}
+                  onChange={() => toggle(match.id)}
+                />
+                <span className="[overflow-wrap:anywhere]">{match.text}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {proposal.date_note && <p className="mt-2 text-[0.9rem] font-semibold leading-snug text-accent-ink">{proposal.date_note}</p>}
+      <DecisionButtons
+        busy={busy}
+        applyDisabled={matches.length > 0 && chosen.length === 0}
+        onApply={() => onApply(matches.length > 0 ? chosen : undefined)}
+        onDismiss={onDismiss}
+      />
+    </li>
   );
 }
 
@@ -146,13 +210,13 @@ function DecisionList({ hideEmpty }: { hideEmpty: boolean }) {
           </li>
         ))}
         {proposals.map((proposal) => (
-          <li key={`proposal-${proposal.id}`} className="proposal-card w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-origin={proposal.origin} data-kind="proposal">
-            <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">{proposal.label}</p>
-            <h3 className="serif m-0 text-[1.2rem] font-medium leading-[1.25] tracking-[-0.02em] text-[var(--ink)] [overflow-wrap:anywhere]">{proposal.summary}</h3>
-            <p className="mt-2 text-[0.9rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">{proposal.reason}</p>
-            {proposal.date_note && <p className="mt-2 text-[0.9rem] font-semibold leading-snug text-accent-ink">{proposal.date_note}</p>}
-            <DecisionButtons busy={pendingId === proposal.id} onApply={() => void decide(proposal, "apply")} onDismiss={() => void decide(proposal, "dismiss")} />
-          </li>
+          <ProposalCard
+            key={`proposal-${proposal.id}`}
+            proposal={proposal}
+            busy={pendingId === proposal.id}
+            onApply={(memoryIds) => void decide(proposal, "apply", memoryIds)}
+            onDismiss={() => void decide(proposal, "dismiss")}
+          />
         ))}
       </ul>
     </>

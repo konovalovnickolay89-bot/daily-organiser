@@ -25,7 +25,7 @@ type AssistantValue = {
   paused: boolean;
   proposals: Proposal[];
   submit: (event: FormEvent) => Promise<void>;
-  decide: (proposal: Proposal, action: "apply" | "dismiss") => Promise<void>;
+  decide: (proposal: Proposal, action: "apply" | "dismiss", memoryIds?: string[]) => Promise<void>;
 };
 
 const AssistantContext = createContext<AssistantValue | null>(null);
@@ -130,12 +130,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function decide(proposal: Proposal, action: "apply" | "dismiss") {
+  async function decide(proposal: Proposal, action: "apply" | "dismiss", memoryIds?: string[]) {
     setPendingId(proposal.id);
     setError(null);
     try {
       if (action === "apply") {
-        const result = await applyProposal(proposal.id);
+        const result = await applyProposal(proposal.id, memoryIds);
         setNotice(`Applied: ${result.applied.summary}`);
         refresh();
       } else {

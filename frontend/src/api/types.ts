@@ -62,6 +62,12 @@ export type SystemState = {
   playlist_stub?: boolean;
 };
 
+export type MemoryMatch = {
+  id: string;
+  kind: string;
+  text: string;
+};
+
 export type Proposal = {
   id: string;
   origin: string;
@@ -69,6 +75,9 @@ export type Proposal = {
   summary: string;
   reason: string;
   date_note?: string | null;
+  action?: string;
+  memories_used?: number | null;
+  matches?: MemoryMatch[];
 };
 
 export type AgentDue = {

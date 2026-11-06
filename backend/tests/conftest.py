@@ -46,6 +46,9 @@ ensure_test_database(get_settings().database_url)
 
 @pytest.fixture
 def database():
+    from organiser.db import ensure_vector_extension
+
+    ensure_vector_extension()
     engine = get_engine()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

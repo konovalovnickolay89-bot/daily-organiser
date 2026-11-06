@@ -13,8 +13,10 @@ from organiser.db import (
     ensure_arrived_at_column,
     ensure_ingest_proposals,
     ensure_last_looked_at_column,
+    ensure_memory,
     ensure_sprint2,
     ensure_sprint3,
+    ensure_vector_extension,
     get_engine,
     get_sessionmaker,
     wait_for_database,
@@ -38,6 +40,8 @@ def _ui_dist() -> Path | None:
 async def lifespan(app: FastAPI):
     settings = get_settings()
     wait_for_database()
+    # The vector extension has to exist before create_all builds memory_items.
+    ensure_vector_extension()
     # create_all still boots an existing database. Alembic's baseline matches
     # these models; this process does not upgrade a live database.
     Base.metadata.create_all(bind=get_engine())
@@ -46,6 +50,7 @@ async def lifespan(app: FastAPI):
     ensure_ingest_proposals()
     ensure_sprint2()
     ensure_sprint3()
+    ensure_memory()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)

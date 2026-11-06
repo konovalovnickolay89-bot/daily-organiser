@@ -86,3 +86,62 @@ SPRINT3_DOWNGRADE: tuple[str, ...] = (
     "ALTER TABLE catchup_items DROP COLUMN IF EXISTS fallback_used",
     "DROP TABLE IF EXISTS commute_shifts",
 )
+
+
+# Sprint 5 memory. Alembic 0004 runs these statements. The process also applies
+# the upgrade on boot, after Sprint 2, so a database from 0003 still starts
+# once the vector extension is installed. Either order is safe.
+#
+# The proposal action check is widened here and not in the Sprint 2 boot path.
+# Re-applying the narrower Sprint 2 check would reject rows already saved.
+MEMORY_UPGRADE: tuple[str, ...] = (
+    "CREATE EXTENSION IF NOT EXISTS vector",
+    """
+    CREATE TABLE IF NOT EXISTS memory_items (
+        id UUID PRIMARY KEY,
+        kind VARCHAR(16) NOT NULL,
+        text VARCHAR(400) NOT NULL,
+        source VARCHAR(16) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        last_used_at TIMESTAMP WITH TIME ZONE,
+        pinned BOOLEAN NOT NULL DEFAULT false,
+        embedding vector(1024),
+        CONSTRAINT ck_memory_items_kind CHECK (kind in ('preference', 'fact', 'routine')),
+        CONSTRAINT ck_memory_items_source CHECK (source in ('remember', 'forget', 'smart-add', 'manual')),
+        CONSTRAINT ck_memory_items_text CHECK (char_length(text) > 0)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_memory_items_pinned ON memory_items (pinned)",
+    """
+    CREATE INDEX IF NOT EXISTS ix_memory_items_embedding
+    ON memory_items USING hnsw (embedding vector_cosine_ops)
+    """,
+    "ALTER TABLE agent_proposals ADD COLUMN IF NOT EXISTS memories_used INTEGER",
+    "ALTER TABLE agent_proposals DROP CONSTRAINT IF EXISTS ck_agent_proposals_action",
+    """
+    ALTER TABLE agent_proposals ADD CONSTRAINT ck_agent_proposals_action
+    CHECK (action in (
+        'create_task', 'update_task', 'create_commitment', 'update_commitment',
+        'add_note', 'create_shopping_item', 'remember', 'forget'
+    ))
+    """,
+)
+
+# Rollback drops the memories, the usage count, and the extension in this
+# database. Remember and forget cards are removed first so the narrower action
+# check can be restored. Restore a backup if those rows should come back.
+MEMORY_DOWNGRADE: tuple[str, ...] = (
+    "DELETE FROM agent_proposals WHERE action in ('remember', 'forget')",
+    "ALTER TABLE agent_proposals DROP CONSTRAINT IF EXISTS ck_agent_proposals_action",
+    """
+    ALTER TABLE agent_proposals ADD CONSTRAINT ck_agent_proposals_action
+    CHECK (action in (
+        'create_task', 'update_task', 'create_commitment', 'update_commitment',
+        'add_note', 'create_shopping_item'
+    ))
+    """,
+    "ALTER TABLE agent_proposals DROP COLUMN IF EXISTS memories_used",
+    "DROP INDEX IF EXISTS ix_memory_items_embedding",
+    "DROP TABLE IF EXISTS memory_items",
+    "DROP EXTENSION IF EXISTS vector",
+)

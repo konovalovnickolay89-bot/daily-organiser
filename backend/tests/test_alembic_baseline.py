@@ -74,6 +74,30 @@ def test_baseline_upgrade_matches_models():
             ).scalar_one()
         assert "ingest" in origin
         assert "effect_applied" in effect
+        with engine.connect() as connection:
+            action = connection.execute(
+                text(
+                    "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                    "WHERE conname = 'ck_agent_proposals_action'"
+                )
+            ).scalar_one()
+            extension = connection.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")).scalar_one()
+        assert "remember" in action
+        assert "forget" in action
+        assert extension == 1
+        command.downgrade(cfg, "0003_sprint3")
+        after = set(inspect(engine).get_table_names())
+        assert "memory_items" not in after
+        assert "tasks" in after
+        with engine.connect() as connection:
+            rolled = connection.execute(
+                text(
+                    "SELECT pg_get_constraintdef(oid) FROM pg_constraint "
+                    "WHERE conname = 'ck_agent_proposals_action'"
+                )
+            ).scalar_one()
+        assert "remember" not in rolled
+        command.upgrade(cfg, "head")
         command.downgrade(cfg, "base")
         left = set(inspect(engine).get_table_names())
         assert "tasks" not in left

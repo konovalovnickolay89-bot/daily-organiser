@@ -7,3 +7,5 @@ pydantic-settings>=2.6.0,<3
 httpx>=0.27.0,<1
 # Baseline migrations. The process does not upgrade a live database on startup.
 alembic>=1.14.0,<2
+# pgvector column type. The database itself must provide the extension.
+pgvector>=0.3.6,<1

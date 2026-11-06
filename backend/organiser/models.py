@@ -15,10 +15,17 @@ from sqlalchemy import (
     Uuid,
     func,
 )
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 _AGENT_TRIGGERS = "('feed', 'morning_review', 'doing_stalled', 'overdue_lingering', 'commitment_due_soon')"
+# mistral-embed. A different model would need a new column and a migration.
+MEMORY_EMBEDDING_DIM = 1024
+_PROPOSAL_ACTIONS = (
+    "'create_task', 'update_task', 'create_commitment', 'update_commitment', "
+    "'add_note', 'create_shopping_item', 'remember', 'forget'"
+)
 
 
 class Base(DeclarativeBase):
@@ -192,8 +199,7 @@ class AgentProposal(Base):
         CheckConstraint("origin in ('feed', 'proactive', 'ingest')", name="ck_agent_proposals_origin"),
         CheckConstraint(f"rule in {_AGENT_TRIGGERS}", name="ck_agent_proposals_rule"),
         CheckConstraint(
-            "action in ('create_task', 'update_task', 'create_commitment', 'update_commitment', "
-            "'add_note', 'create_shopping_item')",
+            f"action in ({_PROPOSAL_ACTIONS})",
             name="ck_agent_proposals_action",
         ),
         CheckConstraint(
@@ -224,6 +230,8 @@ class AgentProposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     applied_ref_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    # How many memories were in the context that produced this card. Null on older rows.
+    memories_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 _CATCHUP_RULES = "('overdue', 'due_today', 'stalled', 'commitment_due', 'brief')"
@@ -332,6 +340,41 @@ class CommuteShift(Base):
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     location_label: Mapped[str] = mapped_column(String(40), nullable=False)
+
+
+class MemoryItem(Base):
+    """One household memory. The assistant proposes it. Apply is what saves it.
+
+    ``source`` records how it arrived. ``forget`` is allowed by the check and is
+    not used for a stored row: forget deletes. The embedding is mistral-embed
+    when that call works, and null when it does not. Retrieval then uses words.
+    """
+
+    __tablename__ = "memory_items"
+    __table_args__ = (
+        CheckConstraint("kind in ('preference', 'fact', 'routine')", name="ck_memory_items_kind"),
+        CheckConstraint(
+            "source in ('remember', 'forget', 'smart-add', 'manual')",
+            name="ck_memory_items_source",
+        ),
+        CheckConstraint("char_length(text) > 0", name="ck_memory_items_text"),
+        Index("ix_memory_items_pinned", "pinned"),
+        Index(
+            "ix_memory_items_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    text: Mapped[str] = mapped_column(String(400), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(MEMORY_EMBEDDING_DIM), nullable=True)
 
 
 class IntegrationStatus(Base):

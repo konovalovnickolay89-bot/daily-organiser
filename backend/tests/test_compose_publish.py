@@ -18,6 +18,12 @@ def test_compose_publishes_only_the_loopback_api():
     assert published == ["127.0.0.1:8080:8080"]
 
 
+def test_compose_db_image_has_pgvector():
+    db_section = COMPOSE.split("services:", 1)[1].split("api:", 1)[0]
+    assert "pgvector/pgvector:pg16" in db_section
+    assert "postgres:16-alpine" not in db_section
+
+
 def test_compose_does_not_publish_postgres():
     assert "5432:5432" not in COMPOSE
     assert "ports:" in COMPOSE

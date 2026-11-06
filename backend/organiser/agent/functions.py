@@ -59,6 +59,7 @@ class RunContext:
     rule: str
     label: str
     max_proposals: int
+    memories_used: int = 0
     proposals: list[AgentProposal] = field(default_factory=list)
 
     @property
@@ -254,6 +255,7 @@ def _store(
         ref_updated_at=row.updated_at if row is not None else None,
         status="pending",
         created_at=ctx.now,
+        memories_used=ctx.memories_used,
     )
     ctx.session.add(proposal)
     # The session does not autoflush. Flush so the next duplicate check sees this one.
