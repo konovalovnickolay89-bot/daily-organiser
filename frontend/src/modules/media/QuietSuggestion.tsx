@@ -46,7 +46,7 @@ export function QuietSuggestion() {
         >
           {track.artwork_url && (
             <img
-              className="h-11 w-11 shrink-0 rounded-house object-cover"
+              className="h-11 w-11 shrink-0 rounded-inset object-cover"
               src={track.artwork_url}
               alt=""
               width={44}

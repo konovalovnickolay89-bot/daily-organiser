@@ -52,7 +52,7 @@ export function ArrivalShell() {
         <UndoProvider>
           <div className="shell flex min-h-screen items-stretch bg-canvas max-[720px]:flex-col" data-theme={theme} data-view={view}>
             <a
-              className="skip-link rounded-house bg-card px-4 py-2 text-ink-card no-underline"
+              className="skip-link rounded-pill bg-card px-4 py-2 text-ink-card no-underline"
               href="#main"
             >
               Skip to content

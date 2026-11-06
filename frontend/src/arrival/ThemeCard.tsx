@@ -7,7 +7,7 @@ import { StatusPanel } from "../modules/status/StatusPanel";
 import { XSettings } from "../modules/x/XSettings";
 import { asError } from "../lib/errors";
 import { SectionHeader } from "./SectionHeader";
-import { cx, card, errorText, fieldInput, ghost, kickerMuted, lede } from "./ui";
+import { cx, card, errorText, fieldInput, ghost, kickerMuted, lede, pill } from "./ui";
 
 const OPTIONS = [
   ["auto", "House clock"],
@@ -184,7 +184,7 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
         {OPTIONS.map(([value, label]) => (
           <label
             key={value}
-            className="relative inline-flex min-h-11 cursor-pointer items-center rounded-house border border-[var(--line)] px-4 text-sm font-semibold has-[:checked]:border-transparent has-[:checked]:bg-accent has-[:checked]:text-[#1b140c] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-ink"
+            className={pill}
           >
             <input
               className="absolute inset-0 m-0 cursor-pointer opacity-0"

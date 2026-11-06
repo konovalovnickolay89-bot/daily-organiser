@@ -43,6 +43,9 @@ export default {
       },
       borderRadius: {
         house: "var(--radius)",
+        inset: "var(--radius-inset)",
+        pill: "var(--radius-pill)",
+        rail: "var(--radius-rail)",
       },
       spacing: {
         /* 72px, nine steps of the 8px grid. Stage inset on a wide screen. */

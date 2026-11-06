@@ -15,7 +15,7 @@ export function TaskRow({ title, meta, detail, onOpen }: TaskRowProps) {
     <li>
       <button
         type="button"
-        className="calm flex min-h-11 w-full items-start justify-between gap-4 rounded-house border-0 bg-transparent px-2 py-2 text-left text-inherit hover:bg-[rgba(26,22,19,0.05)]"
+        className="calm flex min-h-11 w-full items-start justify-between gap-4 rounded-inset border-0 bg-transparent px-4 py-2 text-left text-inherit hover:bg-[rgba(26,22,19,0.05)]"
         onClick={onOpen}
         aria-label={label}
       >

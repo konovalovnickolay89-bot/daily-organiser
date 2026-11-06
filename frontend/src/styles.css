@@ -10,8 +10,13 @@ html {
   --card: #eddcc6;
   --ink-card: #1a1613;
   --muted-card: #655d54;
-  --line-canvas: rgba(243, 230, 212, 0.14);
-  --line-card: rgba(26, 22, 19, 0.12);
+  /* Quiet rules and the rail. Frames use the tube, not this line. */
+  --line-canvas: rgba(243, 230, 212, 0.16);
+  --line-card: rgba(26, 22, 19, 0.14);
+  /* Warm rim. Light along the top, brass through the middle, shade underneath. */
+  --tube-light: #f8ead8;
+  --tube-mid: #d39a4e;
+  --tube-deep: #6b3f14;
   --accent: #d39a4e;
   --accent-deep: #b8833d;
   /* #7a4e17 on card #eddcc6 is 5.34:1. */
@@ -28,14 +33,22 @@ html {
   --muted: var(--cream-dim);
   --line: var(--line-canvas);
   --sunken: #100e0c;
+  /* Recent-activity well. #c4b29a on #2c221b is 7.53:1. */
+  --log: #2c221b;
   --note: var(--note-card);
   --danger: var(--danger-canvas);
   --serif: "Newsreader", "Iowan Old Style", Palatino, Georgia, "Liberation Serif", serif;
   --sans: "Inter", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   /* Numbers, codes, and times. One stack, used as font-mono. */
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  /* Cards, buttons, fields, and dialogs share this radius. */
-  --radius: 12px;
+  /* Cards and dialogs. Round enough to read as a tube, not a ticket. */
+  --radius: 32px;
+  /* Inner panels and inputs. */
+  --radius-inset: 24px;
+  /* Pills. Fully round. */
+  --radius-pill: 999px;
+  /* Icon buttons on the rail keep their corner. */
+  --radius-rail: 12px;
   /* The icon rail is the one measure that is not on the 8px grid. */
   --rail: 76px;
 }
@@ -47,8 +60,11 @@ html[data-theme="morning"] {
   --card: #fffaf3;
   --ink-card: #1c1915;
   --muted-card: #6a6158;
-  --line-canvas: rgba(255, 250, 243, 0.16);
-  --line-card: rgba(28, 25, 21, 0.1);
+  --line-canvas: rgba(255, 250, 243, 0.18);
+  --line-card: rgba(28, 25, 21, 0.12);
+  --tube-light: #fff6ea;
+  --tube-mid: #e2b15a;
+  --tube-deep: #7a4e17;
   --accent: #f0c27a;
   --accent-deep: #d4a45c;
   /* #8f621f on card #fffaf3 is 5.14:1. */
@@ -65,13 +81,26 @@ html[data-theme="morning"] {
   box-sizing: border-box;
 }
 
-/* Preflight is off, so a width alone does not paint. Borders stay solid. */
-.border,
-.border-t,
-.border-r,
-.border-b,
-.border-l {
+/* Preflight is off, so a width alone does not paint. Set style on the same side only,
+   or the other sides fall back to the 3px initial width and become a box. */
+.border {
   border-style: solid;
+}
+
+.border-t {
+  border-top-style: solid;
+}
+
+.border-r {
+  border-right-style: solid;
+}
+
+.border-b {
+  border-bottom-style: solid;
+}
+
+.border-l {
+  border-left-style: solid;
 }
 
 html,
@@ -107,7 +136,66 @@ textarea {
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 5px;
+}
+
+/* A brass tube. Highlight on the top lip, shade on the bottom, warm metal between. */
+.tube {
+  border: 3px solid var(--tube-mid);
+  background: var(--card);
+  box-shadow:
+    inset 0 1px 0 var(--tube-light),
+    inset 0 -2px 0 var(--tube-deep),
+    0 1px 0 rgba(248, 234, 216, 0.45),
+    0 3px 0 rgba(74, 42, 16, 0.4),
+    var(--card-shadow);
+}
+
+.tube-inset,
+.tube-line {
+  border: 2px solid var(--tube-mid);
+  box-shadow:
+    inset 0 1px 0 var(--tube-light),
+    inset 0 -1px 0 var(--tube-deep),
+    0 1px 0 rgba(74, 42, 16, 0.18);
+}
+
+.tube-inset {
+  background: var(--card);
+}
+
+/* Only the recent-activity list. Same rim as Advice, a darker warm well, muted cream mono. */
+.tube-log {
+  background: var(--log);
+  color: var(--cream-dim);
+}
+
+.tube-note {
+  background: var(--note);
+}
+
+.tube-well {
+  border: 2px solid var(--tube-mid);
+  background: var(--sunken);
+  box-shadow:
+    inset 0 2px 4px rgba(62, 36, 14, 0.18),
+    inset 0 -1px 0 rgba(255, 248, 236, 0.35),
+    0 1px 0 rgba(255, 248, 236, 0.4);
+}
+
+.tube-line:has(:checked),
+.tube-line[aria-pressed="true"] {
+  border-color: var(--tube-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 224, 0.75),
+    inset 0 -2px 0 rgba(80, 42, 12, 0.4);
+}
+
+.tube-cap {
+  border: 2px solid var(--tube-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 224, 0.8),
+    inset 0 -2px 0 rgba(80, 42, 12, 0.45);
 }
 
 /* Cream cards flip ink. Utilities read var(--ink) and the rest. */

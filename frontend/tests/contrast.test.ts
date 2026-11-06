@@ -48,6 +48,8 @@ describe("theme contrast", () => {
       [token(morning, "--accent-ink"), token(morning, "--card"), "morning accent ink"],
       [token(morning, "--success"), token(morning, "--card"), "morning success"],
       [token(morning, "--success-canvas"), token(morning, "--canvas"), "morning success on canvas"],
+      [token(evening, "--cream-dim"), token(evening, "--log"), "evening log"],
+      [token(morning, "--cream-dim"), token(evening, "--log"), "morning log"],
     ];
     for (const [foreground, background, label] of pairs) {
       expect(contrast(foreground, background), label).toBeGreaterThanOrEqual(4.5);
