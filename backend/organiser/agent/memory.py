@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import clip
@@ -189,6 +189,71 @@ def matching_to_forget(session: Session, query: str, *, limit: int = 10) -> list
         ranked.append((score, _stamp(row), row))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
     return [row for _, _, row in ranked[:limit]]
+
+
+def search_memory(session: Session, query: str, now: datetime, *, limit: int = 20) -> tuple[list[MemoryItem], str]:
+    """Ranked search for Settings. Returns the rows and ``hybrid`` or ``fts``.
+
+    Full-text rank, and cosine when a key is set and the embedding call works.
+    Recency and a pin break a close call. With no key, or if that call cannot
+    be made, the rank is full text and word overlap only. The query is redacted
+    before any model sees it. A postcode or a coordinate is not a search term.
+    """
+    raw = " ".join((query or "").split())
+    if not raw or outside_memory(raw):
+        return [], "fts"
+    redacted = redact_for_model(raw)
+    if not redacted:
+        return [], "fts"
+    rows = [row for row in _rows(session) if not outside_memory(row.text) and redact_for_model(row.text)]
+    if not rows:
+        return [], "fts"
+    fts = _fts_scores(session, redacted)
+    vector = None
+    if get_settings().mistral_api_key.get_secret_value().strip():
+        vector = embed_query(redacted)
+    distances: dict[UUID, float] = {}
+    if vector is not None and any(row.embedding is not None for row in rows):
+        distance = MemoryItem.embedding.cosine_distance(vector)
+        found = session.execute(
+            select(MemoryItem.id, distance.label("distance")).where(MemoryItem.embedding.is_not(None))
+        ).all()
+        distances = {row.id: float(row.distance) for row in found}
+    hybrid = bool(distances)
+    scored: list[tuple[float, bool, datetime, MemoryItem]] = []
+    for row in rows:
+        text_score = max(fts.get(row.id, 0.0), keyword_similarity(redacted, row.text))
+        cosine = max(0.0, 1.0 - distances[row.id]) if row.id in distances else 0.0
+        if hybrid:
+            if text_score <= 0 and cosine < VECTOR_FLOOR:
+                continue
+            similarity = (0.55 * text_score) + (0.45 * cosine)
+        else:
+            if text_score <= 0:
+                continue
+            similarity = text_score
+        score = (0.75 * similarity) + (0.25 * _recency(row, now)) + (PIN_BOOST if row.pinned else 0.0)
+        scored.append((score, row.pinned, _stamp(row), row))
+    scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    return [row for _, _, _, row in scored[:limit]], "hybrid" if hybrid else "fts"
+
+
+def _fts_scores(session: Session, redacted: str) -> dict[UUID, float]:
+    column = func.coalesce(MemoryItem.search_vector, func.to_tsvector("english", MemoryItem.text))
+    tsq = func.plainto_tsquery("english", redacted)
+    rank = func.ts_rank_cd(column, tsq)
+    found = session.execute(select(MemoryItem.id, rank.label("rank")).where(column.op("@@")(tsq))).all()
+    if not found:
+        return {}
+    peak = max(float(row.rank) for row in found) or 1.0
+    if peak <= 0:
+        return {}
+    return {row.id: float(row.rank) / peak for row in found}
+
+
+def _recency(row: MemoryItem, now: datetime) -> float:
+    age = max(_age_seconds(row, now), 0.0)
+    return math.exp(-age / (RECENCY_DAYS * 86400))
 
 
 def retrieve_memories(session: Session, query: str, now: datetime, *, limit: int = 10) -> list[MemoryItem]:

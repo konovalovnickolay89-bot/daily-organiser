@@ -1,8 +1,10 @@
 """Household memory on the Settings screen.
 
 List, search, pin, forget, and export. Forget writes one audit line.
-Remember still arrives through the box and waits for Apply. Nothing here
-calls Mistral, and the export has no embedding.
+Remember still arrives through the box and waits for Apply. The list route
+does not call Mistral. ``GET /memory/search`` may ask for one embedding of
+the redacted query, and uses full text when it cannot. The export has no
+embedding. Cloudflare Access covers these routes the same way as the others.
 """
 
 from uuid import UUID
@@ -13,11 +15,11 @@ from sqlalchemy.orm import Session
 
 from organiser import clock
 from organiser.agent.cards import clip
-from organiser.agent.memory import MEMORY_TEXT_LIMIT, embed_query, forgotten_title, outside_memory
+from organiser.agent.memory import MEMORY_TEXT_LIMIT, embed_query, forgotten_title, outside_memory, search_memory
 from organiser.db import get_db
 from organiser.domain import DEFAULT_OWNER
 from organiser.models import MemoryItem
-from organiser.schemas import MemoryCreate, MemoryExport, MemoryList, MemoryPin, MemoryRead
+from organiser.schemas import MemoryCreate, MemoryExport, MemoryList, MemoryPin, MemoryRead, MemorySearch
 from organiser.services.events import record_event
 
 router = APIRouter(prefix="/memory", tags=["memory"])
@@ -50,6 +52,21 @@ def list_memory(
         statement = statement.where(MemoryItem.text.ilike(f"%{escaped}%", escape="\\"))
     rows = session.scalars(statement.limit(200)).all()
     return MemoryList(items=[_read(row) for row in rows])
+
+
+@router.get("/search", response_model=MemorySearch)
+def search(
+    session: Session = Depends(get_db),
+    q: str = Query(default="", max_length=200),
+) -> MemorySearch:
+    """Blend full text with a redacted embedding when a key is set.
+
+    This is a house route. Cloudflare Access covers it with the rest of the API.
+    This process does not add a login. A postcode or a coordinate is not sent.
+    With no key, the rank is full text only.
+    """
+    rows, mode = search_memory(session, q, clock.current_time())
+    return MemorySearch(mode=mode, items=[_read(row) for row in rows])
 
 
 @router.get("/export", response_model=MemoryExport)

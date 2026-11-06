@@ -30,4 +30,31 @@ describe("Status panel", () => {
     expect(screen.getByText("Not yet")).toBeTruthy();
     expect(screen.getByText("2.0 MB")).toBeTruthy();
   });
+
+  it("names Mistral, Voxtral, Google, TfL, X, and hearthis", async () => {
+    getStatus.mockResolvedValue({
+      health: "ok",
+      version: "0.5.0",
+      last_mistral_success: null,
+      last_activity_poll: null,
+      database_bytes: 1024,
+      services: [
+        { name: "mistral", state: "not configured", detail: "No assistant key." },
+        { name: "voxtral", state: "unavailable", detail: "Voxtral is unavailable until the assistant key is set." },
+        { name: "google", state: "ok", detail: "A read succeeded." },
+        { name: "tfl", state: "attention", detail: "The last journey check failed." },
+        { name: "x", state: "off", detail: "X is off." },
+        { name: "hearthis", state: "unknown", detail: "Not read yet." },
+      ],
+    });
+    render(<StatusPanel />);
+    expect(await screen.findByText("Mistral")).toBeTruthy();
+    expect(screen.getByText("Voxtral")).toBeTruthy();
+    expect(screen.getByText("Google")).toBeTruthy();
+    expect(screen.getByText("TfL")).toBeTruthy();
+    expect(screen.getByText("hearthis")).toBeTruthy();
+    expect(screen.getByText("Unavailable")).toBeTruthy();
+    expect(screen.getByText("Attention")).toBeTruthy();
+    expect(screen.getByText("Not configured")).toBeTruthy();
+  });
 });

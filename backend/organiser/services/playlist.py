@@ -13,6 +13,7 @@ CACHE = timedelta(hours=1)
 PROFILE = re.compile(r"[A-Za-z0-9_-]{1,40}")
 _cache: dict[str, tuple[datetime, dict]] = {}
 _transport: httpx.BaseTransport | None = None
+_outcome = "unknown"
 
 
 class PlaylistError(Exception):
@@ -20,7 +21,14 @@ class PlaylistError(Exception):
 
 
 def clear_cache() -> None:
+    global _outcome
     _cache.clear()
+    _outcome = "unknown"
+
+
+def hearthis_outcome() -> str:
+    """``ok``, ``attention``, or ``unknown``. No track title and no URL."""
+    return _outcome
 
 
 def set_transport(transport: httpx.BaseTransport | None) -> None:
@@ -93,11 +101,14 @@ def _fetch(profile: str) -> dict:
     raise PlaylistError()
 
 
-def current(settings: Settings, now: datetime) -> dict:
-    if not settings.playlist_on:
+def current(settings: Settings, now: datetime, *, shown: bool | None = None) -> dict:
+    global _outcome
+    on = settings.playlist_on if shown is None else shown
+    if not on:
         return _empty(shown=False)
     profile = (settings.hearthis_profile or "").strip() or "chlorophil"
     if not PROFILE.fullmatch(profile):
+        _outcome = "attention"
         return _empty(shown=True, offline=True)
     cached = _cache.get(profile)
     if cached is not None and now - cached[0] < CACHE:
@@ -105,8 +116,10 @@ def current(settings: Settings, now: datetime) -> dict:
     try:
         track = _fetch(profile)
     except PlaylistError:
+        _outcome = "attention"
         if cached is not None:
             return {**cached[1], "shown": True, "offline": True}
         return _empty(shown=True, offline=True)
+    _outcome = "ok"
     _cache[profile] = (now, track)
     return {**track, "shown": True, "offline": False}

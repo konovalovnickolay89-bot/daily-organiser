@@ -16,11 +16,21 @@ from organiser.schemas import (
     AssistantSwitch,
     CalendarListRead,
     CalendarName,
+    FeatureSettings,
+    FeatureSettingsPatch,
     HouseFacts,
     StatusRead,
     SystemRead,
 )
 from organiser.services.diary import DiaryError, add_calendar, calendar_view, remove_calendar
+from organiser.services.settings import (
+    SettingsRejected,
+    apply_feature_settings,
+    feature_settings_view,
+    playlist_shown,
+    service_health,
+    voice_mic_on,
+)
 from organiser.services.system import (
     assistant_effective,
     ensure_system_state,
@@ -42,6 +52,7 @@ def _read(session: Session) -> SystemRead:
     row = ensure_system_state(session)
     session.commit()
     payload = present_system(row, current_time(), get_settings().house_timezone)
+    payload["playlist"] = playlist_shown(session)
     return SystemRead.model_validate(payload)
 
 
@@ -75,7 +86,7 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
         weather_location=_configured(settings.weather_location_configured),
         tfl=_configured(settings.tfl_configured),
         banto=_configured(settings.banto_configured),
-        voice_input="on" if settings.voice_input_enabled else "off",
+        voice_input="on" if voice_mic_on(session) else "off",
     )
 
 
@@ -104,7 +115,27 @@ def status(session: Session = Depends(get_db)) -> StatusRead:
         last_activity_poll=METRICS.last_poll,
         database_bytes=size,
         x=meter_view(session, enabled=get_settings().x_enabled, now=now),
+        services=service_health(session, now),
     )
+
+
+@router.get("/settings", response_model=FeatureSettings)
+def read_settings(session: Session = Depends(get_db)) -> FeatureSettings:
+    """Playlist, alerts, voice, X limits, context, and docs. No secret is returned."""
+    body = feature_settings_view(session)
+    session.commit()
+    return FeatureSettings.model_validate(body)
+
+
+@router.patch("/settings", response_model=FeatureSettings)
+def update_settings(payload: FeatureSettingsPatch, session: Session = Depends(get_db)) -> FeatureSettings:
+    """Save one or more choices. Each change writes one log line. X stays an environment flag."""
+    try:
+        apply_feature_settings(session, payload)
+    except SettingsRejected as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.detail) from None
+    session.commit()
+    return FeatureSettings.model_validate(feature_settings_view(session))
 
 
 @router.post("/assistant", response_model=HouseFacts)

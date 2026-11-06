@@ -138,6 +138,12 @@ export type XMeter = {
   attention?: string | null;
 };
 
+export type ServiceHealth = {
+  name: string;
+  state: string;
+  detail: string;
+};
+
 export type HouseStatus = {
   health: "ok" | "degraded";
   version: string;
@@ -145,6 +151,7 @@ export type HouseStatus = {
   last_activity_poll: string | null;
   database_bytes: number | null;
   x?: XMeter;
+  services?: ServiceHealth[];
 };
 
 export type FeedResult = {

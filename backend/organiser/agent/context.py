@@ -26,6 +26,7 @@ from organiser.agent.memory import redact_for_model, retrieve_memories
 from organiser.agent.runner import outside_home
 from organiser.config import get_settings
 from organiser.models import AgentProposal, Commitment, Event, MemoryItem, Task
+from organiser.services.settings import context_limits
 
 logger = logging.getLogger(__name__)
 
@@ -185,8 +186,9 @@ def build_context(
 ) -> HouseContext:
     """Assemble one context. The home-scope pass runs once, then the budget."""
     settings = get_settings()
+    limits = context_limits(session)
     local = now.astimezone(ZoneInfo(settings.house_timezone))
-    log_days = LOG_DAYS[purpose]
+    log_days = limits.smart_add_days if purpose == "smart_add" else limits.catch_up_days
     since = local - timedelta(days=log_days)
 
     tasks: list[_Draft] = []
@@ -283,7 +285,7 @@ def build_context(
         log=scoped["log"],
         log_days=log_days,
         memory=MemorySlot(
-            limit=MEMORY_LIMIT,
+            limit=limits.memory_limit,
             items=[
                 MemoryContextItem(id=str(row.id), kind=row.kind, text=text, pinned=row.pinned)  # type: ignore[arg-type]
                 for row, text in remembered
@@ -292,7 +294,7 @@ def build_context(
         focus=kept_focus,
         trimmed=False,
     )
-    context = trim_to_budget(context)
+    context = trim_to_budget(context, limits.token_budget)
     kept = {item.id for item in context.memory.items}
     for row, _text in remembered:
         if str(row.id) in kept:
@@ -320,7 +322,8 @@ def _memory_rows(
     else:
         search = " ".join(item.title for item in [*tasks[:8], *commitments[:8]])
     search = search[:500]
-    rows = retrieve_memories(session, search, now, limit=MEMORY_LIMIT) if search.strip() else []
+    limit = context_limits(session).memory_limit
+    rows = retrieve_memories(session, search, now, limit=limit) if search.strip() else []
     chosen: list[tuple[MemoryItem, str]] = []
     for row in rows:
         shown = redact_for_model(row.text)

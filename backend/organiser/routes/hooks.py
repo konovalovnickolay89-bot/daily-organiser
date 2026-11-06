@@ -137,6 +137,10 @@ async def receive(source: str, request: Request, session: Session = Depends(get_
     events = _EVENTS.get(name)
     if events is None:
         raise HTTPException(status_code=404, detail="Unknown source.")
+    from organiser.services.settings import webhooks_open
+
+    if not webhooks_open(session):
+        raise HTTPException(status_code=503, detail="Webhooks are off.")
     secret = _secret(name)
     if not secret:
         raise HTTPException(status_code=503, detail="This source is not configured.")

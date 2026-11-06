@@ -180,6 +180,19 @@ def ensure_sprint7() -> None:
             connection.execute(text(statement))
 
 
+def ensure_settings() -> None:
+    """House settings and the memory search column.
+
+    These statements match Alembic ``0007_settings_search`` and can run twice.
+    ``create_all`` does not add a column to a table that already exists.
+    """
+    from organiser.patches import SETTINGS_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in SETTINGS_UPGRADE:
+            connection.execute(text(statement))
+
+
 def ensure_memory() -> None:
     """The memory table, the usage count, and the wider proposal check.
 

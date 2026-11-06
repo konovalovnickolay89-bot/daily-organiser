@@ -50,3 +50,39 @@ export function addCalendar(name: string) {
 export function removeCalendar(id: string) {
   return request<CalendarList>(`/system/calendars/${id}`, { method: "DELETE" });
 }
+
+export type FeatureSettings = {
+  playlist: {
+    enabled: boolean;
+    available: boolean;
+    source: string;
+    profile: string;
+    detail: string;
+  };
+  alerts: { enabled: boolean };
+  webhooks: { enabled: boolean; banto: string; banto_x: string };
+  voice: { mic: "on" | "off"; env_enabled: boolean; voxtral: string; detail: string };
+  x: {
+    enabled: boolean;
+    sync_minutes: number;
+    daily_cap: number;
+    from_max: number;
+    draft_expiry_days: number;
+    detail: string;
+  };
+  agent_context: {
+    token_budget: number;
+    memory_limit: number;
+    smart_add_days: number;
+    catch_up_days: number;
+  };
+  docs: { state: string; detail: string };
+};
+
+export function getFeatureSettings() {
+  return request<FeatureSettings>("/system/settings");
+}
+
+export function patchFeatureSettings(body: Record<string, boolean | number>) {
+  return request<FeatureSettings>("/system/settings", { method: "PATCH", body });
+}

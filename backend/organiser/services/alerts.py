@@ -73,6 +73,10 @@ def _dismissed(session: Session) -> dict[str, str]:
 
 def active_alerts(session: Session, now: datetime) -> list[dict]:
     """One card per kind. A dismissed signature stays hidden until the incident changes."""
+    from organiser.services.settings import alerts_enabled
+
+    if not alerts_enabled(session):
+        return []
     hidden = _dismissed(session)
     shown = []
     for card in _candidates(now):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { exportMemory, forgetMemory, listMemory, pinMemory, type MemoryItem } from "../../api/memory";
-import { actions, errorText, fieldInput, ghost, inset, kickerAccent, lede, subheading } from "../../arrival/ui";
+import { exportMemory, forgetMemory, listMemory, pinMemory, searchMemory, type MemoryItem } from "../../api/memory";
+import { actions, errorText, fieldInput, ghost, inset, kickerAccent, lede, meta, subheading } from "../../arrival/ui";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouseTick } from "../../house/HouseContext";
@@ -18,6 +18,7 @@ const KIND_LABEL: Record<string, string> = {
  */
 export function MemoryScreen() {
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<string | null>(null);
   const [items, setItems] = useState<MemoryItem[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -27,16 +28,25 @@ export function MemoryScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    listMemory(query)
-      .then((data) => {
-        if (!cancelled) {
-          setItems(data.items);
-          setError(null);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(asError(err));
-      });
+    const term = query.trim();
+    const pending = term
+      ? searchMemory(term).then((data) => {
+          if (!cancelled) {
+            setItems(data.items);
+            setMode(data.mode);
+            setError(null);
+          }
+        })
+      : listMemory().then((data) => {
+          if (!cancelled) {
+            setItems(data.items);
+            setMode(null);
+            setError(null);
+          }
+        });
+    pending.catch((err: unknown) => {
+      if (!cancelled) setError(asError(err));
+    });
     return () => {
       cancelled = true;
     };
@@ -90,7 +100,7 @@ export function MemoryScreen() {
 
   const rows = items ?? [];
   return (
-    <section className="mt-8" aria-labelledby="memory-title" data-screen="memory">
+    <section className="mt-8" aria-labelledby="memory-title" data-screen="memory" data-search-mode={query.trim() ? mode ?? "fts" : undefined}>
       <h3 id="memory-title" className={subheading}>
         Memory
       </h3>
@@ -126,6 +136,11 @@ export function MemoryScreen() {
       )}
       {items === null && !error && <LoadingSkeleton label="Loading memory…" />}
       {items !== null && rows.length === 0 && <EmptyState>{query.trim() ? "Nothing matches." : "Nothing is remembered yet."}</EmptyState>}
+      {query.trim() && items !== null && rows.length > 0 && (
+        <p className={meta} data-search-mode={mode ?? "fts"}>
+          {mode === "hybrid" ? "Matched on words and meaning." : "Matched on words."}
+        </p>
+      )}
       <ul className="m-0 grid list-none gap-4 p-0">
         {rows.map((item) => {
           const confirming = confirmId === item.id;

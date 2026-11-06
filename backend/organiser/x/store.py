@@ -201,6 +201,12 @@ def remember_external(
     existing = session.scalar(select(XItem).where(XItem.kind == kind, XItem.external_id == external_id))
     if existing is not None:
         return str(existing.id)
+    from organiser.services.settings import daily_cap_reached
+
+    if daily_cap_reached(session, now):
+        if strict:
+            raise XRejected("The daily cap is full.", 409)
+        return None
     row = XItem(
         kind=kind,
         external_id=external_id,
@@ -237,6 +243,10 @@ def create_draft(session: Session, text: str, reason: str, now: datetime, source
     )
     if int(pending or 0) >= 5:
         raise XRejected("Too many drafts are waiting.", 409)
+    from organiser.services.settings import daily_cap_reached, draft_expiry_days
+
+    if daily_cap_reached(session, now):
+        raise XRejected("The daily cap is full.", 409)
     row = XItem(
         kind="draft",
         text=cleaned,
@@ -244,7 +254,7 @@ def create_draft(session: Session, text: str, reason: str, now: datetime, source
         status="pending",
         source=source,
         created_at=now,
-        expires_at=now + timedelta(days=DRAFT_DAYS),
+        expires_at=now + timedelta(days=draft_expiry_days(session)),
     )
     session.add(row)
     session.flush()
@@ -280,8 +290,12 @@ def card_body(row: XItem) -> dict:
 
 
 def brief_section(session: Session, now: datetime) -> dict | None:
+    from organiser.services.settings import from_x_max
+
     rows = list(
-        session.scalars(select(XItem).where(_pending_filter(now)).order_by(XItem.created_at.desc()).limit(10)).all()
+        session.scalars(
+            select(XItem).where(_pending_filter(now)).order_by(XItem.created_at.desc()).limit(from_x_max(session))
+        ).all()
     )
     if not rows:
         return None
