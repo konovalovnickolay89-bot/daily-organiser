@@ -5,21 +5,8 @@ def test_health_and_openapi(client):
     health = client.get("/health")
     assert health.status_code == 200
     assert health.json() == {"status": "ok", "database": "ok"}
-
-    paths = client.get("/openapi.json").json()["paths"]
-    for path in (
-        "/tasks",
-        "/commitments",
-        "/events",
-        "/action-requests",
-        "/brief/morning",
-        "/approvals",
-        "/system/pause",
-        "/system/unpause",
-        "/agent/activity",
-        "/agent/proposals",
-    ):
-        assert path in paths
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/docs").status_code == 404
 
 
 def test_starts_without_demo_data_when_seed_is_off(client):

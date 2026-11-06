@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { getMorningBrief } from "../../api/brief.js";
+import { getMorningBrief } from "../../api/brief";
 import { useHouse } from "../../house/HouseContext.jsx";
+import { CommitmentEditor } from "../commitments/CommitmentEditor";
 import { TaskEditor } from "../tasks/TaskEditor.jsx";
 import { BriefSection } from "./BriefSection.jsx";
 import { Disclosure } from "./Disclosure.jsx";
@@ -25,6 +26,7 @@ export function MorningBrief() {
   const [brief, setBrief] = useState(null);
   const [error, setError] = useState(null);
   const [taskId, setTaskId] = useState(null);
+  const [commitmentId, setCommitmentId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,11 +89,15 @@ export function MorningBrief() {
               section={section}
               startOpen={OPEN_KEYS.has(section.key) && !section.placeholder}
               onOpenTask={section.key === "tasks" ? setTaskId : undefined}
+              onOpenCommitment={section.key === "commitments" ? setCommitmentId : undefined}
             />
           ))}
         </Disclosure>
       )}
       {taskId && <TaskEditor taskId={taskId} onClose={() => setTaskId(null)} />}
+      {commitmentId && (
+        <CommitmentEditor commitmentId={commitmentId} onClose={() => setCommitmentId(null)} />
+      )}
     </section>
   );
 }

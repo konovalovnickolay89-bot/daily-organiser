@@ -6,8 +6,8 @@ import { PresenceBar } from "../modules/presence/PresenceBar.jsx";
 import { Rail } from "./Rail.jsx";
 import { ThemeCard } from "./ThemeCard.jsx";
 import { arrivalModules } from "./modules.js";
-import { useHouseTheme } from "./theme.js";
-import { ViewProvider } from "./view.jsx";
+import { useHouseTheme } from "./theme";
+import { ViewProvider } from "./view";
 
 const KNOWN = new Set(["brief", "approvals", "today", "reasoning", "corner"]);
 

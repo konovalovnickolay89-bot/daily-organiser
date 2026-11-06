@@ -21,6 +21,8 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/organiser ./organiser
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/alembic ./alembic
 COPY --from=ui /src/dist ./frontend/dist
 
 RUN useradd --create-home --uid 10001 organiser \

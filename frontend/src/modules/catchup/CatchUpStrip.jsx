@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { applyCatchUp, dismissCatchUp, recordLook } from "../../api/catchup.js";
+import { applyCatchUp, dismissCatchUp, recordLook } from "../../api/catchup";
 import { useHouse } from "../../house/HouseContext.jsx";
 
 // A screen left open keeps its look fresh, so a gap is time away from the page.

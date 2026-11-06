@@ -50,6 +50,9 @@ def ensure_last_looked_at_column() -> None:
     """Add the last-look timestamp on databases created before catch-up existed.
 
     ``create_all`` does not alter an existing ``system_state`` table.
+    The Alembic baseline already includes this column. These patches stay so a
+    database created before the baseline still boots. Stamp that baseline after
+    a backup; do not upgrade it onto tables that already exist.
     """
     with get_engine().begin() as connection:
         connection.execute(

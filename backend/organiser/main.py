@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -34,6 +34,8 @@ def _ui_dist() -> Path | None:
 async def lifespan(app: FastAPI):
     settings = get_settings()
     wait_for_database()
+    # create_all still boots an existing database. Alembic's baseline matches
+    # these models; this process does not upgrade a live database.
     Base.metadata.create_all(bind=get_engine())
     ensure_arrived_at_column()
     ensure_last_looked_at_column()
@@ -52,14 +54,28 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
+    docs_on = settings.enable_docs
     app = FastAPI(
         title="Daily Organiser",
         version=__version__,
         summary="Home operations log. Approvals record a decision and stop there.",
         lifespan=lifespan,
+        docs_url="/docs" if docs_on else None,
+        redoc_url="/redoc" if docs_on else None,
+        openapi_url="/openapi.json" if docs_on else None,
     )
+    if not docs_on:
+
+        def docs_disabled() -> None:
+            raise HTTPException(status_code=404, detail="Not found.")
+
+        for path in _DOCS_PATHS:
+            app.add_api_route(path, docs_disabled, methods=["GET", "HEAD"], include_in_schema=False)
     if settings.cors_origin_list:
         app.add_middleware(
             CORSMiddleware,
@@ -75,12 +91,14 @@ def create_app() -> FastAPI:
 
         @app.get("/", include_in_schema=False)
         def root() -> dict:
-            return {
+            payload = {
                 "service": "daily-organiser",
                 "health": "/health",
-                "docs": "/docs",
                 "ui": "The arrival screen is served when frontend/dist exists, or from the Vite dev server.",
             }
+            if docs_on:
+                payload["docs"] = "/docs"
+            return payload
 
     return app
 

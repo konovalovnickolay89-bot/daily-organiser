@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { getTask, updateTask } from "../../api/tasks.js";
+import { getTask, updateTask } from "../../api/tasks";
 import { useHouse } from "../../house/HouseContext.jsx";
-import { PRIORITY_LABELS, STATUS_LABELS } from "../../lib/labels.js";
+import { useHouseDialog } from "../../lib/dialog";
+import { PRIORITY_LABELS, STATUS_LABELS } from "../../lib/labels";
 
 const PRIORITIES = ["low", "medium", "high"];
 const STATUSES = ["todo", "doing", "done"];
@@ -27,11 +28,9 @@ function bodyFrom(form, status) {
  */
 export function TaskEditor({ taskId, onClose }) {
   const { refresh } = useHouse();
-  const dialogRef = useRef(null);
+  const { dialogRef, requestClose } = useHouseDialog(onClose);
   const titleRef = useRef(null);
   const focused = useRef(false);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const headingId = useId();
   const titleFieldId = useId();
   const detailFieldId = useId();
@@ -42,29 +41,6 @@ export function TaskEditor({ taskId, onClose }) {
   const [loadError, setLoadError] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    const node = dialogRef.current;
-    if (!node) return undefined;
-    node.showModal();
-
-    function dismiss(event) {
-      event.preventDefault();
-      onCloseRef.current();
-    }
-
-    function onClick(event) {
-      if (event.target === node) onCloseRef.current();
-    }
-
-    node.addEventListener("cancel", dismiss);
-    node.addEventListener("click", onClick);
-    return () => {
-      node.removeEventListener("cancel", dismiss);
-      node.removeEventListener("click", onClick);
-      if (node.open) node.close();
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +87,7 @@ export function TaskEditor({ taskId, onClose }) {
     try {
       await updateTask(taskId, next.body);
       refresh();
-      onCloseRef.current();
+      requestClose();
     } catch (err) {
       setError(err);
     } finally {
@@ -132,7 +108,7 @@ export function TaskEditor({ taskId, onClose }) {
             {loadError.message}
           </p>
           <div className="actions task-actions">
-            <button type="button" className="ghost" onClick={() => onCloseRef.current()}>
+            <button type="button" className="ghost" onClick={requestClose}>
               Dismiss
             </button>
           </div>
@@ -231,7 +207,7 @@ export function TaskEditor({ taskId, onClose }) {
             <button type="submit" className="ghost" disabled={busy}>
               {busy ? "Saving…" : "Save"}
             </button>
-            <button type="button" className="ghost" disabled={busy} onClick={() => onCloseRef.current()}>
+            <button type="button" className="ghost" disabled={busy} onClick={requestClose}>
               Dismiss
             </button>
           </div>

@@ -8,6 +8,7 @@ import "@fontsource/newsreader/latin-400.css";
 import "@fontsource/newsreader/latin-400-italic.css";
 import "@fontsource/newsreader/latin-500.css";
 import "./styles.css";
+import "./tailwind.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

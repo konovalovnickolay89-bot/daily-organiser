@@ -106,7 +106,7 @@ To turn it off, remove the key or the agent id and restart. The box then reads "
 This is for discovery-system. The repo changes nothing on the host.
 
 1. Cloudflare Access must guard the public hostname first. The app has no login. Without Access, anyone with the link could spend the key's credit and read the log through the assistant.
-2. Add `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` to `/etc/daily-organiser.env` (mode `0600`).
+2. Add `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` to the house environment file discovery-system already uses. Do not create a second secrets file.
 3. The box needs outbound HTTPS to `api.mistral.ai`.
 4. Reinstall `backend/requirements.txt` in the virtualenv: `httpx` is now a runtime dependency.
 

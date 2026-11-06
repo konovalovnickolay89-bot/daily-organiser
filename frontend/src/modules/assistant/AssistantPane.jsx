@@ -1,4 +1,4 @@
-import { useView } from "../../arrival/view.jsx";
+import { useView } from "../../arrival/view";
 import { useAssistant } from "./AssistantContext.jsx";
 import { AssistantResult } from "./AssistantResult.jsx";
 

@@ -1,0 +1,83 @@
+export type TaskStatus = "todo" | "doing" | "done";
+export type Priority = "low" | "medium" | "high";
+export type CommitmentStatus = "open" | "kept" | "dropped";
+
+export type Task = {
+  id: string;
+  title: string;
+  detail: string | null;
+  due_on: string | null;
+  priority: Priority;
+  status: TaskStatus;
+  owner: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TaskList = {
+  items: Task[];
+};
+
+export type TaskWrite = {
+  title: string;
+  detail: string | null;
+  due_on: string | null;
+  priority: Priority;
+  status: TaskStatus;
+};
+
+export type Commitment = {
+  id: string;
+  title: string;
+  detail: string | null;
+  due_on: string | null;
+  status: CommitmentStatus;
+  owner: string;
+  source: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommitmentList = {
+  items: Commitment[];
+};
+
+export type CommitmentWrite = {
+  title: string;
+  detail: string | null;
+  due_on: string | null;
+  status: CommitmentStatus;
+};
+
+export type SystemState = {
+  paused: boolean;
+  activity: string;
+  status_text: string;
+  house_date: string;
+  updated_at: string;
+  greeting: string;
+  greeting_reason: string;
+  arrived_at: string | null;
+  debounce_until: string | null;
+};
+
+export type HouseFacts = {
+  timezone: string;
+  assistant: "on" | "off";
+  runs_left_today: number;
+  diary: "configured" | "not configured";
+  weather_location: "configured" | "not configured";
+  tfl: "configured" | "not configured";
+  banto: "configured" | "not configured";
+};
+
+export type FeedResult = {
+  reply?: string | null;
+  proposals?: unknown[];
+};
+
+export type AgentDue = {
+  trigger: string;
+  window_key: string;
+  label?: string;
+};

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { listTasks } from "../../api/tasks.js";
+import { listTasks } from "../../api/tasks";
 import { useHouse } from "../../house/HouseContext.jsx";
-import { taskMeta } from "../../lib/labels.js";
+import { taskMeta } from "../../lib/labels";
 import { TaskEditor } from "./TaskEditor.jsx";
 import { TaskRow } from "./TaskRow.jsx";
 
@@ -18,7 +18,7 @@ export function TodayList() {
 
   useEffect(() => {
     let cancelled = false;
-    listTasks({ scope: "today", limit: 5 })
+    listTasks({ scope: "today", limit: 200 })
       .then((data) => {
         if (!cancelled) {
           setItems(data.items);
@@ -47,6 +47,7 @@ export function TodayList() {
       )}
       {items === null && !error && <p className="empty">Checking the day…</p>}
       {items?.length === 0 && <p className="empty">Nothing due today.</p>}
+      {items?.length === 200 && <p className="meta">Showing the first 200.</p>}
       {items && items.length > 0 && (
         <ul className="item-list today-list">
           {items.map((task) => (
