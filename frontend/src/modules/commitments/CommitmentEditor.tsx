@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { getCommitment, updateCommitment } from "../../api/commitments";
 import type { CommitmentStatus, CommitmentWrite } from "../../api/types";
-import { cx, dialog, errorText, fieldInput, fieldLabel, ghost, heading, lede, primary } from "../../arrival/ui";
+import { cx, dialog, dialogActions, errorText, fieldHint, fieldInput, fieldLabel, fieldStack, ghost, heading, kickerMuted, lede, primary } from "../../arrival/ui";
 import { DatePassedNote } from "../../components/DatePassedNote";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouse } from "../../house/HouseContext";
 import { useHouseDialog } from "../../lib/dialog";
 import { COMMITMENT_STATUS_LABELS } from "../../lib/labels";
@@ -111,7 +112,7 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
 
   return (
     <dialog ref={dialogRef} className={cx(dialog, "house-dialog")} aria-labelledby={headingId}>
-      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Commitment</p>
+      <p className={kickerMuted}>Commitment</p>
       <h2 id={headingId} className={cx(heading, "mt-1")}>
         Edit commitment
       </h2>
@@ -121,14 +122,14 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
           <p className={errorText} role="alert">
             {loadError.message}
           </p>
-          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+          <div className={dialogActions}>
             <button type="button" className={ghost} onClick={requestClose}>
               Dismiss
             </button>
           </div>
         </>
       )}
-      {!form && !loadError && <p className="text-[0.9rem] text-[var(--muted)]">Opening the commitment…</p>}
+      {!form && !loadError && <LoadingSkeleton label="Opening the commitment…" />}
       {form && (
         <form
           onSubmit={(event) => {
@@ -141,7 +142,7 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               {error.message}
             </p>
           )}
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={titleFieldId}>
+          <label className={fieldStack} htmlFor={titleFieldId}>
             <span className={fieldLabel}>Title</span>
             <input
               ref={titleRef}
@@ -156,11 +157,11 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               onChange={(event) => update("title", event.target.value)}
             />
           </label>
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={detailFieldId}>
+          <label className={fieldStack} htmlFor={detailFieldId}>
             <span className={fieldLabel}>Detail</span>
             <textarea
               id={detailFieldId}
-              className={cx(fieldInput, "min-h-[4.5rem] resize-y py-2")}
+              className={cx(fieldInput, "min-h-[72px] resize-y py-2")}
               rows={3}
               value={form.detail}
               maxLength={4000}
@@ -168,20 +169,20 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               onChange={(event) => update("detail", event.target.value)}
             />
           </label>
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={dueFieldId}>
+          <label className={fieldStack} htmlFor={dueFieldId}>
             <span className={fieldLabel}>Due</span>
             <input
               id={dueFieldId}
-              className={fieldInput}
+              className={cx(fieldInput, "font-mono tabular-nums")}
               type="date"
               value={form.due_on}
               disabled={busy}
               onChange={(event) => update("due_on", event.target.value)}
             />
-            <span className="text-[0.78rem] font-normal normal-case tracking-normal text-[var(--muted)]">Leave blank if there is no date.</span>
+            <span className={fieldHint}>Leave blank if there is no date.</span>
             <DatePassedNote dueOn={form.due_on} houseDate={system?.house_date} />
           </label>
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={statusFieldId}>
+          <label className={fieldStack} htmlFor={statusFieldId}>
             <span className={fieldLabel}>Status</span>
             <select
               id={statusFieldId}
@@ -197,7 +198,7 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               ))}
             </select>
           </label>
-          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+          <div className={dialogActions}>
             <button type="button" className={primary} disabled={busy || alreadyKept} onClick={() => void save("kept")}>
               {alreadyKept ? "Kept" : "Mark kept"}
             </button>

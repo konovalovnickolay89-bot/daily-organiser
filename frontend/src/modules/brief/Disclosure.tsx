@@ -29,7 +29,7 @@ export function Disclosure({ startOpen = false, className, summary, children }: 
 
 export function Chevron() {
   return (
-    <span className="mt-1 text-[0.78rem] text-[var(--muted)]" aria-hidden="true">
+    <span className="text-xs text-[var(--muted)]" aria-hidden="true">
       <span className="group-open:hidden">▸</span>
       <span className="hidden group-open:inline">▾</span>
     </span>

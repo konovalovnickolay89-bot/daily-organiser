@@ -6,7 +6,8 @@ import { MemoryScreen } from "../modules/memory/MemoryScreen";
 import { StatusPanel } from "../modules/status/StatusPanel";
 import { XSettings } from "../modules/x/XSettings";
 import { asError } from "../lib/errors";
-import { cx, card, errorText, fieldInput, ghost, heading, lede } from "./ui";
+import { SectionHeader } from "./SectionHeader";
+import { cx, card, errorText, fieldInput, ghost, kickerMuted, lede } from "./ui";
 
 const OPTIONS = [
   ["auto", "House clock"],
@@ -85,7 +86,7 @@ function CalendarEditor({ diary }: { diary?: HouseFacts["diary"] }) {
       {calendars?.items && calendars.items.length > 0 && (
         <ul className="m-0 mt-2 list-none p-0">
           {calendars.items.map((item) => (
-            <li key={item.id ?? item.name} className="flex min-h-11 items-center justify-between gap-3">
+            <li key={item.id ?? item.name} className="flex min-h-11 items-center justify-between gap-4">
               <span>{item.name}</span>
               {item.id && (
                 <button type="button" className={ghost} disabled={busy} onClick={() => void remove(item.id as string)}>
@@ -96,7 +97,7 @@ function CalendarEditor({ diary }: { diary?: HouseFacts["diary"] }) {
           ))}
         </ul>
       )}
-      <form className="mt-3 flex gap-2" onSubmit={(event) => void add(event)}>
+      <form className="mt-4 flex gap-2" onSubmit={(event) => void add(event)}>
         <label className="sr-only" htmlFor="calendar-name">
           Calendar name
         </label>
@@ -172,19 +173,18 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
   ];
 
   return (
-    <section className={cx(card, "theme-card mt-11 max-w-[34rem]")} aria-labelledby="settings-title" data-panel="settings">
-      <h2 id="settings-title" className={heading}>
-        Settings
-      </h2>
-      <p className={lede}>
-        Colour only. The greeting still comes from the house. Nothing on this card shows a location, a calendar id, or a token.
-      </p>
-      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Theme</p>
-      <div className="mt-1 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Theme">
+    <section className={cx(card, "theme-card mt-10 max-w-[34rem]")} aria-labelledby="settings-title" data-panel="settings">
+      <SectionHeader
+        id="settings-title"
+        title="Settings"
+        note="Colour only. The greeting still comes from the house. Nothing on this card shows a location, a calendar id, or a token."
+      />
+      <p className={kickerMuted}>Theme</p>
+      <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Theme">
         {OPTIONS.map(([value, label]) => (
           <label
             key={value}
-            className="relative inline-flex min-h-11 cursor-pointer items-center rounded-house border border-[var(--line)] px-4 text-[0.92rem] font-semibold has-[:checked]:border-transparent has-[:checked]:bg-accent has-[:checked]:text-[#1b140c] focus-within:outline focus-within:outline-2 focus-within:outline-offset-[3px] focus-within:outline-accent-ink"
+            className="relative inline-flex min-h-11 cursor-pointer items-center rounded-house border border-[var(--line)] px-4 text-sm font-semibold has-[:checked]:border-transparent has-[:checked]:bg-accent has-[:checked]:text-[#1b140c] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-ink"
           >
             <input
               className="absolute inset-0 m-0 cursor-pointer opacity-0"
@@ -198,14 +198,14 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
           </label>
         ))}
       </div>
-      <p className="mb-2 mt-6 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">House</p>
+      <p className={cx(kickerMuted, "mb-2 mt-8")}>House</p>
       {error && (
         <p className={errorText} role="alert">
           {error.message}
         </p>
       )}
       <div className="my-1 flex min-h-11 items-center justify-between gap-4">
-        <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center gap-3">
+        <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center gap-4">
           <input
             className="h-6 w-6 accent-accent"
             type="checkbox"
@@ -217,24 +217,30 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
           />
           Assistant
         </label>
-        <span className={facts?.assistant === "on" ? "font-semibold text-success" : undefined}>{assistantLabel(facts?.assistant)}</span>
+        <span className={cx("font-mono tabular-nums", facts?.assistant === "on" && "font-semibold text-success")}>{assistantLabel(facts?.assistant)}</span>
       </div>
       {facts?.assistant_switch === "on" && facts?.assistant === "off" && (
         <p className={lede}>A key is not set, so the assistant stays off.</p>
       )}
       <dl className="m-0 mt-1 p-0">
         {rows.map(([label, value]) => (
-          <div key={label} className="fact-row m-0 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-[var(--line)] py-2">
-            <dt className="min-w-0 text-[0.95rem] font-normal text-[var(--muted)]">{label}</dt>
-            <dd className={cx("m-0 min-w-0 text-right text-[0.95rem] font-semibold text-[var(--ink)]", value === "Configured" && "text-success")}>
+          <div key={label} className="fact-row m-0 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-t border-[var(--line)] py-2">
+            <dt className="min-w-0 text-base font-normal text-[var(--muted)]">{label}</dt>
+            <dd
+              className={cx(
+                "m-0 min-w-0 text-right text-base font-semibold text-[var(--ink)]",
+                value === "Configured" && "text-success",
+                (label === "Runs left today" || label === "Timezone") && "font-mono tabular-nums",
+              )}
+            >
               {value}
             </dd>
           </div>
         ))}
       </dl>
-      <p className="mb-2 mt-6 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Diary</p>
+      <p className={cx(kickerMuted, "mb-2 mt-8")}>Diary</p>
       <CalendarEditor diary={facts?.diary} />
-      <p className="mb-0 mt-2 text-[0.95rem] leading-normal text-[var(--muted)]">
+      <p className="mb-0 mt-2 text-base leading-normal text-[var(--muted)]">
         The diary is read-only. A Wembley shift means Wembley Park, starting from home. Shopping is names and ticks only. The journey
         source is not connected.
       </p>

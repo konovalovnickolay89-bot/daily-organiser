@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { applyXItem, dismissXItem, listXItems, pollX, postXDraft, type XCard } from "../../api/x";
-import { cx, dialog, errorText, ghost, heading, lede, primary } from "../../arrival/ui";
+import { actions, cx, dialog, empty, errorText, ghost, heading, inset, kickerAccent, lede, meta, primary, subheading } from "../../arrival/ui";
 import { useHouseTick } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 import { useHouseDialog } from "../../lib/dialog";
@@ -37,13 +37,13 @@ function ConfirmPost({
         Post this to X?
       </h2>
       <p className={lede}>{summary}</p>
-      <p className="m-0 text-[0.95rem] text-[var(--muted)]">Nothing is posted until you confirm.</p>
+      <p className={empty}>Nothing is posted until you confirm.</p>
       {error && (
         <p className={errorText} role="alert">
           {error}
         </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={actions}>
         <button type="button" className={primary} disabled={busy} onClick={onPost}>
           Post
         </button>
@@ -128,26 +128,20 @@ export function XCards() {
   }
 
   return (
-    <section className="mt-6" aria-label="From X" data-module="x-cards">
-      {notice && <p className="mb-3 text-[0.9rem] text-[var(--muted)]">{notice}</p>}
+    <section className="mt-8" aria-label="From X" data-module="x-cards">
+      {notice && <p className={cx(empty, "mb-4")}>{notice}</p>}
       {error && (
         <p className={errorText} role="alert">
           {error}
         </p>
       )}
-      <ul className="m-0 grid list-none gap-3 p-0">
+      <ul className="m-0 grid list-none gap-4 p-0">
         {waiting.map((item) => (
-          <li
-            key={item.id}
-            className="w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4"
-            data-x-kind={item.kind}
-          >
-            <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">{LABEL[item.kind]}</p>
-            <h3 className="serif m-0 text-[1.2rem] font-medium leading-[1.25] tracking-[-0.02em] text-[var(--ink)] [overflow-wrap:anywhere]">
-              {item.summary}
-            </h3>
-            {item.detail && <p className="mt-2 text-[0.9rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">{item.detail}</p>}
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
+          <li key={item.id} className={inset} data-x-kind={item.kind}>
+            <p className={cx(kickerAccent, "mb-2")}>{LABEL[item.kind]}</p>
+            <h3 className={subheading}>{item.summary}</h3>
+            {item.detail && <p className={cx(meta, "mt-2 [overflow-wrap:anywhere]")}>{item.detail}</p>}
+            <div className={actions}>
               {item.kind === "draft" ? (
                 <button
                   type="button"

@@ -39,9 +39,17 @@ export default {
       fontFamily: {
         sans: ["Inter", '"Avenir Next"', '"Segoe UI"', '"Helvetica Neue"', "sans-serif"],
         serif: ["Newsreader", '"Iowan Old Style"', "Palatino", "Georgia", '"Liberation Serif"', "serif"],
+        mono: ["var(--mono)"],
       },
       borderRadius: {
-        house: "12px",
+        house: "var(--radius)",
+      },
+      spacing: {
+        /* 72px, nine steps of the 8px grid. Stage inset on a wide screen. */
+        18: "72px",
+      },
+      width: {
+        rail: "var(--rail)",
       },
     },
   },

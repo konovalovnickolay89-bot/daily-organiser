@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { addShoppingItem, tickShoppingItem, untickShoppingItem } from "../../api/shopping";
-import { errorText, fieldInput, primary } from "../../arrival/ui";
+import { cx, errorText, fieldInput, primary } from "../../arrival/ui";
+import { EmptyState } from "../../components/EmptyState";
 import { useHouse } from "../../house/HouseContext";
 import { Chevron, Disclosure } from "./Disclosure";
 import { ShopLine } from "./ShopLine";
@@ -56,13 +57,18 @@ export function ShoppingList({ section }: { section: ShoppingSection }) {
 
   return (
     <Disclosure
-      className="border-t border-[var(--line)] py-3.5 pb-2.5"
+      className="border-t border-[var(--line)] py-4"
       startOpen
       summary={
         <span className="flex min-h-11 flex-wrap items-baseline gap-2">
           <Chevron />
           <span className="font-semibold tracking-[-0.011em] text-[var(--ink)]">Shopping</span>
-          <span className="ml-auto text-right text-[0.84rem] font-normal text-[var(--muted)] max-[720px]:ml-[18px] max-[720px]:basis-full max-[720px]:text-left">
+          <span
+            className={cx(
+              "ml-auto text-right text-sm font-normal text-[var(--muted)] max-[720px]:ml-4 max-[720px]:basis-full max-[720px]:text-left",
+              /\d/.test(section.summary) && "font-mono tabular-nums",
+            )}
+          >
             {section.summary}
           </span>
         </span>
@@ -74,17 +80,17 @@ export function ShoppingList({ section }: { section: ShoppingSection }) {
         </p>
       )}
       {section.items.length === 0 ? (
-        <p className="text-[0.9rem] text-[var(--muted)]">Shopping list is empty.</p>
+        <EmptyState>Shopping list is empty.</EmptyState>
       ) : (
         <ul className="m-0 mt-2 list-none p-0">
           {section.items.map((item) => (
-            <li key={item.id ?? item.title} className="py-0.5">
+            <li key={item.id ?? item.title}>
               <ShopLine name={item.title} ticked={Boolean(item.ticked)} busy={busy} onToggle={() => void toggle(item)} />
             </li>
           ))}
         </ul>
       )}
-      <form className="mt-3 flex gap-2" onSubmit={(event) => void add(event)}>
+      <form className="mt-4 flex gap-2" onSubmit={(event) => void add(event)}>
         <label className="sr-only" htmlFor="shop-add">
           Add a shop item
         </label>

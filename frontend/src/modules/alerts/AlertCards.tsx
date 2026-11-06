@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { dismissAlert, listAlerts, type HouseAlert } from "../../api/alerts";
-import { card, errorText, ghost, lede } from "../../arrival/ui";
+import { SectionHeader } from "../../arrival/SectionHeader";
+import { card, errorText, ghost } from "../../arrival/ui";
 import { useHouseTick } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 
@@ -47,7 +48,7 @@ export function AlertCards() {
   if (items.length === 0 && !error) return null;
 
   return (
-    <div className="mt-6 grid gap-3" data-module="alerts">
+    <div className="mt-8 grid gap-4" data-module="alerts">
       {error && (
         <p className={errorText} role="alert">
           {error.message}
@@ -55,10 +56,7 @@ export function AlertCards() {
       )}
       {items.map((item) => (
         <section key={item.kind} className={card} data-kind="alert" data-alert={item.kind} aria-labelledby={`alert-${item.kind}`}>
-          <h2 id={`alert-${item.kind}`} className="serif m-0 text-[1.45rem] font-medium leading-tight text-[var(--ink)]">
-            {item.title}
-          </h2>
-          <p className={lede}>{item.detail}</p>
+          <SectionHeader id={`alert-${item.kind}`} title={item.title} note={item.detail} />
           <button
             type="button"
             className={ghost}

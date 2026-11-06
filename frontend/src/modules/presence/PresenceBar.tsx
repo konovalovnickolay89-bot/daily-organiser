@@ -31,14 +31,19 @@ export function PresenceBar() {
       data-greeting-reason={system?.greeting_reason ?? ""}
       aria-busy={busy ? "true" : "false"}
     >
-      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-cream-dim">
+      <p className="m-0 text-xs font-medium uppercase tracking-[0.16em] text-cream-dim">
         Home
-        {dateLabel && <span className="text-[0.92rem] font-normal normal-case tracking-[0.01em]"> · {dateLabel}</span>}
+        {dateLabel && (
+          <time className="font-mono text-sm font-normal normal-case tabular-nums tracking-normal" dateTime={system?.house_date ?? undefined} data-token="mono">
+            {" · "}
+            {dateLabel}
+          </time>
+        )}
       </p>
-      <h1 className="greeting m-0 mt-2.5">{system?.greeting ?? ""}</h1>
-      <div className="mt-[26px] flex max-w-full min-w-0 flex-row flex-wrap items-center justify-start gap-x-4 gap-y-3">
-        <p className={cx("m-0 inline-flex min-w-0 items-center gap-2 text-[0.95rem] font-medium tracking-[-0.011em]", statusColour)} role="status" aria-live="polite">
-          <span className={cx("h-[0.48rem] w-[0.48rem] shrink-0 rounded-full", markColour)} aria-hidden="true" />
+      <h1 className="greeting m-0 mt-4">{system?.greeting ?? ""}</h1>
+      <div className="mt-6 flex max-w-full min-w-0 flex-row flex-wrap items-center justify-start gap-4">
+        <p className={cx("m-0 inline-flex min-w-0 items-center gap-2 text-base font-medium tracking-[-0.011em]", statusColour)} role="status" aria-live="polite">
+          <span className={cx("h-2 w-2 shrink-0 rounded-full", markColour)} aria-hidden="true" />
           <span className="[overflow-wrap:anywhere]">{statusLine}</span>
         </p>
         <button
@@ -53,7 +58,7 @@ export function PresenceBar() {
         </button>
       </div>
       {note && (
-        <p className={cx("mt-3 max-w-[36rem] text-left text-[0.9rem]", paused ? "text-accent" : "text-cream-dim")}>{note}</p>
+        <p className={cx("mt-4 max-w-[36rem] text-left text-sm", paused ? "text-accent" : "text-cream-dim")}>{note}</p>
       )}
     </header>
   );

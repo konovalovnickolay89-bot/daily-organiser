@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { cx, fieldInput, heading, lede, primary } from "../../arrival/ui";
+import { SectionHeader } from "../../arrival/SectionHeader";
+import { cx, empty, errorText, fieldInput, primary } from "../../arrival/ui";
 import { useView } from "../../arrival/view";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useAssistant } from "./AssistantContext";
@@ -25,36 +26,29 @@ export function AssistantPane() {
   const restingEmpty = showForm && !paused && proposals.length === 0;
 
   return (
-    <section
-      className="assistant mt-7 min-w-0 max-w-full border-t border-[var(--line)] pt-[26px]"
-      aria-labelledby="assistant-title"
-      data-module="assistant"
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="assistant-title" className={heading}>
-          Proposed changes
-        </h2>
-        {showForm && !paused && inline && (
-          <p className={cx("m-0 whitespace-nowrap text-[0.82rem] font-medium", proposals.length > 0 ? "font-semibold text-accent-ink" : "text-[var(--muted)]")}>
-            {waitingLabel(proposals.length)}
-          </p>
-        )}
-      </div>
-      <p className={cx(lede, restingEmpty && inline && "text-[0.98rem] text-[var(--ink)]")}>
-        {inline
-          ? restingEmpty
-            ? "Write a line for the log. Cards appear here."
-            : "Apply makes that one change in the house log. Nothing is sent, bought, or booked."
-          : "Write a line for the log. Cards appear on the right."}
-      </p>
+    <section className="assistant min-w-0 max-w-full" aria-labelledby="assistant-title" data-module="assistant">
+      <SectionHeader
+        id="assistant-title"
+        title="Proposed changes"
+        divided
+        meta={showForm && !paused && inline ? waitingLabel(proposals.length) : undefined}
+        metaClassName={proposals.length > 0 ? "font-semibold text-accent-ink" : undefined}
+        note={
+          inline
+            ? restingEmpty
+              ? "Write a line for the log. Cards appear here."
+              : "Apply makes that one change in the house log. Nothing is sent, bought, or booked."
+            : "Write a line for the log. Cards appear on the right."
+        }
+      />
       {state === null && !error && <LoadingSkeleton label="Checking the assistant…" />}
-      {state && !enabled && <p className="text-[0.9rem] text-[var(--muted)]">The assistant is off.</p>}
-      {state && enabled && !reachable && <p className="text-[0.9rem] text-[var(--muted)]">The assistant is down.</p>}
+      {state && !enabled && <p className={empty}>The assistant is off.</p>}
+      {state && enabled && !reachable && <p className={empty}>The assistant is down.</p>}
       {showForm && (
         <form
           className={cx(
-            "mb-3 flex min-w-0 max-w-full gap-2",
-            proposals.length > 0 && "max-[720px]:sticky max-[720px]:top-[60px] max-[720px]:z-[2] max-[720px]:-mx-2 max-[720px]:bg-card max-[720px]:p-2",
+            "mb-4 flex min-w-0 max-w-full gap-2",
+            proposals.length > 0 && "max-[720px]:sticky max-[720px]:top-16 max-[720px]:z-[2] max-[720px]:-mx-2 max-[720px]:bg-card max-[720px]:p-2",
           )}
           onSubmit={(event) => void submit(event)}
         >
@@ -86,11 +80,11 @@ export function AssistantPane() {
         </form>
       )}
       {showForm && voiceError && (
-        <p className="mb-3 text-[var(--danger)]" role="alert">
+        <p className={errorText} role="alert">
           {voiceError}
         </p>
       )}
-      {paused && <p className="mb-2.5 text-left text-[var(--muted)]">Paused. Nothing goes to the assistant.</p>}
+      {paused && <p className="mb-2 text-left text-sm text-[var(--muted)]">Paused. Nothing goes to the assistant.</p>}
       {inline && <AssistantResult heading={false} />}
     </section>
   );

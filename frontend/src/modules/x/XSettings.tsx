@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { addXWatch, disconnectX, getXStatus, removeXWatch, startXConnect, type XStatus } from "../../api/x";
-import { cx, dialog, errorText, fieldInput, ghost, heading, lede, primary } from "../../arrival/ui";
+import { actions, cx, dialog, errorText, fieldInput, ghost, heading, kickerMuted, lede, primary, subheading } from "../../arrival/ui";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouseTick } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 import { useHouseDialog } from "../../lib/dialog";
@@ -18,7 +19,7 @@ function DisconnectDialog({ busy, error, onDisconnect, onClose }: { busy: boolea
           {error}
         </p>
       )}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={actions}>
         <button type="button" className={primary} disabled={busy} onClick={onDisconnect}>
           Disconnect
         </button>
@@ -124,11 +125,11 @@ export function XSettings() {
   }
 
   return (
-    <section className="mt-6" aria-labelledby="x-settings-title" data-panel="x-settings">
-      <h3 id="x-settings-title" className="serif m-0 text-[1.35rem] font-medium leading-tight tracking-[-0.02em] text-[var(--ink)]">
+    <section className="mt-8" aria-labelledby="x-settings-title" data-panel="x-settings">
+      <h3 id="x-settings-title" className={subheading}>
         X
       </h3>
-      {!status && !error && <p className={lede}>Checking X…</p>}
+      {!status && !error && <LoadingSkeleton label="Checking X…" />}
       {status && !status.enabled && <p className={lede}>X is off.</p>}
       {status?.enabled && !status.configured && <p className={lede}>X is not configured.</p>}
       {status?.enabled && status.configured && !status.connected && (
@@ -140,8 +141,10 @@ export function XSettings() {
         </div>
       )}
       {status?.connected && (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <p className="m-0 text-[0.95rem] font-semibold text-[var(--ink)]">Connected as @{status.username}</p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
+          <p className="m-0 text-base font-semibold text-[var(--ink)]">
+            Connected as <span className="font-mono tabular-nums">@{status.username}</span>
+          </p>
           <button type="button" className={ghost} disabled={busy} onClick={() => setConfirming(true)}>
             Disconnect
           </button>
@@ -155,15 +158,13 @@ export function XSettings() {
         </p>
       )}
       {status?.enabled && (
-        <form className="mt-3" onSubmit={(event) => void add(event)}>
-          <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Watch list</p>
+        <form className="mt-4" onSubmit={(event) => void add(event)}>
+          <p className={cx(kickerMuted, "mb-2")}>Watch list</p>
           {status.watches.length > 0 && (
             <ul className="m-0 mb-2 list-none p-0">
               {status.watches.map((item) => (
-                <li key={item.id} className="flex min-h-11 items-center justify-between gap-3">
-                  <span>
-                    {item.kind === "account" ? `@${item.value}` : item.value}
-                  </span>
+                <li key={item.id} className="flex min-h-11 items-center justify-between gap-4">
+                  <span className="font-mono tabular-nums">{item.kind === "account" ? `@${item.value}` : item.value}</span>
                   <button type="button" className={ghost} disabled={busy} onClick={() => void remove(item.id)}>
                     Remove
                   </button>

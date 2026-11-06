@@ -29,16 +29,16 @@ export function QuietSuggestion() {
   const quiet = track.offline && !track.title;
   return (
     <aside
-      className="quiet-suggestion serif mt-7 max-w-[22rem] text-left text-[0.95rem] font-normal leading-[1.35] text-cream-dim"
+      className="quiet-suggestion serif mt-8 max-w-[22rem] text-left text-base font-normal leading-snug text-cream-dim"
       data-module="quiet-media"
       aria-label="Later"
     >
-      <p className="mb-1 font-sans text-[0.68rem] font-medium uppercase not-italic tracking-[0.16em] text-cream-dim">Later</p>
+      <p className="mb-2 font-sans text-xs font-medium uppercase not-italic tracking-[0.16em] text-cream-dim">Later</p>
       {quiet || !track.permalink_url ? (
         <p className="m-0 italic">The playlist is quiet right now.</p>
       ) : (
         <a
-          className="calm mt-1 flex min-h-11 items-center gap-3 text-inherit no-underline"
+          className="calm mt-2 flex min-h-11 items-center gap-4 text-inherit no-underline"
           href={track.permalink_url}
           target="_blank"
           rel="noopener noreferrer"
@@ -55,7 +55,7 @@ export function QuietSuggestion() {
           )}
           <span className="min-w-0">
             <span className="block truncate font-medium not-italic text-cream">{track.title}</span>
-            {track.genre && <span className="block truncate text-[0.85rem] italic text-cream-dim">{track.genre}</span>}
+            {track.genre && <span className="block truncate text-sm italic text-cream-dim">{track.genre}</span>}
           </span>
         </a>
       )}
