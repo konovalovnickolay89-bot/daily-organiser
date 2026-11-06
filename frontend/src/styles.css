@@ -10,10 +10,13 @@ html {
   --card: #eddcc6;
   --ink-card: #1a1613;
   --muted-card: #655d54;
-  /* Hairline on the near-black canvas: 1px cream, barely there. */
-  --line-canvas: rgba(243, 230, 212, 0.07);
-  /* The same weight, in ink, for rules and fields on a cream card. */
-  --line-card: rgba(26, 22, 19, 0.08);
+  /* Quiet rules and the rail. Frames use the tube, not this line. */
+  --line-canvas: rgba(243, 230, 212, 0.16);
+  --line-card: rgba(26, 22, 19, 0.14);
+  /* Warm rim. Light along the top, brass through the middle, shade underneath. */
+  --tube-light: #f8ead8;
+  --tube-mid: #d39a4e;
+  --tube-deep: #6b3f14;
   --accent: #d39a4e;
   --accent-deep: #b8833d;
   /* #7a4e17 on card #eddcc6 is 5.34:1. */
@@ -36,10 +39,10 @@ html {
   --sans: "Inter", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   /* Numbers, codes, and times. One stack, used as font-mono. */
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  /* Cards and dialogs. */
-  --radius: 20px;
+  /* Cards and dialogs. Round enough to read as a tube, not a ticket. */
+  --radius: 32px;
   /* Inner panels and inputs. */
-  --radius-inset: 16px;
+  --radius-inset: 24px;
   /* Pills. Fully round. */
   --radius-pill: 999px;
   /* Icon buttons on the rail keep their corner. */
@@ -55,8 +58,11 @@ html[data-theme="morning"] {
   --card: #fffaf3;
   --ink-card: #1c1915;
   --muted-card: #6a6158;
-  --line-canvas: rgba(255, 250, 243, 0.08);
-  --line-card: rgba(28, 25, 21, 0.08);
+  --line-canvas: rgba(255, 250, 243, 0.18);
+  --line-card: rgba(28, 25, 21, 0.12);
+  --tube-light: #fff6ea;
+  --tube-mid: #e2b15a;
+  --tube-deep: #7a4e17;
   --accent: #f0c27a;
   --accent-deep: #d4a45c;
   /* #8f621f on card #fffaf3 is 5.14:1. */
@@ -115,7 +121,60 @@ textarea {
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline-offset: 5px;
+}
+
+/* A brass tube. Highlight on the top lip, shade on the bottom, warm metal between. */
+.tube {
+  border: 3px solid var(--tube-mid);
+  background: var(--card);
+  box-shadow:
+    inset 0 1px 0 var(--tube-light),
+    inset 0 -2px 0 var(--tube-deep),
+    0 1px 0 rgba(248, 234, 216, 0.45),
+    0 3px 0 rgba(74, 42, 16, 0.4),
+    var(--card-shadow);
+}
+
+.tube-inset,
+.tube-line {
+  border: 2px solid var(--tube-mid);
+  box-shadow:
+    inset 0 1px 0 var(--tube-light),
+    inset 0 -1px 0 var(--tube-deep),
+    0 1px 0 rgba(74, 42, 16, 0.18);
+}
+
+.tube-inset {
+  background: var(--card);
+}
+
+.tube-note {
+  background: var(--note);
+}
+
+.tube-well {
+  border: 2px solid var(--tube-mid);
+  background: var(--sunken);
+  box-shadow:
+    inset 0 2px 4px rgba(62, 36, 14, 0.18),
+    inset 0 -1px 0 rgba(255, 248, 236, 0.35),
+    0 1px 0 rgba(255, 248, 236, 0.4);
+}
+
+.tube-line:has(:checked),
+.tube-line[aria-pressed="true"] {
+  border-color: var(--tube-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 224, 0.75),
+    inset 0 -2px 0 rgba(80, 42, 12, 0.4);
+}
+
+.tube-cap {
+  border: 2px solid var(--tube-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 224, 0.8),
+    inset 0 -2px 0 rgba(80, 42, 12, 0.45);
 }
 
 /* Cream cards flip ink. Utilities read var(--ink) and the rest. */

@@ -37,11 +37,45 @@ test("the rail stays 76px and home keeps three columns on an 8px gap", async ({ 
   for (const value of [card.paddingTop, card.paddingRight, card.paddingBottom, card.paddingLeft]) {
     expect(Number.parseFloat(value) % 8).toBe(0);
   }
-  expect(card.radius).toBe("20px");
-  expect(card.border).toBe("1px");
-  expect(card.borderColor).toBe("rgba(243, 230, 212, 0.07)");
+  expect(card.paddingTop).toBe("48px");
+  expect(card.radius).toBe("32px");
+  expect(card.border).toBe("3px");
+  expect(card.borderColor).toBe("rgb(211, 154, 78)");
   const buttonRadius = await page.locator(".rail button").first().evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
   expect(buttonRadius).toBe("12px");
+});
+
+test("a narrow screen keeps the tube, the lighter padding, and no sideways scroll", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const card = await page.locator(".card").first().evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { padding: style.paddingTop, radius: style.borderTopLeftRadius, border: style.borderTopWidth };
+  });
+  expect(card.padding).toBe("32px");
+  expect(card.radius).toBe("32px");
+  expect(card.border).toBe("3px");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("keyboard focus stays visible outside the tube", async ({ page }) => {
+  await page.goto("/");
+  const pause = page.getByRole("button", { name: "Pause" });
+  for (let step = 0; step < 12; step += 1) {
+    if (await pause.evaluate((el) => el === document.activeElement)) break;
+    await page.keyboard.press("Tab");
+  }
+  await expect(pause).toBeFocused();
+  const ring = await pause.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { width: style.outlineWidth, offset: style.outlineOffset, color: style.outlineColor, style: style.outlineStyle };
+  });
+  expect(ring.style).toBe("solid");
+  expect(ring.width).toBe("2px");
+  expect(ring.offset).toBe("5px");
+  expect(ring.color).toBe("rgb(211, 154, 78)");
 });
 
 test("inner panels, inputs, and pills use their own radii", async ({ page }) => {
@@ -53,8 +87,10 @@ test("inner panels, inputs, and pills use their own radii", async ({ page }) => 
     const style = getComputedStyle(el);
     return { radius: style.borderTopLeftRadius, border: style.borderTopWidth };
   });
-  expect(panel.radius).toBe("16px");
-  expect(panel.border).toBe("0px");
+  expect(panel.radius).toBe("24px");
+  expect(panel.border).toBe("2px");
+  const panelPad = await proposal.evaluate((el) => getComputedStyle(el).paddingTop);
+  expect(panelPad).toBe("24px");
 
   const notNow = page.getByRole("button", { name: "Not now" }).first();
   const pillRadius = await notNow.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
@@ -71,8 +107,10 @@ test("inner panels, inputs, and pills use their own radii", async ({ page }) => 
     const style = getComputedStyle(el);
     return { radius: style.borderTopLeftRadius, border: style.borderTopWidth };
   });
-  expect(field.radius).toBe("16px");
-  expect(field.border).toBe("1px");
+  expect(field.radius).toBe("24px");
+  expect(field.border).toBe("2px");
+  const fieldPad = await search.evaluate((el) => getComputedStyle(el).paddingLeft);
+  expect(fieldPad).toBe("24px");
 });
 
 test("Proposed changes and Decisions share one header style", async ({ page }) => {

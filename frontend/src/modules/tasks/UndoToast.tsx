@@ -35,7 +35,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       {children}
       {offer && (
         <p
-          className="fixed bottom-6 left-1/2 z-40 m-0 flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-4 rounded-house border border-[var(--line-canvas)] bg-card bg-clip-padding px-4 py-4 text-ink-card shadow-[var(--card-shadow)]"
+          className="paper tube fixed bottom-6 left-1/2 z-40 m-0 flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-4 rounded-house px-6 py-4 text-[var(--ink)]"
           role="status"
         >
           <span>{offer.message}</span>
