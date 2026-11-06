@@ -3,7 +3,7 @@ import { getMorningBrief, type BriefSection as BriefSectionData, type MorningBri
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouse } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
-import { errorText, heading, lede } from "../../arrival/ui";
+import { cx, errorText, heading, lede, notice } from "../../arrival/ui";
 import { CommitmentEditor } from "../commitments/CommitmentEditor";
 import { TaskEditor } from "../tasks/TaskEditor";
 import { BriefSection } from "./BriefSection";
@@ -70,13 +70,17 @@ export function MorningBrief() {
         <Disclosure
           startOpen
           summary={
-            <span className="flex items-start gap-2.5">
+            <span className="flex items-start gap-2">
               <Chevron />
-              <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex min-w-0 flex-col gap-2">
                 <h2 id="brief-title" className={heading}>
                   Morning brief
                 </h2>
-                {line && <span className="font-sans text-[0.88rem] font-normal text-[var(--muted)] group-open:hidden">{line}</span>}
+                {line && (
+                  <span className={cx("text-sm font-normal text-[var(--muted)] group-open:hidden", /\d/.test(line) && "font-mono tabular-nums")}>
+                    {line}
+                  </span>
+                )}
               </span>
             </span>
           }
@@ -87,7 +91,7 @@ export function MorningBrief() {
               {error.message}
             </p>
           )}
-          {brief.note && <p className="mb-3 rounded-house bg-[var(--note)] px-3 py-2.5 text-[0.9rem] text-[var(--ink)]">{brief.note}</p>}
+          {brief.note && <p className={notice}>{brief.note}</p>}
           {(brief.sections ?? []).map((section) =>
             section.key === "shopping" ? (
               <ShoppingList key="shopping" section={section} />

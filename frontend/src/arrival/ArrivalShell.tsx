@@ -52,7 +52,7 @@ export function ArrivalShell() {
         <UndoProvider>
           <div className="shell flex min-h-screen items-stretch bg-canvas max-[720px]:flex-col" data-theme={theme} data-view={view}>
             <a
-              className="skip-link rounded-house bg-card px-3.5 py-2.5 text-ink-card no-underline"
+              className="skip-link rounded-house bg-card px-4 py-2 text-ink-card no-underline"
               href="#main"
             >
               Skip to content
@@ -60,14 +60,14 @@ export function ArrivalShell() {
             <Rail view={view} onView={setView} />
             <main
               id="main"
-              className="stage min-w-0 flex-1 pb-[72px] pl-8 pr-10 pt-10 outline-none min-[1100px]:pb-24 min-[1100px]:pl-12 min-[1100px]:pr-[72px] min-[1100px]:pt-[52px] max-[720px]:px-[18px] max-[720px]:pb-12 max-[720px]:pt-7"
+              className="stage min-w-0 flex-1 pb-18 pl-8 pr-10 pt-10 outline-none min-[1100px]:pb-24 min-[1100px]:pl-12 min-[1100px]:pr-18 min-[1100px]:pt-14 max-[720px]:px-4 max-[720px]:pb-12 max-[720px]:pt-6"
               tabIndex={-1}
             >
               <div className="max-w-[1280px]">
                 <PresenceBar />
                 <CatchUpStrip />
                 <AlertCards />
-                <div className="cards mt-11 grid items-start gap-[22px] [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(250px,0.92fr)] max-[980px]:grid-cols-1">
+                <div className="cards mt-10 grid items-start gap-6 [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(256px,0.92fr)] max-[980px]:grid-cols-1">
                   {PANELS.map((panel) => (
                     <div key={panel.id} className={`${card} ${panel.place}`} data-panel={panel.id}>
                       {modulesIn(panel.id).map((mod) => (

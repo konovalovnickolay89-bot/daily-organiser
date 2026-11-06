@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { exportMemory, forgetMemory, listMemory, pinMemory, type MemoryItem } from "../../api/memory";
-import { errorText, fieldInput, ghost, lede } from "../../arrival/ui";
+import { actions, errorText, fieldInput, ghost, inset, kickerAccent, lede, subheading } from "../../arrival/ui";
+import { EmptyState } from "../../components/EmptyState";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouseTick } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 
@@ -88,15 +90,15 @@ export function MemoryScreen() {
 
   const rows = items ?? [];
   return (
-    <section className="mt-6" aria-labelledby="memory-title" data-screen="memory">
-      <h3 id="memory-title" className="serif m-0 text-[1.35rem] font-medium leading-tight tracking-[-0.02em] text-[var(--ink)]">
+    <section className="mt-8" aria-labelledby="memory-title" data-screen="memory">
+      <h3 id="memory-title" className={subheading}>
         Memory
       </h3>
       <p className={lede}>
         Household notes. Write “remember …” or “forget …” in the box. Nothing is saved until Apply. Hilton, a guest, a colleague, an
         employer, or work stays out. A personal hotel booking can stay.
       </p>
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         <label className="min-w-0 flex-1">
           <span className="sr-only">Search memory</span>
           <input
@@ -122,23 +124,21 @@ export function MemoryScreen() {
           {error.message}
         </p>
       )}
-      {items === null && !error && <p className="text-[0.95rem] text-[var(--muted)]">Loading memory…</p>}
-      {items !== null && rows.length === 0 && (
-        <p className="text-[0.95rem] text-[var(--muted)]">{query.trim() ? "Nothing matches." : "Nothing is remembered yet."}</p>
-      )}
-      <ul className="m-0 grid list-none gap-3 p-0">
+      {items === null && !error && <LoadingSkeleton label="Loading memory…" />}
+      {items !== null && rows.length === 0 && <EmptyState>{query.trim() ? "Nothing matches." : "Nothing is remembered yet."}</EmptyState>}
+      <ul className="m-0 grid list-none gap-4 p-0">
         {rows.map((item) => {
           const confirming = confirmId === item.id;
           return (
-            <li key={item.id} className="rounded-house border border-[var(--line)] px-3 py-3" data-memory={item.id}>
-              <p className="m-0 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">
+            <li key={item.id} className={inset} data-memory={item.id}>
+              <p className={kickerAccent}>
                 {KIND_LABEL[item.kind] ?? item.kind}
                 {item.pinned ? " · Pinned" : ""}
               </p>
-              <p className="mb-2 mt-1 text-[1.02rem] font-semibold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">{item.text}</p>
+              <p className="mb-2 mt-2 text-base font-semibold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">{item.text}</p>
               {confirming ? (
-                <div className="flex flex-wrap gap-2">
-                  <p className="m-0 min-h-11 basis-full text-[0.95rem] text-[var(--muted)]">Forget this memory? It is removed from the house.</p>
+                <div className={actions}>
+                  <p className="m-0 min-h-11 basis-full text-base text-[var(--muted)]">Forget this memory? It is removed from the house.</p>
                   <button
                     type="button"
                     className={ghost}
@@ -152,7 +152,7 @@ export function MemoryScreen() {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className={actions}>
                   <button
                     type="button"
                     className={ghost}

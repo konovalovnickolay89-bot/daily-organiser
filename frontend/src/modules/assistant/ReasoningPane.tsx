@@ -31,9 +31,9 @@ export function ReasoningPane() {
   return (
     <section className="reasoning" aria-label="Assistant" data-module="reasoning">
       {lines.length > 0 && (
-        <ol className="m-0 mb-4 grid list-none gap-1.5 border-b border-[var(--line)] p-0 pb-3.5" aria-label="Recent activity">
+        <ol className="m-0 mb-4 grid list-none gap-2 border-b border-[var(--line)] p-0 pb-4" aria-label="Recent activity">
           {lines.map((line) => (
-            <li key={line.id} className="text-[0.92rem] leading-snug text-[var(--ink)]">
+            <li key={line.id} className="text-sm leading-snug text-[var(--ink)]">
               {line.text}
             </li>
           ))}

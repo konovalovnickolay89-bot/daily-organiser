@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { applyCatchUp, dismissCatchUp, recordLook } from "../../api/catchup";
 import type { CatchUpCard, CatchUpState } from "../../api/types";
-import { cx, ghost, heading, lede, notice, primary } from "../../arrival/ui";
+import { SectionHeader } from "../../arrival/SectionHeader";
+import { actions, card, cx, errorText, ghost, inset, kickerAccent, meta, notice, primary, subheading } from "../../arrival/ui";
 import { useHouse } from "../../house/HouseContext";
 import { catchUpFallbackMarker } from "../../lib/catchup";
 import { asError } from "../../lib/errors";
@@ -23,18 +24,18 @@ type CatchUpCardViewProps = {
 export function CatchUpCardView({ item, busy, onApply, onDismiss }: CatchUpCardViewProps) {
   const marker = item.fallback_used ? "Fallback used" : catchUpFallbackMarker(item.rule);
   return (
-    <li className="m-0 rounded-house border border-[var(--line)] bg-card px-3.5 pb-3 pt-3.5" data-rule={item.rule}>
-      <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">
+    <li className={cx(inset, "m-0")} data-rule={item.rule}>
+      <p className={cx(kickerAccent, "mb-2")}>
         {item.label}
         {marker && (
-          <span className="ml-2 normal-case tracking-normal" data-marker="fallback">
+          <span className="ml-2 font-mono normal-case tracking-normal" data-marker="fallback">
             {marker}
           </span>
         )}
       </p>
-      <h3 className="m-0 text-[0.98rem] font-semibold text-[var(--ink)] [overflow-wrap:anywhere]">{item.summary}</h3>
-      <p className="mt-0.5 text-[0.9rem] text-[var(--muted)]">{item.reason}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <h3 className={subheading}>{item.summary}</h3>
+      <p className={cx(meta, "mt-2")}>{item.reason}</p>
+      <div className={actions}>
         <button type="button" className={primary} disabled={busy} onClick={onApply}>
           Apply
         </button>
@@ -120,26 +121,25 @@ export function CatchUpStrip() {
   if (!items.length && !message) return null;
 
   return (
-    <section className="catch-up paper mt-10 rounded-house bg-card px-[30px] pb-[22px] pt-7 text-[var(--ink)] shadow-[var(--card-shadow)] max-[720px]:px-[18px] max-[720px]:pb-4 max-[720px]:pt-[22px]" aria-labelledby="catch-up-title" data-module="catch-up">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="catch-up-title" className={cx(heading, "text-[1.45rem]")}>
-          Catch up
-        </h2>
-        {items.length > 0 && <p className="m-0 whitespace-nowrap text-[0.82rem] font-medium text-[var(--muted)]">{waitingLabel(items.length)}</p>}
-      </div>
-      <p className={lede}>A few things that need a look. Apply adds one note. Nothing is sent.</p>
+    <section className={cx(card, "catch-up mt-10")} aria-labelledby="catch-up-title" data-module="catch-up">
+      <SectionHeader
+        id="catch-up-title"
+        title="Catch up"
+        note="A few things that need a look. Apply adds one note. Nothing is sent."
+        meta={items.length > 0 ? waitingLabel(items.length) : undefined}
+      />
       {message && (
         <p className={notice} role="status">
           {message}
         </p>
       )}
       {error && items.length > 0 && (
-        <p className="mb-3 text-[var(--danger)]" role="alert">
+        <p className={errorText} role="alert">
           {error.message}
         </p>
       )}
       {items.length > 0 && (
-        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 p-0">
+        <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(224px,1fr))] gap-4 p-0">
           {items.map((item) => (
             <CatchUpCardView
               key={item.id}

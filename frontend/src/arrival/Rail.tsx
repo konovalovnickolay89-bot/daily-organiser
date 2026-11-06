@@ -21,7 +21,7 @@ function Icon({ name }: { name: string }) {
     strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    className: "block h-[22px] w-[22px]",
+    className: "block h-6 w-6",
   };
 
   if (name === "home") {
@@ -77,7 +77,7 @@ function Icon({ name }: { name: string }) {
 export function Rail({ view, onView }: RailProps) {
   return (
     <nav
-      className="rail sticky top-0 z-[4] flex h-screen w-[76px] shrink-0 flex-col items-center gap-1.5 border-r border-[var(--line-canvas)] bg-canvas px-0 pb-4 pt-[18px] max-[720px]:h-auto max-[720px]:w-full max-[720px]:flex-row max-[720px]:justify-between max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:px-2.5 max-[720px]:py-2"
+      className="rail sticky top-0 z-[4] flex h-screen w-rail shrink-0 flex-col items-center gap-2 border-r border-[var(--line-canvas)] bg-canvas px-0 pb-4 pt-4 max-[720px]:h-auto max-[720px]:w-full max-[720px]:flex-row max-[720px]:justify-between max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:px-2 max-[720px]:py-2"
       aria-label="House"
     >
       {ITEMS.map((item) => (

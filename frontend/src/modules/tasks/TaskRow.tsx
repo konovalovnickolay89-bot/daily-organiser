@@ -1,3 +1,5 @@
+import { cx, meta as metaText, rowTitle } from "../../arrival/ui";
+
 type TaskRowProps = {
   title: string;
   meta?: string | null;
@@ -10,19 +12,19 @@ export function TaskRow({ title, meta, detail, onOpen }: TaskRowProps) {
   const label = meta ? `Open ${title}. ${meta}` : `Open ${title}`;
 
   return (
-    <li className="py-0.5">
+    <li>
       <button
         type="button"
-        className="calm flex min-h-11 w-full items-start justify-between gap-3 rounded-house border-0 bg-transparent px-3 py-2.5 text-left text-inherit hover:bg-[rgba(26,22,19,0.05)]"
+        className="calm flex min-h-11 w-full items-start justify-between gap-4 rounded-house border-0 bg-transparent px-2 py-2 text-left text-inherit hover:bg-[rgba(26,22,19,0.05)]"
         onClick={onOpen}
         aria-label={label}
       >
-        <span className="flex min-w-0 flex-col gap-px">
-          <span className="text-[0.98rem] font-semibold tracking-[-0.011em] text-[var(--ink)] [overflow-wrap:anywhere]">{title}</span>
-          {meta && <span className="text-[0.84rem] text-[var(--muted)]">{meta}</span>}
-          {detail && <span className="text-[0.9rem] text-[var(--muted)]">{detail}</span>}
+        <span className="flex min-w-0 flex-col gap-2">
+          <span className={rowTitle}>{title}</span>
+          {meta && <span className={cx(metaText, /\d/.test(meta) && "font-mono tabular-nums")}>{meta}</span>}
+          {detail && <span className={metaText}>{detail}</span>}
         </span>
-        <span className="mt-px shrink-0 text-[1.15rem] font-normal leading-none text-[var(--muted)] group-hover:text-accent-ink" aria-hidden="true">
+        <span className="shrink-0 text-base font-normal leading-none text-[var(--muted)] group-hover:text-accent-ink" aria-hidden="true">
           ›
         </span>
       </button>

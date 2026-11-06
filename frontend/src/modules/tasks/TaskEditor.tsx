@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createTask, deleteTask, getTask, updateTask } from "../../api/tasks";
 import type { Priority, TaskStatus, TaskWrite } from "../../api/types";
-import { cx, dialog, errorText, fieldInput, fieldLabel, ghost, heading, lede, primary } from "../../arrival/ui";
+import { cx, dialog, dialogActions, errorText, fieldHint, fieldInput, fieldLabel, fieldStack, ghost, heading, kickerMuted, lede, primary } from "../../arrival/ui";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { DatePassedNote } from "../../components/DatePassedNote";
 import { useHouse } from "../../house/HouseContext";
 import { useHouseDialog } from "../../lib/dialog";
@@ -146,7 +147,7 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
 
   return (
     <dialog ref={dialogRef} className={cx(dialog, "task-dialog")} aria-labelledby={headingId}>
-      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Task</p>
+      <p className={kickerMuted}>Task</p>
       <h2 id={headingId} className={cx(heading, "mt-1")}>
         Edit task
       </h2>
@@ -156,14 +157,14 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
           <p className={errorText} role="alert">
             {loadError.message}
           </p>
-          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+          <div className={dialogActions}>
             <button type="button" className={ghost} onClick={requestClose}>
               Dismiss
             </button>
           </div>
         </>
       )}
-      {!form && !loadError && <p className="text-[0.9rem] text-[var(--muted)]">Opening the task…</p>}
+      {!form && !loadError && <LoadingSkeleton label="Opening the task…" />}
       {form && (
         <form
           onSubmit={(event) => {
@@ -176,7 +177,7 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
               {error.message}
             </p>
           )}
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={titleFieldId}>
+          <label className={fieldStack} htmlFor={titleFieldId}>
             <span className={fieldLabel}>Title</span>
             <input
               ref={titleRef}
@@ -191,11 +192,11 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
               onChange={(event) => update("title", event.target.value)}
             />
           </label>
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={detailFieldId}>
+          <label className={fieldStack} htmlFor={detailFieldId}>
             <span className={fieldLabel}>Detail</span>
             <textarea
               id={detailFieldId}
-              className={cx(fieldInput, "min-h-[4.5rem] resize-y py-2")}
+              className={cx(fieldInput, "min-h-[72px] resize-y py-2")}
               rows={3}
               value={form.detail}
               maxLength={4000}
@@ -203,21 +204,21 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
               onChange={(event) => update("detail", event.target.value)}
             />
           </label>
-          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={dueFieldId}>
+          <label className={fieldStack} htmlFor={dueFieldId}>
             <span className={fieldLabel}>Due</span>
             <input
               id={dueFieldId}
-              className={fieldInput}
+              className={cx(fieldInput, "font-mono tabular-nums")}
               type="date"
               value={form.due_on}
               disabled={busy}
               onChange={(event) => update("due_on", event.target.value)}
             />
-            <span className="text-[0.78rem] font-normal normal-case tracking-normal text-[var(--muted)]">Leave blank if there is no date.</span>
+            <span className={fieldHint}>Leave blank if there is no date.</span>
             <DatePassedNote dueOn={form.due_on} houseDate={system?.house_date} />
           </label>
-          <div className="grid grid-cols-2 gap-3 max-[720px]:grid-cols-1">
-            <label className="mb-3 flex flex-col gap-[5px]" htmlFor={priorityFieldId}>
+          <div className="grid grid-cols-2 gap-4 max-[720px]:grid-cols-1">
+            <label className={fieldStack} htmlFor={priorityFieldId}>
               <span className={fieldLabel}>Priority</span>
               <select
                 id={priorityFieldId}
@@ -233,7 +234,7 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
                 ))}
               </select>
             </label>
-            <label className="mb-3 flex flex-col gap-[5px]" htmlFor={statusFieldId}>
+            <label className={fieldStack} htmlFor={statusFieldId}>
               <span className={fieldLabel}>Status</span>
               <select
                 id={statusFieldId}
@@ -251,7 +252,7 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
             </label>
           </div>
           {confirmingDelete ? (
-            <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+            <div className={dialogActions}>
               <p className={lede}>Delete this task? You can undo it for a few seconds.</p>
               <button type="button" className={cx(ghost, "text-[var(--danger)]")} disabled={busy} onClick={() => void removeTask()}>
                 Delete
@@ -261,7 +262,7 @@ export function TaskEditor({ taskId, onClose }: { taskId: string; onClose: () =>
               </button>
             </div>
           ) : (
-            <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+            <div className={dialogActions}>
               <button type="button" className={primary} disabled={busy || alreadyDone} onClick={() => void save("done")}>
                 {alreadyDone ? "Done" : "Mark done"}
               </button>
