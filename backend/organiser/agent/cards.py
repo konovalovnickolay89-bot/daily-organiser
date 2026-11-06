@@ -48,6 +48,8 @@ def summarise(action: str, changes: dict, row: object | None) -> str:
     if action == "create_commitment":
         parts = [f"New commitment: {changes['title']}", _due(changes)]
         return clip(" · ".join(part for part in parts if part))
+    if action == "create_shopping_item":
+        return clip(f"Add to shopping: {changes['name']}")
     if row is None:
         raise ValueError(f"{action} needs the row it changes")
     title = getattr(row, "title")

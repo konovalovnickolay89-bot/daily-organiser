@@ -1,11 +1,10 @@
+import { useEffect, useState } from "react";
+import { approveRequest, listApprovals, skipRequest } from "../../api/approvals";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
+import { useHouse } from "../../house/HouseContext.jsx";
+import { MODE_LABELS } from "../../lib/labels";
 import { orderedSteps, STEP_LABEL } from "./steps.js";
 import { useAssistant } from "./AssistantContext.jsx";
-
-function waitingLabel(count) {
-  if (count === 0) return "None waiting";
-  if (count === 1) return "1 waiting";
-  return `${count} waiting`;
-}
 
 function Ticker({ steps, enabled, paused, loading, known }) {
   if (loading) return <p className="ticker-line is-settled">Checking the assistant…</p>;
@@ -52,37 +51,100 @@ function Ticker({ steps, enabled, paused, loading, known }) {
   );
 }
 
-function ProposalList() {
-  const { proposals, pendingId, decide } = useAssistant();
-  if (proposals.length === 0) return null;
+function DecisionButtons({ busy, onApply, onDismiss }) {
   return (
-    <ul className="proposal-list">
+    <div className="proposal-actions">
+      <button type="button" className="primary" disabled={busy} onClick={onApply}>
+        Apply
+      </button>
+      <button type="button" className="ghost not-now" disabled={busy} onClick={onDismiss}>
+        Not now
+      </button>
+    </div>
+  );
+}
+
+function DecisionList({ hideEmpty }) {
+  const { tick, refresh } = useHouse();
+  const { proposals, pendingId, decide, setNotice } = useAssistant();
+  const [approvals, setApprovals] = useState(null);
+  const [approvalError, setApprovalError] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listApprovals("pending")
+      .then((data) => {
+        if (!cancelled) {
+          setApprovals(data.items);
+          setApprovalError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setApprovalError(err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  async function decideApproval(item, action) {
+    setBusyId(item.id);
+    setApprovalError(null);
+    try {
+      const result = action === "apply" ? await approveRequest(item.id) : await skipRequest(item.id);
+      setNotice(result.effect?.summary || "Decision recorded. Nothing left the house.");
+      refresh();
+    } catch (err) {
+      setApprovalError(err);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const waiting = approvals ?? [];
+  if (approvals === null && !approvalError) return null;
+  if (proposals.length === 0 && waiting.length === 0) {
+    if (hideEmpty) return null;
+    return <p className="empty">Nothing is waiting.</p>;
+  }
+  return (
+    <>
+    {approvalError && (
+      <p className="error" role="alert">
+        {approvalError.message}
+      </p>
+    )}
+    <ul className="proposal-list" data-surface="decisions">
+      {waiting.map((item) => (
+        <li key={`approval-${item.id}`} className="proposal-card" data-kind="approval">
+          <p className="mode proposal-kicker">{MODE_LABELS[item.mode] ?? item.mode}</p>
+          <h3 className="proposal-title">{item.title}</h3>
+          {item.detail && <p className="proposal-reason">{item.detail}</p>}
+          {item.mode === "execute" && (
+            <p className="stub">Applying records the decision only. Nothing is sent.</p>
+          )}
+          <DecisionButtons
+            busy={busyId === item.id}
+            onApply={() => decideApproval(item, "apply")}
+            onDismiss={() => decideApproval(item, "not-now")}
+          />
+        </li>
+      ))}
       {proposals.map((proposal) => (
-        <li key={proposal.id} className="proposal-card" data-origin={proposal.origin}>
+        <li key={`proposal-${proposal.id}`} className="proposal-card" data-origin={proposal.origin} data-kind="proposal">
           <p className="mode proposal-kicker">{proposal.label}</p>
           <h3 className="proposal-title">{proposal.summary}</h3>
           <p className="proposal-reason">{proposal.reason}</p>
-          <div className="proposal-actions">
-            <button
-              type="button"
-              className="primary"
-              disabled={pendingId === proposal.id}
-              onClick={() => decide(proposal, "apply")}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              className="ghost not-now"
-              disabled={pendingId === proposal.id}
-              onClick={() => decide(proposal, "dismiss")}
-            >
-              Not now
-            </button>
-          </div>
+          <DecisionButtons
+            busy={pendingId === proposal.id}
+            onApply={() => decide(proposal, "apply")}
+            onDismiss={() => decide(proposal, "dismiss")}
+          />
         </li>
       ))}
     </ul>
+    </>
   );
 }
 
@@ -94,8 +156,8 @@ export function AssistantResult({ heading = true }) {
   const { state, error, feedError, replyLine, notice, steps, proposals, reviewing, enabled, paused, sorting } =
     useAssistant();
   const loading = state === null && !error;
-  // A card from the curator is still a card when the assistant itself is off.
-  const showCards = !paused && (enabled || proposals.length > 0);
+  // Approvals and proposals share this list, including when the assistant is off.
+  const showCards = true;
 
   return (
     <div className="assistant-result">
@@ -124,20 +186,15 @@ export function AssistantResult({ heading = true }) {
         <div className={heading ? "reasoning-proposals" : "inline-proposals"}>
           {heading && (
             <div className="module-head">
-              <h2 id="reasoning-proposals-title">Proposed changes</h2>
-              <p className={proposals.length > 0 ? "count is-waiting" : "count"}>{waitingLabel(proposals.length)}</p>
+              <h2 id="reasoning-proposals-title">Decisions</h2>
             </div>
           )}
           {heading && (
-            <p className="lede">
-              Apply makes that one change in the house log. Nothing is sent, bought, or booked.
-            </p>
+            <p className="lede">Apply or not now. Nothing is sent, bought, or booked.</p>
           )}
+          {loading && <LoadingSkeleton label="Looking for decisions…" />}
           {reviewing && <p className="empty">Looking over the log…</p>}
-          {proposals.length === 0 && !sorting && !reviewing && (
-            <p className="empty">Cards appear here.</p>
-          )}
-          <ProposalList />
+          <DecisionList hideEmpty={sorting || reviewing || loading} />
         </div>
       )}
     </div>

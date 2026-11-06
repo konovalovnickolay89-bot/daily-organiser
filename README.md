@@ -140,21 +140,26 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | GET, PATCH, DELETE | `/events/{id}` | One event |
 | GET, POST | `/action-requests` | List and create. Filter: `status`, `mode`, `owner` |
 | GET, PATCH, DELETE | `/action-requests/{id}` | One request. `effect_applied` cannot be set |
-| GET | `/brief/morning` | Tasks due today or overdue, open commitments, and placeholder appointments, shopping, and weather |
+| GET | `/brief/morning` | Tasks due today or overdue, open commitments, read-only appointments, the shopping list, and weather |
 | GET | `/approvals` | Pending requests. `status=all` lists every decision |
 | POST | `/approvals/{id}/approve` | Status becomes approved. Nothing outside the log changes |
 | POST | `/approvals/{id}/skip` | Status becomes skipped |
 | GET | `/system` | Pause flag, activity, status line, and the presence-bar greeting |
-| GET | `/system/facts` | Timezone, assistant on or off, runs left today, and whether diary, weather location, TfL, and Bantō are configured. No secret, coordinate, postcode, or calendar id. Never calls Mistral |
+| GET | `/system/facts` | Timezone, assistant on or off, the assistant switch, runs left today, and whether diary, weather location, TfL, and Bantō are configured. No secret, coordinate, postcode, or calendar id. Never calls Mistral |
+| POST | `/system/assistant` | Persist the assistant switch. Body: `{"enabled": true}` or false. One activity line when it changes. Keys are not removed |
+| GET, POST | `/shopping` | Shopping names. Create body is `{"name": "..."}` only. An extra field is rejected |
+| POST | `/shopping/{id}/tick` and `/untick` | Mark a line got, or put it back. Nothing is ordered |
+| GET, POST | `/system/calendars` | Diary names. Add body is `{"name": "..."}`. No provider id is returned |
+| DELETE | `/system/calendars/{id}` | Remove one diary from the list |
 | POST | `/system/pause` | Pause. Repeating it does not write a second log line |
 | POST | `/system/unpause` | Resume |
 | POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
 | GET | `/agent` | Assistant state: on or off, paused, the review that is due, runs left today, last reply, waiting cards. Never calls Mistral |
-| GET | `/agent/activity` | Recent house-log lines for a curator: `id`, `at` (Europe/London, ISO-8601), `text`, `type`. Query: `limit` (default 40, max 100), `since` (lines strictly after that time). Newest first. Never calls Mistral. Types include `add`, `apply`, `catchup`, `pause`, `resume`, `arrival`, `approval`, `proposal`, `note` |
+| GET | `/agent/activity` | Recent house-log lines for a curator: `id`, `at` (Europe/London, ISO-8601), `text`, `type`. Query: `limit` (default 40, max 100), `since` (lines strictly after that time). Newest first. Never calls Mistral. Types include `add`, `apply`, `catchup`, `pause`, `resume`, `arrival`, `approval`, `proposal`, `note`, `assistant` |
 | POST | `/agent/proposals` | One pending task card. Body: `title` (required), optional `due_on` (`YYYY-MM-DD`), `reason`, `source`. Does not create a task or call Mistral. 422 empty title, bad or past date, or anything outside the house. 409 paused, duplicate of an open task or commitment or a waiting card, or 10 cards already waiting. Apply and Not now are the routes below |
 | POST | `/agent/feed` | One entry from the box. The assistant may propose up to 3 cards. 409 paused, 503 off, 429 runs used, 424 the assistant did not finish. `Accept: text/event-stream` sends the working steps, then the cards or one error. A failure is not a 502 |
 | POST | `/agent/review` | Run the review `GET /agent` says is due. Each window runs once |
-| POST | `/agent/proposals/{id}/apply` | Make exactly that change to one task or commitment, and log one line. 409 if paused, decided, or the item changed |
+| POST | `/agent/proposals/{id}/apply` | Make exactly that change to one task, commitment, or shopping item, and log one line. 409 if paused, decided, or the item changed |
 | POST | `/agent/proposals/{id}/dismiss` | Not now. A proactive item rests for 72 hours |
 | GET | `/catch-up` | Pending catch-up cards, if any are showing. Does not record a look |
 | POST | `/catch-up/look` | Record a look at the arrival screen. After a gap, prepare one catch-up |
@@ -173,7 +178,7 @@ One home screen. A thin icon rail on the left, a large greeting, then cream card
 
 1. Rail: thin line icons for Home, Brief, tasks, approvals, Today, and Settings. No illustrations.
 2. Greeting, large, at the top of the main area. The words come from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. Status and Pause / Unpause sit with the greeting.
-3. Cards: morning brief, Today, and the assistant column, with pending approvals underneath. Today includes the short task list and the add line. The right-hand column is the working strip (Received, Reading the house log, Calling the assistant, Done or Failed) and then the cards, each with Apply and Not now. The next line replaces the strip. It shows “The assistant is off” until a key and an agent id are set. Appointments, shopping, and weather on the brief are labelled as not connected.
+3. Cards: morning brief, Today, and the assistant column. Today includes the task list and the add line. The right-hand column is the working strip (Received, Reading the house log, Calling the assistant, Done or Failed) and then one Decisions list. Proposals and pending approvals share that list. Each card is Apply or Not now. Apply on a proposal makes the allowlisted change. Apply on an approval only records the decision. The next line replaces the strip. The strip shows “The assistant is off” until a key, an agent id, and the Settings switch are all on. The brief shows appointments (read only), shopping (names and ticks), and weather, or a short line when that section is not set.
 4. Under the cards: “A playlist is ready, when you want it.” Text only. It does not play anything and it does not control the house.
 
 Colour follows the house clock. Good morning and Good afternoon use the brighter morning theme. Good evening and Good night use the deeper evening theme. “Welcome home” follows the London hour. Settings can hold morning or evening in this browser. That only recolors the chrome.
@@ -188,7 +193,7 @@ When the task table is empty and `SEED_ON_START` is true, the API inserts a smal
 
 ## Assistant
 
-The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set. `python -m organiser.agent sync` creates the agent in Mistral from `backend/organiser/agent/spec.py`; `show` prints the same values for Mistral's agent builder. [docs/mistral-agent.md](docs/mistral-agent.md) has the steps, the console values, and the rulebook.
+The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set, and the Settings switch is on. The switch is stored on the house and writes one activity line. It does not delete the keys. `python -m organiser.agent sync` creates the agent in Mistral from `backend/organiser/agent/spec.py`; `show` prints the same values for Mistral's agent builder. [docs/mistral-agent.md](docs/mistral-agent.md) has the steps, the console values, and the rulebook.
 
 It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). A commute also asks for a journey check; the journey source is not connected. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. A feed that does not finish returns 424 with a short line, and the screen keeps that line. Tests use a scripted fake and never reach Mistral.
 
@@ -199,17 +204,21 @@ discovery-system keeps secrets in the house environment file this app already us
 | Name | What a later sprint may use it for |
 | --- | --- |
 | `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Assistant. Empty keeps it off |
-| `ENABLE_DOCS` | Local debug only. Leave false on the house |
-| `HOUSE_LAT`, `HOUSE_LON` or `HOUSE_POSTCODE` | Home location. Coordinates win when both are set; otherwise the postcode. Not connected yet |
-| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Not connected yet |
-| `GOOGLE_CALENDAR_IDS` | Which calendars to read. Blank means `primary` |
+| `ENABLE_DOCS`, `DOCS_BEHIND_ACCESS` | Both false on the house. Docs are served only when both are true, and only behind Cloudflare Access |
+| `HOUSE_LAT`, `HOUSE_LON` or `HOUSE_POSTCODE` | Weather location. Coordinates win when both are set; otherwise the postcode is resolved and not logged |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes are `calendar.events.readonly` and `calendar.calendarlist.readonly` |
+| `GOOGLE_CALENDAR_IDS` | Which calendars to read until Settings stores a list. Blank means `primary` |
 | `TFL_APP_KEY` | Journey check. Not connected yet |
 | `BANTO_COMMUTE_TOKEN` | Shift push of start, end, and a location label. Not connected yet |
 
-The diary, when it is connected, may request only `calendar.events.readonly` and `calendar.calendarlist.readonly`. It must not request a write scope. Settings says configured or not configured. It never shows the value.
+The diary requests only `calendar.events.readonly` and `calendar.calendarlist.readonly`. It must not request a write scope. Settings shows calendar names, not ids. It never shows a token, a coordinate, or a postcode.
+
+Weather comes from Open-Meteo. A postcode is turned into coordinates with postcodes.io and then forgotten. The brief credits Open-Meteo. If the location is missing, or either call fails, that section says so and the rest of the brief stays.
+
+`/docs`, `/redoc`, and `/openapi.json` stay 404 unless `ENABLE_DOCS` and `DOCS_BEHIND_ACCESS` are both true. Leave both false on the house. Turning them on later is only for a host Cloudflare Access already covers.
 
 Cloudflare Access has to cover the public hostname for both the arrival screen and the JSON routes, including `/agent` and `/system`. This repo does not change Cloudflare.
 
 ## What this does not do
 
-No merge to `main`, no deploy, no Cloudflare change, no voice, no Bantō call, no live weather, no diary client, no playlist service, and no shopping that buys anything. The assistant proposes; it never sends, buys, books, or changes a row without Apply. Schema changes for a fresh database can use Alembic (`backend/alembic`). The running process still uses `create_all` and does not upgrade a live database.
+No merge to `main`, no deploy, no Cloudflare change, no voice, no Bantō call, no playlist service, and no shopping that buys anything. The diary is a read-only list, not a calendar. The assistant proposes; it never sends, buys, books, or changes a row without Apply. Schema changes for a fresh database can use Alembic (`backend/alembic`, revision `0002_sprint2`). The running process still uses `create_all` plus a boot patch and does not replace a backup-and-upgrade on the live database.

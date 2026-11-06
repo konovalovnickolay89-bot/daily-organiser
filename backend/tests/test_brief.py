@@ -38,12 +38,43 @@ def test_morning_brief_composes_live_items_and_placeholders(client):
     commitments = body["sections"][1]
     assert [item["title"] for item in commitments["items"]] == ["Return the spare key to next door"]
 
-    placeholders = {section["key"]: section for section in body["sections"] if section["placeholder"]}
-    assert set(placeholders) == {"appointments", "shopping", "weather"}
-    assert placeholders["shopping"]["items"] == []
-    assert "Nothing is ordered" in placeholders["shopping"]["summary"]
-    assert "No diary is connected" in placeholders["appointments"]["summary"]
-    assert "Weather is not connected" in placeholders["weather"]["summary"]
+    by_key = {section["key"]: section for section in body["sections"]}
+    assert by_key["shopping"]["placeholder"] is False
+    assert by_key["shopping"]["items"] == []
+    assert by_key["shopping"]["summary"] == "Shopping list is empty."
+    assert "Diary not connected" in by_key["appointments"]["summary"]
+    assert by_key["appointments"]["items"] == []
+    assert by_key["weather"]["summary"] == "Weather location is not set."
+    assert by_key["weather"]["items"] == []
+
+
+def test_london_civil_date_on_the_clock_change():
+    """A due date is the London civil date, including the spring and autumn changes."""
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    london = ZoneInfo("Europe/London")
+    spring = datetime(2026, 3, 29, 1, 30, tzinfo=timezone.utc).astimezone(london)
+    autumn = datetime(2026, 10, 25, 1, 30, tzinfo=timezone.utc).astimezone(london)
+    assert spring.date().isoformat() == "2026-03-29"
+    assert autumn.date().isoformat() == "2026-10-25"
+
+
+def test_due_date_follows_the_house_date_across_the_clock_change(client, monkeypatch):
+    from datetime import date
+
+    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: date(2026, 3, 29))
+    client.post("/tasks", json={"title": "Put the clocks forward", "due_on": "2026-03-29"})
+    client.post("/tasks", json={"title": "Leave this until April", "due_on": "2026-04-02"})
+    titles = [item["title"] for item in client.get("/brief/morning").json()["sections"][0]["items"]]
+    assert "Put the clocks forward" in titles
+    assert "Leave this until April" not in titles
+
+    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: date(2026, 10, 25))
+    client.post("/tasks", json={"title": "Put the clocks back", "due_on": "2026-10-25"})
+    titles = [item["title"] for item in client.get("/brief/morning").json()["sections"][0]["items"]]
+    assert "Put the clocks back" in titles
+    assert "Put the clocks forward" in titles
 
 
 def test_brief_notes_when_the_house_is_paused(client):

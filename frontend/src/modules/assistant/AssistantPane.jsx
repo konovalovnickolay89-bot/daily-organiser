@@ -1,3 +1,4 @@
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useView } from "../../arrival/view";
 import { useAssistant } from "./AssistantContext.jsx";
 import { AssistantResult } from "./AssistantResult.jsx";
@@ -40,7 +41,7 @@ export function AssistantPane() {
             : "Apply makes that one change in the house log. Nothing is sent, bought, or booked."
           : "Write a line for the log. Cards appear on the right."}
       </p>
-      {state === null && !error && <p className="empty">Checking the assistant…</p>}
+      {state === null && !error && <LoadingSkeleton label="Checking the assistant…" />}
       {state && !enabled && <p className="empty">The assistant is off.</p>}
       {enabled && (
         <form className="feed-form" onSubmit={submit}>

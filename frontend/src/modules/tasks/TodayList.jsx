@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listTasks } from "../../api/tasks";
+import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { taskMeta } from "../../lib/labels";
 import { TaskEditor } from "./TaskEditor.jsx";
@@ -45,7 +46,7 @@ export function TodayList() {
           {error.message}
         </p>
       )}
-      {items === null && !error && <p className="empty">Checking the day…</p>}
+      {items === null && !error && <LoadingSkeleton label="Checking the day…" />}
       {items?.length === 0 && <p className="empty">Nothing due today.</p>}
       {items?.length === 200 && <p className="meta">Showing the first 200.</p>}
       {items && items.length > 0 && (

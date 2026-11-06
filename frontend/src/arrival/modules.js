@@ -1,4 +1,3 @@
-import { ApprovalsPane } from "../modules/approvals/ApprovalsPane.jsx";
 import { AssistantPane } from "../modules/assistant/AssistantPane.jsx";
 import { ReasoningPane } from "../modules/assistant/ReasoningPane.jsx";
 import { MorningBrief } from "../modules/brief/MorningBrief.jsx";
@@ -10,7 +9,6 @@ import { TodayList } from "../modules/tasks/TodayList.jsx";
  *
  * Panels, read by ArrivalShell:
  *   "brief"      — brief card
- *   "approvals"  — approvals card
  *   "today"      — today card (tasks, then the add line)
  *   "reasoning"  — working strip and proposal cards
  *   "corner"     — quiet line under the cards
@@ -20,7 +18,6 @@ import { TodayList } from "../modules/tasks/TodayList.jsx";
  */
 export const arrivalModules = [
   { id: "morning-brief", panel: "brief", Component: MorningBrief },
-  { id: "approvals", panel: "approvals", Component: ApprovalsPane },
   { id: "today", panel: "today", Component: TodayList },
   { id: "assistant", panel: "today", Component: AssistantPane },
   { id: "reasoning", panel: "reasoning", Component: ReasoningPane },

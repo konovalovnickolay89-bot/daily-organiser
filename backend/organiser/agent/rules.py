@@ -291,8 +291,9 @@ def build_snapshot(session: Session, local_now: datetime, settings: Settings) ->
     tz_name = settings.house_timezone
     local_now = local_now.astimezone(ZoneInfo(tz_name))
     start, end = house_day_bounds(local_now, tz_name)
-    paused = ensure_system_state(session).paused
-    enabled = settings.assistant_enabled
+    state = ensure_system_state(session)
+    paused = state.paused
+    enabled = settings.assistant_enabled and state.assistant_enabled
     proactive_today = (
         session.scalar(
             select(func.count())

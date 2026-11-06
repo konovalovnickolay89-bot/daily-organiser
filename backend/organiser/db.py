@@ -94,6 +94,19 @@ def ensure_ingest_proposals() -> None:
         )
 
 
+def ensure_sprint2() -> None:
+    """Shopping, diary rows, and the assistant switch on a database from 0001.
+
+    ``create_all`` creates missing tables and does not add a column or widen a
+    check. These statements match Alembic ``0002_sprint2`` and can run twice.
+    """
+    from organiser.patches import SPRINT2_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in SPRINT2_UPGRADE:
+            connection.execute(text(statement))
+
+
 def wait_for_database(attempts: int = 30, delay_seconds: float = 1.0) -> None:
     import time
 

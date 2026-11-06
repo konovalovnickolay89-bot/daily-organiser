@@ -12,8 +12,15 @@ from sqlalchemy.orm import Session
 
 from organiser.agent.cards import DETAIL_LIMIT, clip, note_line, with_note
 from organiser.domain import DEFAULT_OWNER
-from organiser.models import AgentProposal, Commitment, Task
-from organiser.schemas import CommitmentCreate, CommitmentUpdate, TaskCreate, TaskUpdate, apply_changes
+from organiser.models import AgentProposal, Commitment, ShoppingItem, Task
+from organiser.schemas import (
+    CommitmentCreate,
+    CommitmentUpdate,
+    ShoppingCreate,
+    TaskCreate,
+    TaskUpdate,
+    apply_changes,
+)
 from organiser.services.events import record_event
 from organiser.services.system import ensure_system_state
 
@@ -34,6 +41,11 @@ class ProposalStale(Exception):
 
 class HousePaused(Exception):
     pass
+
+
+class ProposalRefused(Exception):
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
 
 
 def _values(payload) -> dict:
@@ -60,8 +72,22 @@ def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[
         raise ProposalClosed(proposal.status)
 
     changes = dict(proposal.changes)
-    row: Task | Commitment
-    if proposal.action == "create_task":
+    row: Task | Commitment | ShoppingItem
+    event_kind = proposal.ref_type or "task"
+    applied_type = proposal.ref_type or "task"
+    if proposal.action == "create_shopping_item":
+        from organiser.agent.runner import outside_home
+
+        payload = ShoppingCreate.model_validate(changes)
+        if outside_home(payload.name):
+            proposal.status = "dismissed"
+            proposal.decided_at = now
+            raise ProposalRefused("Not for the house log. Nothing was added.")
+        row = ShoppingItem(name=payload.name, ticked=False, created_at=now, updated_at=now)
+        session.add(row)
+        event_kind = "brief"
+        applied_type = "shopping"
+    elif proposal.action == "create_task":
         row = Task(**_values(TaskCreate.model_validate(changes)), created_at=now, updated_at=now)
         session.add(row)
     elif proposal.action == "create_commitment":
@@ -93,7 +119,7 @@ def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[
     proposal.applied_ref_id = row.id
     record_event(
         session,
-        kind=proposal.ref_type or "task",
+        kind=event_kind,
         title=clip(f"Applied: {proposal.summary}", 200),
         body=(
             f"Proposed by the assistant ({proposal.label}). Reason: {proposal.reason} "
@@ -101,7 +127,7 @@ def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[
         ),
         owner=DEFAULT_OWNER,
     )
-    return proposal, {"ref_type": proposal.ref_type, "ref_id": row.id, "summary": proposal.summary}
+    return proposal, {"ref_type": applied_type, "ref_id": row.id, "summary": proposal.summary}
 
 
 def dismiss_proposal(session: Session, proposal_id: UUID, now: datetime) -> AgentProposal:

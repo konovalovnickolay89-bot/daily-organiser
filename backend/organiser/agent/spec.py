@@ -19,7 +19,8 @@ Do the job that trigger names and nothing else.
 
 Triggers
 - feed: Nick wrote something. Turn it into proposals: propose_change for a new task or commitment, a date or a status \
-move, and add_note for a note on an existing item. Search first. If the item already exists, propose an edit or a note \
+move, add_note for a note on an existing item, and create_shopping_item when he is adding something to buy. \
+A shop item is a name only: changes.name, nothing else, and no allergen information. Search first. If the item already exists, propose an edit or a note \
 instead of a duplicate. When it is a commute or travel to work, propose the trip and also one task to check that \
 journey and any disruptions. The journey source is not connected: say so in the reason, and do not invent a live lookup.
 - morning_review: look over today's tasks and open commitments in the brief. Propose at most 2 next steps that make the \
@@ -116,7 +117,8 @@ FUNCTIONS: list[dict] = [
         "name": "propose_change",
         "description": (
             "Put one change on Nick's screen as a card with Apply and Not now. Nothing changes until he taps Apply. "
-            "Use it for a new task or commitment, a new due date, a status move, or a clearer title or detail. "
+            "Use it for a new task or commitment, a shop item (create_shopping_item, name only), a new due date, "
+            "a status move, or a clearer title or detail. "
             "Never for deleting, changing the owner, or anything outside the house. Refused while the house is "
             "paused, past the proposal limit, for a date before today, for a duplicate, or when a proposal for the "
             "same item is already waiting."
@@ -126,7 +128,13 @@ FUNCTIONS: list[dict] = [
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["create_task", "update_task", "create_commitment", "update_commitment"],
+                    "enum": [
+                        "create_task",
+                        "update_task",
+                        "create_commitment",
+                        "update_commitment",
+                        "create_shopping_item",
+                    ],
                 },
                 "id": {
                     "type": "string",
@@ -138,6 +146,11 @@ FUNCTIONS: list[dict] = [
                     "description": "Only the fields to set.",
                     "properties": {
                         "title": {"type": "string", "maxLength": 200},
+                        "name": {
+                            "type": "string",
+                            "maxLength": 80,
+                            "description": "Shopping only. The item name. No allergen information.",
+                        },
                         "detail": {"type": "string", "maxLength": 1000},
                         "due_on": {**_DATE, "description": "YYYY-MM-DD, today or later."},
                         "priority": {

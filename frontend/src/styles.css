@@ -16,7 +16,12 @@ html {
   --line-card: rgba(26, 22, 19, 0.12);
   --accent: #d39a4e;
   --accent-deep: #b8833d;
-  --accent-ink: #8a5a1c;
+  /* #7a4e17 on card #eddcc6 is 5.34:1. The previous #8a5a1c was 4.40:1. */
+  --accent-ink: #7a4e17;
+  /* Warm moss, not a bright green. #4a5726 on #eddcc6 is 5.84:1. */
+  --success: #4a5726;
+  /* Pale sage for text on the canvas. #c6d09a on #050403 is 12.57:1. */
+  --success-canvas: #c6d09a;
   --accent-soft: rgba(211, 154, 78, 0.2);
   --sunken-card: #e2ccb0;
   --note-card: rgba(166, 112, 42, 0.16);
@@ -44,7 +49,12 @@ html[data-theme="morning"] {
   --line-card: rgba(28, 25, 21, 0.1);
   --accent: #f0c27a;
   --accent-deep: #d4a45c;
+  /* #8f621f on card #fffaf3 is 5.14:1. */
   --accent-ink: #8f621f;
+  /* Same moss. #4a5726 on #fffaf3 is 7.54:1. */
+  --success: #4a5726;
+  /* #c6d09a on canvas #1b1916 is 10.77:1. */
+  --success-canvas: #c6d09a;
   --accent-soft: rgba(240, 194, 122, 0.22);
   --sunken-card: #f4e7d4;
   --note-card: rgba(184, 128, 48, 0.16);
@@ -391,14 +401,14 @@ dialog.house-dialog {
 }
 
 .shell[data-view="brief"] .card:not([data-panel="brief"]),
-.shell[data-view="approvals"] .card:not([data-panel="approvals"]),
+.shell[data-view="approvals"] .card:not([data-panel="reasoning"]),
 .shell[data-view="tasks"] .card:not([data-panel="today"]),
 .shell[data-view="today"] .card:not([data-panel="today"]) {
   display: none;
 }
 
 .shell[data-view="brief"] .card[data-panel="brief"],
-.shell[data-view="approvals"] .card[data-panel="approvals"],
+.shell[data-view="approvals"] .card[data-panel="reasoning"],
 .shell[data-view="tasks"] .card[data-panel="today"],
 .shell[data-view="today"] .card[data-panel="today"] {
   grid-column: 1 / -1;
@@ -1220,4 +1230,150 @@ dialog.house-dialog .eyebrow {
     padding: 8px;
     background: var(--card);
   }
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  z-index: 30;
+  padding: 10px 14px;
+  background: var(--card);
+  color: var(--ink-card);
+  border-radius: 12px;
+  text-decoration: none;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.skeleton {
+  margin-top: 8px;
+}
+
+.skeleton-bar {
+  display: block;
+  height: 14px;
+  margin: 12px 0;
+  border-radius: 8px;
+  background: var(--sunken);
+  max-width: 100%;
+}
+
+.skeleton-bar.is-short {
+  max-width: 58%;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 12px 14px 12px 18px;
+  background: var(--card);
+  color: var(--ink-card);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+.toast button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.is-success,
+.shop-name.is-ticked {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  margin: 8px 0 4px;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+}
+
+.switch input {
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.shop-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.shop-line input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.shop-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.shop-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.proposal-actions .primary,
+.proposal-actions .ghost,
+.task-actions .primary,
+.task-actions .ghost,
+.shop-add .primary {
+  min-height: 44px;
+}
+
+.calendar-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.calendar-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.danger-text {
+  color: var(--danger);
 }

@@ -44,8 +44,11 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8080
 
-    # Public /docs, /redoc, and /openapi.json stay off unless this is true.
+    # Public /docs, /redoc, and /openapi.json stay off unless BOTH are true.
+    # Turn them on later only when Cloudflare Access already covers those paths.
+    # This process does not check Access and will not serve docs for a public URL.
     enable_docs: bool = False
+    docs_behind_access: bool = False
 
     # Mistral assistant. With the key or the agent id empty, the assistant is off
     # and nothing is sent. Never commit either value. discovery-system keeps it in

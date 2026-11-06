@@ -20,8 +20,8 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import DETAIL_LIMIT, note_line, summarise, with_note
-from organiser.models import AgentProposal, AgentRun, Commitment, Task
-from organiser.schemas import CommitmentCreate, CommitmentUpdate, TaskCreate, TaskUpdate
+from organiser.models import AgentProposal, AgentRun, Commitment, ShoppingItem, Task
+from organiser.schemas import CommitmentCreate, CommitmentUpdate, ShoppingCreate, TaskCreate, TaskUpdate
 from organiser.services.system import ensure_system_state
 
 PROPOSAL_DETAIL_LIMIT = 1000
@@ -32,6 +32,7 @@ ALLOWED_FIELDS: dict[str, frozenset[str]] = {
     "update_task": frozenset({"title", "detail", "due_on", "priority", "status"}),
     "create_commitment": frozenset({"title", "detail", "due_on"}),
     "update_commitment": frozenset({"title", "detail", "due_on", "status"}),
+    "create_shopping_item": frozenset({"name"}),
 }
 
 _SCHEMAS: dict[str, type[BaseModel]] = {
@@ -88,7 +89,13 @@ class ItemArgs(_Args):
 
 
 class ProposeArgs(_Args):
-    action: Literal["create_task", "update_task", "create_commitment", "update_commitment"]
+    action: Literal[
+        "create_task",
+        "update_task",
+        "create_commitment",
+        "update_commitment",
+        "create_shopping_item",
+    ]
     id: str | None = None
     changes: dict[str, Any]
     reason: str = Field(max_length=REASON_LIMIT)
@@ -227,7 +234,7 @@ def _current(row: Task | Commitment, key: str) -> Any:
 def _store(
     ctx: RunContext,
     action: str,
-    kind: str,
+    kind: str | None,
     row: Task | Commitment | None,
     changes: dict,
     reason: str,
@@ -382,11 +389,51 @@ def get_item(ctx: RunContext, args: dict) -> dict:
     }
 
 
+def _propose_shopping(ctx: RunContext, query: ProposeArgs, reason: str) -> dict:
+    if query.id:
+        raise Refused("Leave out id when creating.")
+    changes = {key: value for key, value in query.changes.items() if value is not None}
+    allowed = ALLOWED_FIELDS["create_shopping_item"]
+    unknown = sorted(set(changes) - allowed)
+    if unknown:
+        raise Refused(f"create_shopping_item takes only name. Not: {', '.join(unknown)}.")
+    try:
+        name = ShoppingCreate.model_validate(changes).name
+    except ValidationError as exc:
+        raise Refused(_first_error(exc)) from None
+    name = " ".join(name.split())
+    if not name:
+        raise Refused("name is empty.")
+    from organiser.agent.runner import outside_home
+
+    if outside_home(name):
+        raise Refused("Not for the house log.")
+    lowered = name.casefold()
+    existing = ctx.session.scalars(
+        select(ShoppingItem).where(ShoppingItem.ticked.is_(False), func.lower(ShoppingItem.name) == lowered).limit(1)
+    ).first()
+    if existing is not None:
+        raise Refused("That item is already on the shopping list.")
+    waiting = ctx.session.scalars(
+        _pending()
+        .where(
+            AgentProposal.action == "create_shopping_item",
+            func.lower(AgentProposal.changes["name"].astext) == lowered,
+        )
+        .limit(1)
+    ).first()
+    if waiting is not None:
+        raise Refused("That shop item is already waiting as a proposal.")
+    return _store(ctx, "create_shopping_item", None, None, {"name": name}, reason)
+
+
 def propose_change(ctx: RunContext, args: dict) -> dict:
     query: ProposeArgs = _parse(ProposeArgs, args)
     _guard(ctx)
     reason = _reason(query.reason)
     action = query.action
+    if action == "create_shopping_item":
+        return _propose_shopping(ctx, query, reason)
     kind = "task" if action.endswith("_task") else "commitment"
 
     changes = {key: value for key, value in query.changes.items() if value is not None}

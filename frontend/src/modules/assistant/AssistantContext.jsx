@@ -147,6 +147,7 @@ export function AssistantProvider({ children }) {
     setText,
     replyLine,
     notice,
+    setNotice,
     steps,
     sorting,
     reviewing,

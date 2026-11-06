@@ -1,6 +1,6 @@
 # Mistral assistant
 
-The assistant reads the house log and proposes changes. Each proposal is a card with **Apply** and **Not now**. Apply makes exactly the change on the card to one task or commitment in this database. Nothing is sent, bought, or booked, and nothing changes until you tap.
+The assistant reads the house log and proposes changes. Each proposal is a card with **Apply** and **Not now**. Apply makes exactly the change on the card to one task, one commitment, or one shopping item in this database. Nothing is sent, bought, or booked, and nothing changes until you tap.
 
 It speaks in two ways:
 
@@ -79,6 +79,7 @@ Always:
 | New commitment | Creates it, marked `source: assistant` |
 | Commitment change | Sets any of title, detail, due date, status |
 | Note | Adds one dated line to the item's detail |
+| Shop item | Creates one shopping line from the name. No allergen information |
 
 Never: deleting, changing the owner, or anything outside this database. A date before today is refused. If the item changed after the card was made, Apply refuses and the card goes away. Each Apply writes one line to the house log.
 

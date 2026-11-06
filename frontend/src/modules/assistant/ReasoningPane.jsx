@@ -7,7 +7,7 @@ import { AssistantResult } from "./AssistantResult.jsx";
  */
 export function ReasoningPane() {
   const view = useView();
-  if (view !== "home") return null;
+  if (view !== "home" && view !== "approvals") return null;
   return (
     <section className="module reasoning" aria-label="Assistant" data-module="reasoning">
       <AssistantResult />

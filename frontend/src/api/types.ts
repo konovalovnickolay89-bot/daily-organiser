@@ -64,6 +64,7 @@ export type SystemState = {
 export type HouseFacts = {
   timezone: string;
   assistant: "on" | "off";
+  assistant_switch: "on" | "off";
   runs_left_today: number;
   diary: "configured" | "not configured";
   weather_location: "configured" | "not configured";

@@ -49,22 +49,22 @@ WantedBy=multi-user.target
 
 `python -m organiser` reads `HOST` and `PORT` from the environment (default `127.0.0.1:8080`). The static files are found from `frontend/dist` next to `backend/`, or from `/app/frontend/dist` in the API image. Build them before starting the unit. Until `frontend/dist/index.html` exists, `/` is a short JSON pointer and `/health` still works.
 
-`/docs`, `/redoc`, and `/openapi.json` answer 404 unless `ENABLE_DOCS=true`. Leave that false on the house.
+`/docs`, `/redoc`, and `/openapi.json` answer 404 unless `ENABLE_DOCS=true` and `DOCS_BEHIND_ACCESS=true`. Leave both false on the house. The second flag means those paths are already behind Cloudflare Access. This app does not check Access.
 
 `SEED_ON_START=true` fills an empty task list with household demo rows. Turn it off after real tasks exist, or the next empty database will be filled again.
 
 ## Schema
 
-The process still creates tables with `create_all` and the small `ensure_*` patches, so a database from before this revision still boots. Alembic now has a baseline that matches those models (`backend/alembic`, revision `0001_baseline`).
+The process still creates tables with `create_all` and the small `ensure_*` patches, so a database from before this revision still boots. Alembic `0001_baseline` was stamped, not upgraded, on the house database.
 
-Do not run `alembic upgrade` on the live database for that baseline. The tables are already there. After a backup and a yes to deploy:
+`0002_sprint2` adds `shopping_items`, `calendar_subscriptions`, `integration_status`, the `system_state.assistant_enabled` column, and `create_shopping_item` on proposal actions. The boot patch applies the same SQL, so the process starts before the version is moved. After a backup and a yes to deploy, record the revision:
 
 ```bash
 cd /opt/daily-organiser/backend
-PYTHONPATH=. alembic stamp head
+PYTHONPATH=. alembic upgrade head
 ```
 
-Use `alembic upgrade head` only on a fresh empty database. This repo does not migrate the house database.
+Do not stamp `0002` in place of that upgrade. A fresh empty database can also `alembic upgrade head` from an empty `alembic_version`. This repo does not run that command itself.
 
 ## Ask for discovery-system
 
@@ -84,14 +84,16 @@ Add nothing secret to git. In the existing house file:
 
 | Name | This sprint |
 | --- | --- |
-| `ENABLE_DOCS` | Leave unset or `false` |
-| `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Already in use, or empty to keep the assistant off |
-| `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Leave empty until Nick gives a location. Do not commit it. Coordinates win when both are set |
-| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Leave empty. Diary is not connected. Later scopes are read-only |
-| `GOOGLE_CALENDAR_IDS` | Leave empty. Blank means `primary` |
-| `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN` | Leave empty. Not connected. `Wembley` will mean Wembley Park, origin home |
+| `ENABLE_DOCS`, `DOCS_BEHIND_ACCESS` | Leave both unset or `false`. Docs come on only when both are true, and only behind Access |
+| `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Already in use, or empty to keep the assistant off. Settings can also switch it off without deleting the keys |
+| `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Weather. Do not commit or log the value. Coordinates win when both are set. A postcode is resolved through postcodes.io and not stored |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
+| `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
+| `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN` | Leave empty. Not connected. `Wembley` means Wembley Park, origin home |
 
-No migration has to run for the app to boot. Stamp the Alembic baseline only after a backup, as above.
+Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
+
+The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0002_sprint2` is recorded. Do not stamp over it.
 
 ## Mistral assistant, later
 
