@@ -14,6 +14,12 @@ router = APIRouter(prefix="/brief", tags=["brief"])
 @router.get("/morning", response_model=MorningBrief)
 def get_morning_brief(session: Session = Depends(get_db)) -> MorningBrief:
     state = ensure_system_state(session)
+    settings = get_settings()
+    if settings.x_enabled:
+        from organiser import clock
+        from organiser.x.store import expire_drafts
+
+        expire_drafts(session, clock.current_time())
     session.commit()
-    today = house_today(get_settings().house_timezone)
+    today = house_today(settings.house_timezone)
     return MorningBrief.model_validate(morning_brief(session, today, state.paused))

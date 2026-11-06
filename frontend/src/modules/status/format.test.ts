@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatHouseTime } from "./format";
+import { formatBytes, formatHouseTime, formatXLine } from "./format";
 
 describe("status format", () => {
   it("formats a database size", () => {
@@ -13,5 +13,29 @@ describe("status format", () => {
     expect(formatHouseTime(null)).toBe("Not yet");
     expect(formatHouseTime("not-a-time")).toBe("Not yet");
     expect(formatHouseTime("2026-11-06T08:05:00+00:00")).toBe("6 Nov, 08:05");
+  });
+
+  it("formats the X credits and rate line", () => {
+    expect(formatXLine(undefined)).toBe("Off");
+    expect(formatXLine({ enabled: false, connected: false, credits_remaining: null, rate_remaining: null, backing_off: false })).toBe("Off");
+    expect(formatXLine({ enabled: true, connected: false, credits_remaining: null, rate_remaining: null, backing_off: false })).toBe(
+      "Not connected",
+    );
+    expect(
+      formatXLine({ enabled: true, connected: true, credits_remaining: 120, rate_remaining: 45, backing_off: false }),
+    ).toBe("120 credits · 45 left");
+    expect(
+      formatXLine({ enabled: true, connected: true, credits_remaining: 120, rate_remaining: 45, backing_off: true }),
+    ).toBe("Backing off");
+    expect(
+      formatXLine({
+        enabled: true,
+        connected: true,
+        credits_remaining: null,
+        rate_remaining: null,
+        backing_off: true,
+        attention: "auth",
+      }),
+    ).toBe("Reconnect");
   });
 });

@@ -214,7 +214,7 @@ class SystemRead(APIModel):
     greeting_reason: GreetingReason
     arrived_at: datetime | None = None
     debounce_until: datetime | None = None
-    playlist_stub: bool = False
+    playlist: bool = False
 
 
 class HouseFacts(APIModel):
@@ -460,6 +460,17 @@ class CatchUpRead(APIModel):
     items: list[CatchUpItemRead]
 
 
+class XMeterRead(APIModel):
+    """Credits and rate for the status line. No token and no tweet text."""
+
+    enabled: bool = False
+    connected: bool = False
+    credits_remaining: int | None = None
+    rate_remaining: int | None = None
+    backing_off: bool = False
+    attention: str | None = None
+
+
 class StatusRead(APIModel):
     """Settings status. Times are instants. The database size is bytes. No house text."""
 
@@ -468,6 +479,70 @@ class StatusRead(APIModel):
     last_mistral_success: datetime | None = None
     last_activity_poll: datetime | None = None
     database_bytes: int | None = None
+    x: XMeterRead = XMeterRead()
+
+
+class XWatchRead(APIModel):
+    id: UUID
+    kind: str
+    value: str
+
+
+class XStatusRead(APIModel):
+    enabled: bool
+    configured: bool
+    connected: bool
+    username: str | None = None
+    watches: list[XWatchRead] = []
+
+
+class XWatchWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: str
+    value: str = Field(min_length=1, max_length=80)
+
+
+class XConnectRead(APIModel):
+    authorize_url: str
+
+
+class XCardRead(APIModel):
+    id: UUID
+    kind: str
+    summary: str
+    detail: str | None = None
+    url: str | None = None
+    expires_at: datetime | None = None
+
+
+class XCardList(APIModel):
+    enabled: bool
+    items: list[XCardRead]
+
+
+class XPollRead(APIModel):
+    ran: bool
+    reason: str
+
+
+class XPostWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    confirm: bool = False
+
+
+class XDecisionRead(APIModel):
+    id: UUID
+    status: str
+    tweet_id: str | None = None
+
+
+class PlaylistRead(APIModel):
+    shown: bool
+    offline: bool = False
+    title: str | None = None
+    genre: str | None = None
+    artwork_url: str | None = None
+    permalink_url: str | None = None
 
 
 class AlertRead(APIModel):

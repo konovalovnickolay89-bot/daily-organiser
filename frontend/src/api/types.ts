@@ -59,7 +59,7 @@ export type SystemState = {
   greeting_reason: string;
   arrived_at: string | null;
   debounce_until: string | null;
-  playlist_stub?: boolean;
+  playlist?: boolean;
 };
 
 export type MemoryMatch = {
@@ -129,12 +129,22 @@ export type HouseFacts = {
   voice_input?: "on" | "off";
 };
 
+export type XMeter = {
+  enabled: boolean;
+  connected: boolean;
+  credits_remaining: number | null;
+  rate_remaining: number | null;
+  backing_off: boolean;
+  attention?: string | null;
+};
+
 export type HouseStatus = {
   health: "ok" | "degraded";
   version: string;
   last_mistral_success: string | null;
   last_activity_poll: string | null;
   database_bytes: number | null;
+  x?: XMeter;
 };
 
 export type FeedResult = {

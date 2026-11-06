@@ -162,3 +162,108 @@ ALERT_UPGRADE: tuple[str, ...] = (
 )
 
 ALERT_DOWNGRADE: tuple[str, ...] = ("DROP TABLE IF EXISTS alert_dismissals",)
+
+
+# Sprint 7. X rows and the post audit. Alembic 0006 runs these statements.
+# The process also applies them on boot. Tokens in x_connection are ciphertext.
+SPRINT7_UPGRADE: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS x_connection (
+        id INTEGER PRIMARY KEY,
+        x_user_id VARCHAR(32) NOT NULL,
+        username VARCHAR(15) NOT NULL,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        access_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        scopes VARCHAR(200) NOT NULL,
+        connected_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        CONSTRAINT ck_x_connection_singleton CHECK (id = 1)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS x_oauth_pending (
+        state VARCHAR(80) PRIMARY KEY,
+        verifier TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS x_watches (
+        id UUID PRIMARY KEY,
+        kind VARCHAR(16) NOT NULL,
+        value VARCHAR(80) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        CONSTRAINT uq_x_watches_value UNIQUE (kind, value),
+        CONSTRAINT ck_x_watches_kind CHECK (kind in ('account', 'keyword')),
+        CONSTRAINT ck_x_watches_value CHECK (char_length(value) > 0)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS x_items (
+        id UUID PRIMARY KEY,
+        kind VARCHAR(16) NOT NULL,
+        external_id VARCHAR(32),
+        author VARCHAR(15),
+        text TEXT NOT NULL,
+        url VARCHAR(300),
+        reason VARCHAR(300),
+        status VARCHAR(16) NOT NULL DEFAULT 'pending',
+        source VARCHAR(16) NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE,
+        decided_at TIMESTAMP WITH TIME ZONE,
+        posted_tweet_id VARCHAR(32),
+        CONSTRAINT uq_x_items_external UNIQUE (kind, external_id),
+        CONSTRAINT ck_x_items_kind CHECK (kind in ('bookmark', 'watch_match', 'draft')),
+        CONSTRAINT ck_x_items_status CHECK (
+            status in ('pending', 'applied', 'dismissed', 'posted', 'expired')
+        ),
+        CONSTRAINT ck_x_items_source CHECK (source in ('poll', 'webhook', 'assistant')),
+        CONSTRAINT ck_x_items_text CHECK (char_length(text) > 0)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_x_items_status ON x_items (status)",
+    """
+    CREATE TABLE IF NOT EXISTS x_cursors (
+        name VARCHAR(80) PRIMARY KEY,
+        since_id VARCHAR(32) NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS x_meter (
+        id INTEGER PRIMARY KEY,
+        credits_remaining INTEGER,
+        rate_remaining INTEGER,
+        rate_reset_at TIMESTAMP WITH TIME ZONE,
+        backoff_until TIMESTAMP WITH TIME ZONE,
+        last_poll_at TIMESTAMP WITH TIME ZONE,
+        last_error_class VARCHAR(40),
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        CONSTRAINT ck_x_meter_singleton CHECK (id = 1)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS x_post_audit (
+        id UUID PRIMARY KEY,
+        item_id UUID NOT NULL REFERENCES x_items (id),
+        outcome VARCHAR(16) NOT NULL,
+        tweet_id VARCHAR(32),
+        error_class VARCHAR(40),
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        CONSTRAINT ck_x_post_audit_outcome CHECK (outcome in ('posted', 'failed'))
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_x_post_audit_item ON x_post_audit (item_id)",
+)
+
+SPRINT7_DOWNGRADE: tuple[str, ...] = (
+    "DROP TABLE IF EXISTS x_post_audit",
+    "DROP TABLE IF EXISTS x_meter",
+    "DROP TABLE IF EXISTS x_cursors",
+    "DROP TABLE IF EXISTS x_items",
+    "DROP TABLE IF EXISTS x_watches",
+    "DROP TABLE IF EXISTS x_oauth_pending",
+    "DROP TABLE IF EXISTS x_connection",
+)

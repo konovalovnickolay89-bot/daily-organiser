@@ -4,7 +4,7 @@
     python -m organiser.agent sync   Create the agent (no MISTRAL_AGENT_ID yet) or update it.
 
 ``sync`` needs MISTRAL_API_KEY in the environment. It sends the instructions,
-the five function schemas and the settings from ``spec.py``. It reads no house data.
+the function schemas and the settings from ``spec.py``. It reads no house data.
 """
 
 import argparse

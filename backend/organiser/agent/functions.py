@@ -1,4 +1,4 @@
-"""The five functions Mistral may call, run here in the house.
+"""The functions Mistral may call, run here in the house.
 
 Reads return household fields only. ``propose_change`` and ``add_note`` store a
 pending proposal and change nothing else. Every refusal is enforced here, not
@@ -60,6 +60,7 @@ class RunContext:
     label: str
     max_proposals: int
     memories_used: int = 0
+    held: int = 0
     proposals: list[AgentProposal] = field(default_factory=list)
 
     @property
@@ -190,7 +191,7 @@ def _reason(text: str) -> str:
 def _guard(ctx: RunContext) -> None:
     if ensure_system_state(ctx.session).paused:
         raise Refused("The house is paused. Propose nothing and stop.")
-    if len(ctx.proposals) >= ctx.max_proposals:
+    if len(ctx.proposals) + ctx.held >= ctx.max_proposals:
         raise Refused(f"The proposal limit for this run ({ctx.max_proposals}) is reached. Stop proposing and reply.")
 
 
@@ -269,7 +270,7 @@ def _store(
     }
 
 
-# --- the five functions ----------------------------------------------------
+# --- functions -------------------------------------------------------------
 
 
 def get_state(ctx: RunContext, args: dict) -> dict:
@@ -487,12 +488,37 @@ def add_note(ctx: RunContext, args: dict) -> dict:
     return _store(ctx, "add_note", query.kind, row, {"note": note, "dated": ctx.today.isoformat()}, reason)
 
 
+class DraftArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=280)
+    reason: str = Field(min_length=1, max_length=160)
+
+
+def propose_draft(ctx: RunContext, args: dict) -> dict:
+    """One X draft. Nothing is posted. Nick taps Post and confirms, later."""
+    from organiser.config import get_settings
+    from organiser.x.store import XRejected, create_draft
+
+    query = _parse(DraftArgs, args)
+    _guard(ctx)
+    if not get_settings().x_enabled:
+        raise Refused("X is off. Propose nothing for X.")
+    try:
+        row = create_draft(ctx.session, query.text, _reason(query.reason), ctx.now, "assistant")
+    except XRejected as exc:
+        raise Refused(exc.detail) from None
+    ctx.held += 1
+    left = ctx.max_proposals - len(ctx.proposals) - ctx.held
+    return {"ok": True, "draft_id": str(row.id), "expires_at": row.expires_at.isoformat(), "left_in_this_run": left}
+
+
 HANDLERS: dict[str, Callable[[RunContext, dict], dict]] = {
     "get_state": get_state,
     "search_items": search_items,
     "get_item": get_item,
     "propose_change": propose_change,
     "add_note": add_note,
+    "propose_draft": propose_draft,
 }
 
 

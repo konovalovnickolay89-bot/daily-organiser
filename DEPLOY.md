@@ -108,6 +108,8 @@ Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for 
 - `/commute/shift`
 - `/metrics`, `/system/status`, `/alerts`
 - `/voice/transcribe` when voice is on. It is 404 while `VOICE_INPUT_ENABLED` is unset
+- `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`
+- `/playlist`
 
 Do not change Cloudflare, tunnels, or DNS from this repo. Access is the only login.
 
@@ -126,19 +128,26 @@ Add nothing secret to git. In the existing house file:
 | `TFL_APP_KEY` | Journey check. Empty leaves the brief line “Journey check is not connected.” Do not commit or log the key |
 | `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired. The body is only `start`, `end`, and `location_label`, and the only label stored is `Wembley` |
 | `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Leave empty to keep the webhook closed (503). The signature is hex HMAC-SHA256 of `{unix timestamp}.{raw body}`, headers `X-Organiser-Timestamp` and `X-Organiser-Signature`. The timestamp must be within five minutes, and each signature is accepted once in that window. The only event is `commute`, and it uses the same shift check. A rejected body is not stored |
-| `WEBHOOK_SECRET_BANTO_X` | Reserve the name for the X relay. Do not set it until that source is registered. It does nothing now |
-| `SHOW_PLAYLIST_STUB` | Leave unset or `false`. The playlist line stays hidden. `true` shows the text only; nothing plays |
+| `WEBHOOK_SECRET_BANTO_X` | HMAC secret for `POST /hooks/banto_x`. Leave empty to keep that door closed (503). Events: `x.bookmark`, `x.watch_match`, `x.draft`. Same signature rules as Bantō. Refused while `X_ENABLED` is off. A body outside the house is not stored |
+| `X_ENABLED` | Leave unset or `false` until Nick wants X. `true` turns on connect, the poll, cards, and confirmed posts |
+| `X_CLIENT_ID`, `X_CLIENT_SECRET` | From Nick's own X app. See the setup steps below. Do not commit or log the secret |
+| `X_REDIRECT_URI` | `https://organiser.apidiscoverysolution.uk/x/callback`. It must match the app exactly |
+| `X_TOKEN_KEY` | Fernet key. Refresh and access tokens are sealed with it before they are stored. Generate it on the box and do not commit it |
+| `X_POLL_MINUTES` | Optional. Default 30. Bookmarks and the watch list are not read more often than this, and a 429 backs off |
+| `PLAYLIST_SOURCE` | `hearthis` for the Chlorophil line. Empty hides it |
+| `HEARTHIS_PROFILE` | Optional. Default `chlorophil` |
+| `SHOW_PLAYLIST` | Leave unset once a source is set (the line comes on). `false` hides it. The tap opens hearthis in a new tab. Nothing is streamed |
 | `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
 | `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows the mic on Smart Add only. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
 | `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on, with the existing `MISTRAL_API_KEY` |
 
-Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.3.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
+Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, token, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.4.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
 
 Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0005_sprint6` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
-Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `api.tfl.gov.uk` (only if `TFL_APP_KEY` is set), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
+Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `api.tfl.gov.uk` (only if `TFL_APP_KEY` is set), `oauth2.googleapis.com`, `www.googleapis.com`, `api.x.com` (only if `X_ENABLED` is on), and `api-v2.hearthis.at` (only if `PLAYLIST_SOURCE=hearthis`). The browser, not the process, opens `x.com` to connect and `hearthis.at` for a track, and loads thumbs from `img.hearthis.at`. No bodies, tokens, coordinates, or postcodes in logs.
 
-The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0005_sprint6` is recorded. Do not stamp over it.
+The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0006_sprint7` is recorded. Do not stamp over it.
 
 ## Sprint 6, when discovery-system deploys it
 
@@ -151,6 +160,40 @@ Do this after a backup. This repo does not install the unit, and it does not cha
 5. Cloudflare Access should cover `/metrics`, `/system/status`, `/alerts`, and `/voice/transcribe`. `/metrics` is counts and timings. Alert cards stay in the app: nothing is emailed or sent. A Mistral failure (3 or more in 15 minutes), a quiet activity poll (over 2 hours, Monday to Friday, 06:00–21:59 London), and a database error each show one card that can be dismissed.
 
 Rollback of the table: `alembic downgrade 0004_memory`. That drops `alert_dismissals`. The cards are computed, so they return on their own. Voice stays off when the flag is removed. No audio was stored, so there is nothing to delete.
+
+## X app, for Nick
+
+This uses Nick's own app on the X developer portal. The house does not share an app with anyone else. Leave `X_ENABLED` unset until the values below are in the house file.
+
+1. Create a project and an app in the X developer portal, on Nick's account.
+2. Set user authentication to OAuth 2.0. The app type is a confidential web app. Do not use OAuth 1.0a.
+3. Callback URL, exactly: `https://organiser.apidiscoverysolution.uk/x/callback`
+4. Scopes: `tweet.read`, `users.read`, `bookmark.read`, `tweet.write`, `offline.access`.
+5. Copy the client id and client secret into the house file as `X_CLIENT_ID` and `X_CLIENT_SECRET`. Set `X_REDIRECT_URI` to that same callback URL.
+6. On the box, generate a Fernet key and put it in `X_TOKEN_KEY`. Do not commit it and do not paste it into chat:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+7. Set `X_ENABLED=true` and restart. In Settings, tap Connect. X asks Nick to allow those scopes. Disconnect revokes the refresh token and deletes the sealed copy.
+8. The watch list is accounts or keywords, edited in Settings. Bookmarks and that list are read about every 30 minutes (`X_POLL_MINUTES`). A card is Apply or Not now. Apply keeps the line in the log. It does not post.
+9. A draft is posted only when Nick taps Post and then confirms. Drafts expire after 7 days. Each attempt is an audit row. Hilton, a guest, a colleague, an employer, or a work system is refused and not stored.
+10. A relay can still post `x.bookmark`, `x.watch_match`, or `x.draft` to `POST /hooks/banto_x` with `WEBHOOK_SECRET_BANTO_X`. The same pipeline, the same refusal. Leave the secret empty until that relay exists.
+
+`python -m organiser.agent sync` again if the agent should offer `propose_draft`. That function only proposes. It does not post.
+
+## Sprint 7, when discovery-system deploys it
+
+Do this after a backup. This repo does not install the unit, and it does not change Cloudflare, tunnels, or DNS.
+
+1. Allow outbound HTTPS to `api.x.com` if X will be on, and to `api-v2.hearthis.at` if the playlist line will be on. The browser also needs `img.hearthis.at` for the thumb. Do not open a new public port.
+2. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0006_sprint7` is recorded. That adds `x_connection`, `x_oauth_pending`, `x_watches`, `x_items`, `x_cursors`, `x_meter`, and `x_post_audit`. Tokens in `x_connection` are ciphertext. Do not stamp over it. The process also creates the tables on boot.
+3. Put the X and playlist names in the existing house file. Leave `X_ENABLED` unset until the app setup above is done. `PLAYLIST_SOURCE=hearthis` and `HEARTHIS_PROFILE=chlorophil` show the line. `SHOW_PLAYLIST=false` hides it. `SHOW_PLAYLIST_STUB` is no longer read.
+4. Rebuild the UI (`npm ci && npm run build` in `frontend/`) and restart the process. `/health` reports version `0.4.0`. Reinstall `backend/requirements.txt` so `cryptography` is present.
+5. Cloudflare Access should cover `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`, and `/playlist`.
+
+Rollback of the tables, after a backup: `alembic downgrade 0005_sprint6`. That drops the X rows, including sealed tokens and the post audit. A post that already went to X stays on X. Set `X_ENABLED` empty before the downgrade so a restart does not call X. The playlist line hides when `PLAYLIST_SOURCE` is empty.
 
 ## Mistral assistant, later
 

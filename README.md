@@ -173,7 +173,10 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/catch-up/items/{id}/apply` | Add the note on that card to one task or commitment |
 | POST | `/catch-up/items/{id}/dismiss` | Not now. That item rests for 72 hours |
 | POST | `/commute/shift` | One rota shift. Header `Authorization: Bearer <BANTO_COMMUTE_TOKEN>`. Body is only `start`, `end`, and `location_label`. The label must be `Wembley`. 503 when the token is unset, 401 when it does not match, 422 for any other field or label, 429 after 12 pushes in an hour from this process. Nothing but those three fields is stored |
-| POST | `/hooks/{source}` | Signed inbound webhook. HMAC-SHA256 of `{timestamp}.{raw body}` with that source's secret, a timestamp header, and a five-minute window. A signature is accepted once in that window. Only `banto` / `commute` is registered, and it uses the same shift check. Unknown sources and events are refused and not stored |
+| POST | `/hooks/{source}` | Signed inbound webhook. HMAC-SHA256 of `{timestamp}.{raw body}` with that source's secret, a timestamp header, and a five-minute window. A signature is accepted once in that window. `banto` / `commute` uses the shift check. `banto_x` accepts `x.bookmark`, `x.watch_match`, and `x.draft` when `X_ENABLED` is on. Unknown sources and events are refused and not stored |
+| GET, POST | `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect` | X OAuth. Off unless `X_ENABLED`. Connect returns an authorize URL. The callback stores a sealed refresh token and redirects home. Disconnect revokes it |
+| GET, POST | `/x/items`, `/x/poll`, `/x/items/{id}/apply`, `/x/items/{id}/dismiss`, `/x/items/{id}/post` | Bookmark and watch cards, and drafts. Poll respects the interval, `since_id`, and backoff. Apply keeps a line in the log. Post sends one draft only when `confirm` is true |
+| GET | `/playlist` | Latest hearthis.at track when `PLAYLIST_SOURCE=hearthis`. Cached for an hour. No stream URL |
 
 Task status is `todo`, `doing`, or `done`. Priority is `low`, `medium`, or `high`. Commitment status is `open`, `kept`, or `dropped`. An action mode is `observe`, `advise`, `prepare`, or `execute`. An action status is `pending`, `approved`, or `skipped`. Owner defaults to `Nick`.
 
@@ -188,7 +191,7 @@ One home screen. A thin icon rail on the left, a large greeting, then cream card
 1. Rail: thin line icons for Home, Brief, tasks, approvals, Today, and Settings. No illustrations.
 2. Greeting, large, at the top of the main area. The words come from `GET /system`: “Welcome home” for one hour after `POST /system/arrive`, otherwise Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening (17:00–21:59) in Europe/London. From 22:00–04:59 the headline is Good night, and the date stays beside Home. Status and Pause / Unpause sit with the greeting.
 3. Cards: morning brief, Today, and the assistant column. Today includes the task list and the add line. The right-hand column starts with the five newest lines from `GET /agent/activity?limit=5`, then the working strip (Received, Reading the house log, Calling the assistant, Done or Failed), then one Decisions list. That column is not a chat. Proposals and pending approvals share the list. Each card is Apply or Not now. A past due date adds “This date has passed.” and does not remove the card. Apply on a proposal makes the allowlisted change, including a shopping line. Apply on an approval only records the decision. The next line replaces the strip. The strip shows “The assistant is off” until a key, an agent id, and the Settings switch are all on, and “The assistant is down” when a call has just failed. The add line is hidden in both of those cases. The brief shows the commute, appointments (read only), shopping (names and ticks), and weather, or a short line when that section is not set.
-4. Under the cards, only when `SHOW_PLAYLIST_STUB=true`: “A playlist is ready, when you want it.” The line is hidden by default. Text only. It does not play anything and it does not control the house.
+4. Under the cards, when `PLAYLIST_SOURCE=hearthis`: the latest track from that hearthis.at profile (title, genre, artwork). A tap opens `permalink_url` in a new tab. Nothing is streamed. The line is on once a source is set, unless `SHOW_PLAYLIST=false`. If hearthis cannot be reached, the last cached track is kept, or the line says it is quiet.
 
 Colour follows the house clock. Good morning and Good afternoon use the brighter morning theme. Good evening and Good night use the deeper evening theme. “Welcome home” follows the London hour. Settings can hold morning or evening in this browser. That only recolors the chrome.
 
@@ -222,8 +225,15 @@ discovery-system keeps secrets in the house environment file this app already us
 | `TFL_APP_KEY` | Journey check for a Wembley commute. Empty leaves “Journey check is not connected.” Register a free Unified API key and put it only in the house file |
 | `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired and the brief says the commute is not connected |
 | `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Empty keeps that door closed |
-| `WEBHOOK_SECRET_BANTO_X` | Reserved for the X relay. Not a source yet. Leave empty |
-| `SHOW_PLAYLIST_STUB` | `true` shows the quiet playlist line. Default is off. It still does not play |
+| `WEBHOOK_SECRET_BANTO_X` | HMAC secret for `POST /hooks/banto_x`. Empty keeps that door closed. Events are `x.bookmark`, `x.watch_match`, and `x.draft`, and only while `X_ENABLED` is on |
+| `X_ENABLED` | X off unless `true`. Bookmarks, the watch list, and confirmed posts |
+| `X_CLIENT_ID`, `X_CLIENT_SECRET` | Nick's X app. OAuth 2.0 with PKCE. Scopes: `tweet.read`, `users.read`, `bookmark.read`, `tweet.write`, `offline.access` |
+| `X_REDIRECT_URI` | Must match the app. `https://organiser.apidiscoverysolution.uk/x/callback` |
+| `X_TOKEN_KEY` | Fernet key. Refresh tokens are sealed with it. Never logged |
+| `X_POLL_MINUTES` | Bookmark and watch poll. Default 30 |
+| `PLAYLIST_SOURCE` | `hearthis` shows the playlist line. Empty hides it |
+| `HEARTHIS_PROFILE` | hearthis.at profile. Default `chlorophil` |
+| `SHOW_PLAYLIST` | Empty means on once a source is set. `false` hides the line. It still does not play |
 | `RATE_FEED_PER_MINUTE` | Optional. Default 6. Burst limit for the box, in this process |
 | `RATE_INGEST_PER_MINUTE` | Optional. Default 30. Burst limit for `POST /agent/proposals` |
 | `RATE_COMMUTE_PER_HOUR` | Optional. Default 12. Burst limit for the shift push |

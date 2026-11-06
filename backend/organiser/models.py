@@ -406,3 +406,120 @@ class IntegrationStatus(Base):
     last_ok_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class XConnection(Base):
+    """Nick's X account. The tokens are Fernet ciphertext, never the raw values."""
+
+    __tablename__ = "x_connection"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_x_connection_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    x_user_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    username: Mapped[str] = mapped_column(String(15), nullable=False)
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
+    access_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    scopes: Mapped[str] = mapped_column(String(200), nullable=False)
+    connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class XOauthPending(Base):
+    """One PKCE attempt. The verifier is ciphertext. The row is single use."""
+
+    __tablename__ = "x_oauth_pending"
+
+    state: Mapped[str] = mapped_column(String(80), primary_key=True)
+    verifier: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class XWatch(Base):
+    """An account or a keyword Nick asked to watch. Recent search reads it."""
+
+    __tablename__ = "x_watches"
+    __table_args__ = (
+        UniqueConstraint("kind", "value", name="uq_x_watches_value"),
+        CheckConstraint("kind in ('account', 'keyword')", name="ck_x_watches_kind"),
+        CheckConstraint("char_length(value) > 0", name="ck_x_watches_value"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    value: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class XItem(Base):
+    """A bookmark, a watch match, or a draft. A draft is not posted until confirmed."""
+
+    __tablename__ = "x_items"
+    __table_args__ = (
+        UniqueConstraint("kind", "external_id", name="uq_x_items_external"),
+        CheckConstraint("kind in ('bookmark', 'watch_match', 'draft')", name="ck_x_items_kind"),
+        CheckConstraint(
+            "status in ('pending', 'applied', 'dismissed', 'posted', 'expired')",
+            name="ck_x_items_status",
+        ),
+        CheckConstraint("source in ('poll', 'webhook', 'assistant')", name="ck_x_items_source"),
+        CheckConstraint("char_length(text) > 0", name="ck_x_items_text"),
+        Index("ix_x_items_status", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    external_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    author: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    posted_tweet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class XCursor(Base):
+    """The newest id already seen, so the next poll does not re-read it."""
+
+    __tablename__ = "x_cursors"
+
+    name: Mapped[str] = mapped_column(String(80), primary_key=True)
+    since_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class XMeter(Base):
+    """Last credits and rate headers. No tweet text and no token."""
+
+    __tablename__ = "x_meter"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_x_meter_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    credits_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rate_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rate_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    backoff_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class XPostAudit(Base):
+    """One attempt to post a draft. The tweet id is kept. The token is not."""
+
+    __tablename__ = "x_post_audit"
+    __table_args__ = (
+        CheckConstraint("outcome in ('posted', 'failed')", name="ck_x_post_audit_outcome"),
+        Index("ix_x_post_audit_item", "item_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    item_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("x_items.id"), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    tweet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

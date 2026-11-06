@@ -50,6 +50,8 @@ def _secret(source: str) -> str:
     settings = get_settings()
     if source == "banto":
         return settings.webhook_secret_banto.get_secret_value().strip()
+    if source == "banto_x":
+        return settings.webhook_secret_banto_x.get_secret_value().strip()
     return ""
 
 
@@ -102,10 +104,29 @@ def _commute(session: Session, body: dict) -> dict:
     }
 
 
-# source → event → handler. banto_x is not registered; its secret waits for later.
+def _x_event(session: Session, body: dict) -> dict:
+    """x.bookmark, x.watch_match, and x.draft. The same rows as the poll."""
+    from organiser.x.store import XRejected, ingest_webhook
+
+    if not get_settings().x_enabled:
+        raise HTTPException(status_code=503, detail="X is off.")
+    try:
+        result = ingest_webhook(session, body, clock.current_time())
+    except XRejected as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.detail) from None
+    session.commit()
+    return result
+
+
+# source → event → handler. banto_x is the relay door. It stays closed until its secret is set.
 _EVENTS = {
     "banto": {
         "commute": _commute,
+    },
+    "banto_x": {
+        "x.bookmark": _x_event,
+        "x.watch_match": _x_event,
+        "x.draft": _x_event,
     },
 }
 

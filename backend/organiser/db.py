@@ -171,6 +171,15 @@ def ensure_alerts() -> None:
             connection.execute(text(statement))
 
 
+def ensure_sprint7() -> None:
+    """X tables. These statements match Alembic ``0006_sprint7`` and can run twice."""
+    from organiser.patches import SPRINT7_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in SPRINT7_UPGRADE:
+            connection.execute(text(statement))
+
+
 def ensure_memory() -> None:
     """The memory table, the usage count, and the wider proposal check.
 
