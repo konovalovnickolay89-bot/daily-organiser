@@ -1,4 +1,4 @@
-import { useView } from "../../arrival/view.jsx";
+import { useView } from "../../arrival/view";
 import { AssistantResult } from "./AssistantResult.jsx";
 
 /**

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getSystem, pauseSystem, unpauseSystem } from "../api/system.js";
+import { getSystem, pauseSystem, unpauseSystem } from "../api/system";
 
 const HouseContext = createContext(null);
 

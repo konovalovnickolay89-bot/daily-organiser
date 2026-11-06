@@ -1,7 +1,8 @@
 /* Arrival shell.
    Near-black canvas, cream cards, cream greeting, amber icons.
    Evening and morning share the structure. html[data-theme] only shifts colour.
-   Greeting words stay on the server. */
+   Greeting words stay on the server.
+   The same variables are the Tailwind token colours. No light theme. */
 
 html {
   color-scheme: dark;
@@ -329,7 +330,8 @@ textarea {
 
 .card,
 .catch-up,
-dialog.task-dialog {
+dialog.task-dialog,
+dialog.house-dialog {
   --ink: var(--ink-card);
   --muted: var(--muted-card);
   --line: var(--line-card);
@@ -426,6 +428,41 @@ dialog.task-dialog {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 4px;
+}
+
+.fact-list {
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.fact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.fact-row dt,
+.fact-row dd {
+  margin: 0;
+  min-width: 0;
+  font-size: 0.95rem;
+}
+
+.fact-row dt {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.fact-row dd {
+  font-weight: 600;
+  text-align: right;
+  color: var(--ink);
 }
 
 .theme-choice {
@@ -1019,7 +1056,8 @@ details[open] > summary .chevron::before {
   margin-top: 24px;
 }
 
-dialog.task-dialog {
+dialog.task-dialog,
+dialog.house-dialog {
   width: min(26.5rem, calc(100vw - 28px));
   max-height: min(88vh, 42rem);
   margin: auto;
@@ -1029,20 +1067,24 @@ dialog.task-dialog {
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
 }
 
-dialog.task-dialog::backdrop {
+dialog.task-dialog::backdrop,
+dialog.house-dialog::backdrop {
   background: rgba(7, 6, 5, 0.72);
 }
 
-dialog.task-dialog h2 {
+dialog.task-dialog h2,
+dialog.house-dialog h2 {
   margin-top: 4px;
   font-size: 1.7rem;
 }
 
-dialog.task-dialog .lede {
+dialog.task-dialog .lede,
+dialog.house-dialog .lede {
   margin-bottom: 16px;
 }
 
-dialog.task-dialog .eyebrow {
+dialog.task-dialog .eyebrow,
+dialog.house-dialog .eyebrow {
   color: var(--muted);
 }
 

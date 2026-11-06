@@ -1,8 +1,10 @@
 import { TaskRow } from "../tasks/TaskRow.jsx";
 import { Disclosure } from "./Disclosure.jsx";
 
-export function BriefSection({ section, startOpen = false, onOpenTask }) {
+export function BriefSection({ section, startOpen = false, onOpenTask, onOpenCommitment }) {
   const tasksOpen = section.key === "tasks" && typeof onOpenTask === "function";
+  const commitmentsOpen = section.key === "commitments" && typeof onOpenCommitment === "function";
+  const openItem = tasksOpen ? onOpenTask : commitmentsOpen ? onOpenCommitment : null;
   const className = section.placeholder ? "brief-section is-placeholder" : "brief-section";
 
   return (
@@ -26,13 +28,13 @@ export function BriefSection({ section, startOpen = false, onOpenTask }) {
       ) : (
         <ul className="item-list">
           {section.items.map((item) =>
-            tasksOpen && item.id ? (
+            openItem && item.id ? (
               <TaskRow
                 key={item.id}
                 title={item.title}
                 meta={item.meta}
                 detail={item.detail}
-                onOpen={() => onOpenTask(item.id)}
+                onOpen={() => openItem(item.id)}
               />
             ) : (
               <li key={item.id ?? item.title} className="item">

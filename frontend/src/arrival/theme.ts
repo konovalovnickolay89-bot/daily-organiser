@@ -7,12 +7,15 @@ const STORAGE_KEY = "organiser-theme";
 const MORNING = new Set(["Good morning", "Good afternoon"]);
 const EVENING = new Set(["Good evening", "Good night"]);
 
-const THEME_COLOR = {
+export type ThemeChoice = "auto" | "morning" | "evening";
+export type ThemeName = "morning" | "evening";
+
+const THEME_COLOR: Record<ThemeName, string> = {
   morning: "#1b1916",
   evening: "#050403",
 };
 
-export function houseHour(date = new Date()) {
+export function houseHour(date = new Date()): number {
   try {
     const parts = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/London",
@@ -28,14 +31,14 @@ export function houseHour(date = new Date()) {
   }
 }
 
-export function themeForGreeting(greeting, date = new Date()) {
-  if (MORNING.has(greeting)) return "morning";
-  if (EVENING.has(greeting)) return "evening";
+export function themeForGreeting(greeting?: string | null, date = new Date()): ThemeName {
+  if (greeting && MORNING.has(greeting)) return "morning";
+  if (greeting && EVENING.has(greeting)) return "evening";
   const hour = houseHour(date);
   return hour >= 5 && hour < 17 ? "morning" : "evening";
 }
 
-export function readThemeChoice() {
+export function readThemeChoice(): ThemeChoice {
   try {
     const value = localStorage.getItem(STORAGE_KEY);
     if (value === "auto" || value === "morning" || value === "evening") return value;
@@ -45,7 +48,7 @@ export function readThemeChoice() {
   return "auto";
 }
 
-export function writeThemeChoice(value) {
+export function writeThemeChoice(value: ThemeChoice): void {
   try {
     localStorage.setItem(STORAGE_KEY, value);
   } catch {
@@ -53,7 +56,11 @@ export function writeThemeChoice(value) {
   }
 }
 
-export function useHouseTheme(greeting) {
+export function useHouseTheme(greeting?: string | null): {
+  choice: ThemeChoice;
+  theme: ThemeName;
+  choose: (next: string) => void;
+} {
   const [choice, setChoice] = useState(readThemeChoice);
   const theme = choice === "morning" || choice === "evening" ? choice : themeForGreeting(greeting);
 
@@ -63,7 +70,7 @@ export function useHouseTheme(greeting) {
     if (meta) meta.setAttribute("content", THEME_COLOR[theme]);
   }, [theme]);
 
-  const choose = useCallback((next) => {
+  const choose = useCallback((next: string) => {
     if (next !== "auto" && next !== "morning" && next !== "evening") return;
     writeThemeChoice(next);
     setChoice(next);

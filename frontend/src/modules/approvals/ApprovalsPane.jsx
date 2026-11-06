@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { approveRequest, listApprovals, skipRequest } from "../../api/approvals.js";
+import { approveRequest, listApprovals, skipRequest } from "../../api/approvals";
 import { useHouse } from "../../house/HouseContext.jsx";
-import { MODE_LABELS } from "../../lib/labels.js";
+import { MODE_LABELS } from "../../lib/labels";
 
 function waitingLabel(count) {
   if (count === 0) return "None waiting";

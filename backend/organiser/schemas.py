@@ -212,6 +212,18 @@ class SystemRead(APIModel):
     debounce_until: datetime | None = None
 
 
+class HouseFacts(APIModel):
+    """Settings card. Configured or not. Never a secret, coordinate, postcode, or calendar id."""
+
+    timezone: str
+    assistant: str
+    runs_left_today: int
+    diary: str
+    weather_location: str
+    tfl: str
+    banto: str
+
+
 class FeedRequest(APIModel):
     text: str = Field(min_length=1, max_length=1000)
 

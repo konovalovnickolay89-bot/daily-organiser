@@ -43,6 +43,18 @@ services:
       # Empty keeps it off. See docs/mistral-agent.md.
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       MISTRAL_AGENT_ID: ${MISTRAL_AGENT_ID:-}
+      # Local default is docs off, matching the house. Set ENABLE_DOCS=true to debug.
+      ENABLE_DOCS: ${ENABLE_DOCS:-false}
+      # Empty unless the shell or a local .env sets them. Never commit real values.
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_REFRESH_TOKEN: ${GOOGLE_OAUTH_REFRESH_TOKEN:-}
+      GOOGLE_CALENDAR_IDS: ${GOOGLE_CALENDAR_IDS:-}
+      HOUSE_LAT: ${HOUSE_LAT:-}
+      HOUSE_LON: ${HOUSE_LON:-}
+      HOUSE_POSTCODE: ${HOUSE_POSTCODE:-}
+      TFL_APP_KEY: ${TFL_APP_KEY:-}
+      BANTO_COMMUTE_TOKEN: ${BANTO_COMMUTE_TOKEN:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

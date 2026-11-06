@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { applyProposal, dismissProposal, feedAgent, getAgent, runReview } from "../../api/agent.js";
+import { applyProposal, dismissProposal, feedAgent, getAgent, runReview } from "../../api/agent";
 import { useHouse } from "../../house/HouseContext.jsx";
 import { noteStep } from "./steps.js";
 

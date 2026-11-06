@@ -1,5 +1,5 @@
 import { useHouse } from "../../house/HouseContext.jsx";
-import { formatHouseDate } from "../../lib/labels.js";
+import { formatHouseDate } from "../../lib/labels";
 
 export function PresenceBar() {
   const { system, error, busy, togglePause } = useHouse();

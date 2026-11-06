@@ -10,7 +10,15 @@ A Mistral assistant reads the log and proposes changes as cards. Apply makes exa
 
 Home only. No work systems, and no Hilton or guest data.
 
-The house Debian box will run this later as PostgreSQL plus one process. `organiser.grok.me` is not set up here. See `DEPLOY.md`.
+This is not a calendar. There is no month grid and no screen to create or edit a diary event. `/events` is the operational house log. A later brief may show today’s appointments as a read-only list. Applying a card does not write to a diary.
+
+Apply is the only way a proposal changes the log. The allowlist is one task or one commitment: create it, edit it, or add a dated note. Approvals still only record a decision, and `effect_applied` stays false. Nothing is sent, bought, or booked.
+
+A curator polls `GET /agent/activity` and may file one task card with `POST /agent/proposals`. That card waits for Apply. The request does not call Mistral.
+
+Bantō is not connected. When a later sprint adds the commute push, the body is only `start`, `end`, and `location_label`. The label `Wembley` means Wembley Park. The origin is home. No names, no staff ids, and no guest or hotel text.
+
+The live house is [https://organiser.apidiscoverysolution.uk](https://organiser.apidiscoverysolution.uk). Cloudflare Access is the only login. This app has no accounts. `organiser.grok.me` is not this service. See `DEPLOY.md`.
 
 ## Layout
 
@@ -49,7 +57,7 @@ The only published port is the API on the host loopback. Inside the container th
 docker compose up --build
 ```
 
-Open http://127.0.0.1:8080. Interactive API docs are on that same origin at http://127.0.0.1:8080/docs.
+Open http://127.0.0.1:8080. `/docs` and `/openapi.json` stay off unless `ENABLE_DOCS=true` (local debug only).
 
 The database password in Compose is a local default (`organiser`). Do not reuse it on the house box.
 
@@ -137,6 +145,7 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/approvals/{id}/approve` | Status becomes approved. Nothing outside the log changes |
 | POST | `/approvals/{id}/skip` | Status becomes skipped |
 | GET | `/system` | Pause flag, activity, status line, and the presence-bar greeting |
+| GET | `/system/facts` | Timezone, assistant on or off, runs left today, and whether diary, weather location, TfL, and Bantō are configured. No secret, coordinate, postcode, or calendar id. Never calls Mistral |
 | POST | `/system/pause` | Pause. Repeating it does not write a second log line |
 | POST | `/system/unpause` | Resume |
 | POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
@@ -183,6 +192,24 @@ The assistant is off until `MISTRAL_API_KEY` and `MISTRAL_AGENT_ID` are set. `py
 
 It speaks when you write in the box, at a morning review (first look between 06:00 and 10:59), and about items that have gone quiet (in progress 3 days, 2 days overdue, a commitment due today or tomorrow). A commute also asks for a journey check; the journey source is not connected. Pause stops it. It raises at most 3 cards a day on its own, one at a time, and runs Mistral at most 12 times a day. A feed that does not finish returns 424 with a short line, and the screen keeps that line. Tests use a scripted fake and never reach Mistral.
 
+## House file
+
+discovery-system keeps secrets in the house environment file this app already uses. Do not add a second file. Older notes named `/etc/daily-organiser.env`; that is not a path this repo creates. `.env.example` lists the names with empty placeholders. Never commit a real key, postcode, or coordinate, and the API does not log them.
+
+| Name | What a later sprint may use it for |
+| --- | --- |
+| `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Assistant. Empty keeps it off |
+| `ENABLE_DOCS` | Local debug only. Leave false on the house |
+| `HOUSE_LAT`, `HOUSE_LON` or `HOUSE_POSTCODE` | Home location. Coordinates win when both are set; otherwise the postcode. Not connected yet |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Not connected yet |
+| `GOOGLE_CALENDAR_IDS` | Which calendars to read. Blank means `primary` |
+| `TFL_APP_KEY` | Journey check. Not connected yet |
+| `BANTO_COMMUTE_TOKEN` | Shift push of start, end, and a location label. Not connected yet |
+
+The diary, when it is connected, may request only `calendar.events.readonly` and `calendar.calendarlist.readonly`. It must not request a write scope. Settings says configured or not configured. It never shows the value.
+
+Cloudflare Access has to cover the public hostname for both the arrival screen and the JSON routes, including `/agent` and `/system`. This repo does not change Cloudflare.
+
 ## What this does not do
 
-No merge to `main`, no deploy, no Cloudflare, no voice, no Bantō call, no live weather, no playlist service, and no shopping that buys anything. The assistant proposes; it never sends, buys, books, or changes a row without Apply.
+No merge to `main`, no deploy, no Cloudflare change, no voice, no Bantō call, no live weather, no diary client, no playlist service, and no shopping that buys anything. The assistant proposes; it never sends, buys, books, or changes a row without Apply. Schema changes for a fresh database can use Alembic (`backend/alembic`). The running process still uses `create_all` and does not upgrade a live database.

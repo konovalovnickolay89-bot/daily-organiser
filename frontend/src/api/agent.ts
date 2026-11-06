@@ -1,18 +1,18 @@
-import { ApiError, request } from "./client.js";
+import { ApiError, request } from "./client";
+import type { AgentDue, FeedResult } from "./types";
 
 const ASSISTANT_FAILED = "The assistant did not finish. Nothing was changed.";
 
-// GET /agent only reads. It never calls Mistral.
 export function getAgent() {
   return request("/agent");
 }
 
-function detailFrom(payload) {
+function detailFrom(payload: { detail?: unknown } | null) {
   if (payload && typeof payload.detail === "string" && payload.detail.trim()) return payload.detail.trim();
   return "";
 }
 
-function messageForFeed(status, payload) {
+function messageForFeed(status: number, payload: { detail?: unknown } | null) {
   const detail = detailFrom(payload);
   if (status === 409 || status === 422 || status === 429 || status === 503) {
     return detail || "The house log could not be reached.";
@@ -21,19 +21,24 @@ function messageForFeed(status, payload) {
   return ASSISTANT_FAILED;
 }
 
-async function readPayload(response) {
+async function readPayload(response: Response) {
   const text = await response.text();
   if (!text) return null;
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as { detail?: unknown };
   } catch {
     return null;
   }
 }
 
-function parseEvent(block) {
+type ParsedEvent = {
+  event: string;
+  data: { step?: string; detail?: string };
+};
+
+function parseEvent(block: string): ParsedEvent | null {
   let event = "message";
-  const dataLines = [];
+  const dataLines: string[] = [];
   for (const line of block.split("\n")) {
     if (!line || line.startsWith(":")) continue;
     if (line.startsWith("event:")) event = line.slice(6).trim();
@@ -41,25 +46,25 @@ function parseEvent(block) {
   }
   if (dataLines.length === 0) return null;
   try {
-    return { event, data: JSON.parse(dataLines.join("\n")) };
+    return { event, data: JSON.parse(dataLines.join("\n")) as ParsedEvent["data"] };
   } catch {
     return null;
   }
 }
 
-async function readFeedStream(response, onStep) {
+async function readFeedStream(response: Response, onStep?: (step: string) => void): Promise<FeedResult> {
   if (!response.body) throw new ApiError(ASSISTANT_FAILED, response.status);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  let result = null;
-  let failure = null;
+  let result: FeedResult | null = null;
+  let failure: string | null = null;
 
-  const take = (block) => {
+  const take = (block: string) => {
     const parsed = parseEvent(block);
     if (!parsed) return;
     if (parsed.event === "step" && parsed.data?.step) onStep?.(parsed.data.step);
-    else if (parsed.event === "done") result = parsed.data;
+    else if (parsed.event === "done") result = parsed.data as FeedResult;
     else if (parsed.event === "error") failure = parsed.data?.detail || ASSISTANT_FAILED;
   };
 
@@ -77,11 +82,14 @@ async function readFeedStream(response, onStep) {
   return result;
 }
 
-// One entry. Steps arrive while the assistant works. A failure stays in the panel.
-export async function feedAgent(text, { onStep } = {}) {
+export async function feedAgent(
+  text: string,
+  handlers: { onStep?: (step: string) => void } = {},
+): Promise<FeedResult> {
+  const onStep = handlers.onStep;
   onStep?.("received");
   const base = import.meta.env.VITE_API_BASE_URL ?? "";
-  let response;
+  let response: Response;
   try {
     response = await fetch(`${base}/agent/feed`, {
       method: "POST",
@@ -100,23 +108,22 @@ export async function feedAgent(text, { onStep } = {}) {
     const payload = await readPayload(response);
     if (!response.ok) throw new ApiError(messageForFeed(response.status, payload), response.status);
     onStep?.("calling");
-    return payload;
+    return (payload ?? {}) as FeedResult;
   }
   return readFeedStream(response, onStep);
 }
 
-// Runs the one review GET /agent says is due. The server checks it again.
-export function runReview(due) {
+export function runReview(due: AgentDue) {
   return request("/agent/review", {
     method: "POST",
     body: { trigger: due.trigger, window_key: due.window_key },
   });
 }
 
-export function applyProposal(id) {
+export function applyProposal(id: string) {
   return request(`/agent/proposals/${id}/apply`, { method: "POST" });
 }
 
-export function dismissProposal(id) {
+export function dismissProposal(id: string) {
   return request(`/agent/proposals/${id}/dismiss`, { method: "POST" });
 }

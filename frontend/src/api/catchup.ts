@@ -1,14 +1,13 @@
-import { request } from "./client.js";
+import { request } from "./client";
 
-// POST /catch-up/look records a look. It never calls Mistral.
 export function recordLook() {
   return request("/catch-up/look", { method: "POST" });
 }
 
-export function applyCatchUp(id) {
+export function applyCatchUp(id: string) {
   return request(`/catch-up/items/${id}/apply`, { method: "POST" });
 }
 
-export function dismissCatchUp(id) {
+export function dismissCatchUp(id: string) {
   return request(`/catch-up/items/${id}/dismiss`, { method: "POST" });
 }
