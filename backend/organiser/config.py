@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     mistral_api_key: SecretStr = SecretStr("")
     mistral_agent_id: str = ""
     mistral_model: str = "mistral-medium-latest"
+    # Embeddings for memory. Empty key skips the call and retrieval uses words.
+    mistral_embed_model: str = "mistral-embed"
     mistral_base_url: str = "https://api.mistral.ai"
     # One Mistral call. Together with the run deadline this stays inside the
     # proxy's ~100s limit. See RUN_DEADLINE_SECONDS in agent/runner.py.

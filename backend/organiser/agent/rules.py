@@ -281,7 +281,13 @@ def runs_today(session: Session, local_now: datetime, tz_name: str) -> int:
     start, end = house_day_bounds(local_now, tz_name)
     return (
         session.scalar(
-            select(func.count()).select_from(AgentRun).where(AgentRun.started_at >= start, AgentRun.started_at < end)
+            select(func.count())
+            .select_from(AgentRun)
+            .where(
+                AgentRun.started_at >= start,
+                AgentRun.started_at < end,
+                AgentRun.window_key.notlike("memory:%"),
+            )
         )
         or 0
     )

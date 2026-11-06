@@ -25,6 +25,7 @@ export default defineConfig({
       "/shopping": api,
       "/hooks": api,
       "/commute": api,
+      "/memory": api,
     },
   },
 });

@@ -8,11 +8,19 @@ approvals are untouched: they still only record a decision.
 from datetime import date, datetime
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import DETAIL_LIMIT, clip, note_line, with_note
+from organiser.agent.memory import (
+    MEMORY_TEXT_LIMIT,
+    embed_query,
+    forgotten_title,
+    outside_memory,
+    remembered_title,
+)
 from organiser.domain import DEFAULT_OWNER
-from organiser.models import AgentProposal, Commitment, ShoppingItem, Task
+from organiser.models import AgentProposal, Commitment, MemoryItem, ShoppingItem, Task
 from organiser.schemas import (
     CommitmentCreate,
     CommitmentUpdate,
@@ -62,7 +70,12 @@ def _stale(proposal: AgentProposal, now: datetime) -> ProposalStale:
     return ProposalStale(str(proposal.id))
 
 
-def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[AgentProposal, dict]:
+def apply_proposal(
+    session: Session,
+    proposal_id: UUID,
+    now: datetime,
+    memory_ids: list[UUID] | None = None,
+) -> tuple[AgentProposal, dict]:
     if ensure_system_state(session).paused:
         raise HousePaused()
     proposal = session.get(AgentProposal, proposal_id, with_for_update=True)
@@ -72,6 +85,10 @@ def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[
         raise ProposalClosed(proposal.status)
 
     changes = dict(proposal.changes)
+    if proposal.action == "remember":
+        return _apply_remember(session, proposal, changes, now)
+    if proposal.action == "forget":
+        return _apply_forget(session, proposal, changes, now, memory_ids)
     row: Task | Commitment | ShoppingItem
     event_kind = proposal.ref_type or "task"
     applied_type = proposal.ref_type or "task"
@@ -128,6 +145,94 @@ def apply_proposal(session: Session, proposal_id: UUID, now: datetime) -> tuple[
         owner=DEFAULT_OWNER,
     )
     return proposal, {"ref_type": applied_type, "ref_id": row.id, "summary": proposal.summary}
+
+
+def _refuse(proposal: AgentProposal, now: datetime, detail: str) -> ProposalRefused:
+    proposal.status = "dismissed"
+    proposal.decided_at = now
+    return ProposalRefused(detail)
+
+
+def _apply_remember(session: Session, proposal: AgentProposal, changes: dict, now: datetime):
+    text = " ".join(str(changes.get("text") or "").split())
+    kind = changes.get("kind")
+    if kind not in ("preference", "fact", "routine") or not text or outside_memory(text):
+        raise _refuse(proposal, now, "Not for the house log. Nothing was saved.")
+    if len(text) > MEMORY_TEXT_LIMIT:
+        raise _refuse(proposal, now, "Keep a memory to a short line. Nothing was saved.")
+    existing = session.scalar(select(MemoryItem.id).where(func.lower(MemoryItem.text) == text.lower()).limit(1))
+    if existing is not None:
+        raise _refuse(proposal, now, "Already remembered. Nothing new was saved.")
+    row = MemoryItem(
+        kind=kind,
+        text=text,
+        source="remember",
+        created_at=now,
+        pinned=False,
+        embedding=embed_query(text),
+    )
+    session.add(row)
+    session.flush()
+    proposal.status = "applied"
+    proposal.decided_at = now
+    proposal.applied_ref_id = row.id
+    record_event(
+        session,
+        kind="note",
+        title=remembered_title(text),
+        body="Saved from the box. Nothing left the house.",
+        owner=DEFAULT_OWNER,
+    )
+    return proposal, {"ref_type": "memory", "ref_id": row.id, "summary": proposal.summary}
+
+
+def _apply_forget(
+    session: Session,
+    proposal: AgentProposal,
+    changes: dict,
+    now: datetime,
+    memory_ids: list[UUID] | None,
+):
+    raw = changes.get("matches")
+    allowed: dict[UUID, str] = {}
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict) or not item.get("id"):
+                continue
+            try:
+                allowed[UUID(str(item["id"]))] = str(item.get("text") or "")
+            except ValueError:
+                continue
+    if memory_ids is None:
+        chosen = list(allowed)
+    else:
+        chosen = [item for item in memory_ids if item in allowed]
+    removed: list[str] = []
+    first_id: UUID | None = None
+    for item_id in chosen:
+        row = session.get(MemoryItem, item_id, with_for_update=True)
+        if row is None:
+            continue
+        if first_id is None:
+            first_id = row.id
+        removed.append(row.text)
+        session.delete(row)
+    session.flush()
+    if removed:
+        title, body = forgotten_title(removed)
+    elif memory_ids is not None and not chosen:
+        title, body = forgotten_title([])
+    else:
+        title, body = "Forgot: nothing left", "Nothing matched was still in memory. Nothing was removed."
+    proposal.status = "applied"
+    proposal.decided_at = now
+    proposal.applied_ref_id = first_id
+    record_event(session, kind="note", title=title, body=body, owner=DEFAULT_OWNER)
+    return proposal, {
+        "ref_type": "memory",
+        "ref_id": first_id or proposal.id,
+        "summary": proposal.summary,
+    }
 
 
 def dismiss_proposal(session: Session, proposal_id: UUID, now: datetime) -> AgentProposal:

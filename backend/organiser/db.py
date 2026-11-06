@@ -1,12 +1,29 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from organiser.config import get_settings
 
 _engine = None
 _sessionmaker = None
+
+
+def _register_vector(dbapi_connection, _record) -> None:
+    """Teach psycopg the vector type once the extension exists.
+
+    A missing type is a quiet skip. A failed lookup must not abort the connection,
+    so the extension can still be created on this same connection.
+    """
+    try:
+        found = dbapi_connection.execute("SELECT 1 FROM pg_type WHERE typname = 'vector'").fetchone()
+        if found is None:
+            return
+        from pgvector.psycopg import register_vector
+
+        register_vector(dbapi_connection)
+    except Exception:
+        return
 
 
 def get_engine():
@@ -17,6 +34,7 @@ def get_engine():
             pool_pre_ping=True,
             connect_args={"connect_timeout": 3},
         )
+        event.listen(_engine, "connect", _register_vector)
     return _engine
 
 
@@ -112,11 +130,39 @@ def ensure_sprint2() -> None:
 
     ``create_all`` creates missing tables and does not add a column or widen a
     check. These statements match Alembic ``0002_sprint2`` and can run twice.
+
+    The proposal action check is left for ``ensure_memory``. Applying the
+    Sprint 2 check on a later boot would reject remember and forget rows.
     """
     from organiser.patches import SPRINT2_UPGRADE
 
+    statements = [statement for statement in SPRINT2_UPGRADE if "ck_agent_proposals_action" not in statement]
     with get_engine().begin() as connection:
-        for statement in SPRINT2_UPGRADE:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
+def ensure_vector_extension() -> None:
+    """Load pgvector before ``create_all`` builds ``memory_items``.
+
+    The pool is dropped afterwards so the next connection can register the type.
+    This fails when the server has no pgvector files. See DEPLOY.md.
+    """
+    engine = get_engine()
+    with engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    engine.dispose()
+
+
+def ensure_memory() -> None:
+    """The memory table, the usage count, and the wider proposal check.
+
+    These statements match Alembic ``0004_memory`` and can run twice.
+    """
+    from organiser.patches import MEMORY_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in MEMORY_UPGRADE:
             connection.execute(text(statement))
 
 

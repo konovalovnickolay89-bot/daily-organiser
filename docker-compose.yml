@@ -12,7 +12,9 @@ name: daily-organiser
 
 services:
   db:
-    image: postgres:16-alpine
+    # The stock Postgres image has no vector type. Memory needs this image.
+    # Do not publish 5432. See DEPLOY.md before changing the house database.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: organiser
       POSTGRES_PASSWORD: organiser

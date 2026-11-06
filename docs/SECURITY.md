@@ -41,9 +41,10 @@ A hotel, a guest, a colleague, or an employer is refused with `422` and `Not for
 - `POST` and `PATCH` `/tasks`, `/commitments`, `/events`, `/action-requests`
 - `POST` `/shopping` and calendar names
 - `POST` `/agent/feed`, `POST` `/agent/proposals`, and proposal apply for a shop name
+- `POST` `/memory`, remember and forget in the box, and Apply on those cards
 - `POST` `/commute/shift` and the `banto` commute webhook
 
-The diary drops titles outside the house before they reach the brief. The context builder drops the same titles before they are handed to Smart Add.
+The diary drops titles outside the house before they reach the brief. The context builder drops the same titles before they are handed to Smart Add. Memory refuses the same texts, and also work email, a workplace, or payroll. Embeddings and the memory slot are redacted first: a UK postcode, a coordinate, and the configured house location are not sent. `GET /memory` and `GET /memory/export` do not call Mistral. The export has no embedding.
 
 ## No location in logs
 

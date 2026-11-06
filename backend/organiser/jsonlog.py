@@ -13,11 +13,13 @@ from datetime import datetime, timezone
 _SECRET = re.compile(
     r"(?i)\b(api[_-]?key|secret|token|password|authorization)\b\s*[:=]\s*\S+"
 )
-# A UK postcode. Ordinary words do not match.
-_POSTCODE = re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b", re.IGNORECASE)
+# A UK postcode. Ordinary words do not match. Memory and embeddings use the same pattern.
+POSTCODE_PATTERN = re.compile(r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b", re.IGNORECASE)
 # A latitude or longitude with at least four decimal places. Not a clock fraction
 # such as 08:00:00.123456, which is preceded by a colon.
-_COORD = re.compile(r"(?<![:\d])-?\d{1,3}\.\d{4,}(?!\d)")
+COORD_PATTERN = re.compile(r"(?<![:\d])-?\d{1,3}\.\d{4,}(?!\d)")
+_POSTCODE = POSTCODE_PATTERN
+_COORD = COORD_PATTERN
 
 _EXTRAS = frozenset({"method", "path", "status_code", "duration_ms"})
 

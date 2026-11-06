@@ -25,6 +25,13 @@ from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.context import build_context
+from organiser.agent.memory import (
+    MEMORY_TEXT_LIMIT,
+    classify_kind,
+    matching_to_forget,
+    outside_memory,
+    parse_memory_intent,
+)
 from organiser.agent.reach import is_reachable, mark_down, mark_up
 from organiser.agent.runner import outside_home
 from organiser.agent.rules import (
@@ -56,9 +63,11 @@ from organiser.schemas import (
     AgentState,
     AppliedChange,
     ApplyResult,
+    ApplySelection,
     DueRead,
     FeedRequest,
     LastReply,
+    MemoryMatch,
     ProposalIngest,
     ProposalRead,
     ReviewRequest,
@@ -108,9 +117,27 @@ def _local_now():
     return clock.current_time().astimezone(ZoneInfo(get_settings().house_timezone))
 
 
+def _matches(row: AgentProposal) -> list[MemoryMatch]:
+    if row.action != "forget" or not isinstance(row.changes, dict):
+        return []
+    raw = row.changes.get("matches")
+    if not isinstance(raw, list):
+        return []
+    found: list[MemoryMatch] = []
+    for item in raw:
+        if not isinstance(item, dict) or not item.get("id") or not item.get("text"):
+            continue
+        try:
+            found.append(MemoryMatch(id=item["id"], kind=str(item.get("kind") or "fact"), text=str(item["text"])))
+        except ValueError:
+            continue
+    return found
+
+
 def _proposal(row: AgentProposal) -> ProposalRead:
     payload = ProposalRead.model_validate(row)
     payload.date_note = date_passed_note(row.changes, _local_now().date())
+    payload.matches = _matches(row)
     return payload
 
 
@@ -359,12 +386,14 @@ def _feed_events(app, text: str) -> Iterator[str]:
             label=FEED_LABEL,
             max_proposals=FEED_PROPOSALS,
         )
+        context = build_context(session, purpose="smart_add", now=local_now, query=text)
+        ctx.memories_used = len(context.memory.items)
         packet = feed_packet(
             local_now,
             settings.house_timezone,
             FEED_PROPOSALS,
             text,
-            build_context(session, purpose="smart_add", now=local_now),
+            context,
         )
         try:
             outcome: RunResult | None = None
@@ -386,6 +415,97 @@ def _feed_events(app, text: str) -> Iterator[str]:
         session.close()
 
 
+def _commit_memory(session: Session, text: str, intent) -> AgentResult:
+    """A remember or forget card. No Mistral call, and nothing is saved yet."""
+    local_now = _local_now()
+    context = build_context(session, purpose="smart_add", now=local_now, query=text)
+    if intent.action == "remember":
+        kind = classify_kind(intent.text)
+        changes = {"kind": kind, "text": intent.text, "source": "remember"}
+        summary = clip_summary(f"Remember: {intent.text}")
+        reason = f"A {kind}. Nothing is saved until Apply."
+        reply = "Waiting for Apply. Nothing is saved yet."
+    else:
+        matches = matching_to_forget(session, intent.text)
+        changes = {
+            "query": intent.text,
+            "matches": [
+                {"id": str(row.id), "kind": row.kind, "text": row.text}
+                for row in matches
+            ],
+        }
+        summary = clip_summary(f"Forget: {intent.text}")
+        if matches:
+            reason = "These match. Apply deletes only the ones you confirm."
+            reply = "Waiting for Apply. Nothing is forgotten yet."
+        else:
+            reason = "Nothing in memory matches. Apply changes nothing."
+            reply = "Nothing matched. Nothing was forgotten."
+    run = AgentRun(
+        trigger="feed",
+        window_key=f"memory:{uuid4()}",
+        input_text=text,
+        status="done",
+        reply=reply,
+        started_at=local_now,
+        finished_at=local_now,
+    )
+    session.add(run)
+    session.flush()
+    proposal = AgentProposal(
+        run_id=run.id,
+        origin="feed",
+        rule="feed",
+        label="Memory",
+        action=intent.action,
+        ref_type=None,
+        ref_id=None,
+        changes=changes,
+        summary=summary,
+        reason=reason,
+        status="pending",
+        created_at=local_now,
+        memories_used=len(context.memory.items),
+    )
+    session.add(proposal)
+    record_line(
+        session,
+        kind="note",
+        title=f"Added: {text}",
+        body="Written in the box. Nothing was saved until Apply.",
+    )
+    session.commit()
+    return AgentResult(
+        run_id=run.id,
+        trigger="feed",
+        reply=reply,
+        searched=False,
+        proposals=[_proposal(proposal)],
+    )
+
+
+def clip_summary(text: str) -> str:
+    from organiser.agent.cards import clip
+
+    return clip(text)
+
+
+def _memory_events(text: str, intent) -> Iterator[str]:
+    yield _sse("step", {"step": "received"})
+    yield _sse("step", {"step": "reading"})
+    session = get_sessionmaker()()
+    try:
+        result = _commit_memory(session, text, intent)
+    except Exception:
+        session.rollback()
+        logger.warning("Memory proposal failed.")
+        yield _sse("error", {"detail": FAILED})
+        return
+    finally:
+        session.close()
+    yield _sse("done", result.model_dump(mode="json"))
+
+
 @router.post("/feed", response_model=AgentResult)
 def feed(
     payload: FeedRequest,
@@ -397,7 +517,30 @@ def feed(
 
     ``Accept: text/event-stream`` sends the steps as they happen, then the cards
     or one error event. Anything else gets the same result as JSON.
+
+    Remember and forget are decided here. They do not call Mistral, and they
+    do not save a row until Apply.
     """
+    intent = parse_memory_intent(payload.text)
+    if intent is not None:
+        if outside_memory(intent.text) or len(intent.text) > MEMORY_TEXT_LIMIT:
+            detail = (
+                "Keep a memory to a short line."
+                if len(intent.text) > MEMORY_TEXT_LIMIT and not outside_memory(intent.text)
+                else "Not for the house log."
+            )
+            raise HTTPException(status_code=422, detail=detail)
+        if ensure_system_state(session).paused:
+            raise HTTPException(status_code=409, detail=PAUSED)
+        if not LIMITS.allow("feed"):
+            raise HTTPException(status_code=429, detail=TOO_MANY_FEED)
+        if _wants_stream(request):
+            return StreamingResponse(
+                _memory_events(payload.text, intent),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+        return _commit_memory(session, payload.text, intent)
     _guard_feed(session)
     if not LIMITS.allow("feed"):
         raise HTTPException(status_code=429, detail=TOO_MANY_FEED)
@@ -423,12 +566,14 @@ def feed(
         label=FEED_LABEL,
         max_proposals=FEED_PROPOSALS,
     )
+    context = build_context(session, purpose="smart_add", now=local_now, query=payload.text)
+    ctx.memories_used = len(context.memory.items)
     packet = feed_packet(
         local_now,
         settings.house_timezone,
         FEED_PROPOSALS,
         payload.text,
-        build_context(session, purpose="smart_add", now=local_now),
+        context,
     )
     try:
         return _execute(session, client, run, ctx, packet)
@@ -486,11 +631,20 @@ def review(
 
 
 @router.post("/proposals/{proposal_id}/apply", response_model=ApplyResult)
-def apply(proposal_id: UUID, session: Session = Depends(get_db)) -> ApplyResult:
-    """Make exactly the proposed change to one row. Nothing leaves the house."""
+def apply(
+    proposal_id: UUID,
+    session: Session = Depends(get_db),
+    payload: ApplySelection | None = None,
+) -> ApplyResult:
+    """Make exactly the proposed change to one row. Nothing leaves the house.
+
+    A forget card deletes only the confirmed ids. With no body, Apply confirms
+    every match on the card.
+    """
     now = clock.current_time()
+    memory_ids = None if payload is None else payload.memory_ids
     try:
-        proposal, applied = apply_proposal(session, proposal_id, now)
+        proposal, applied = apply_proposal(session, proposal_id, now, memory_ids)
     except HousePaused:
         raise HTTPException(status_code=409, detail="The house is paused. Nothing was applied.") from None
     except ProposalNotFound:

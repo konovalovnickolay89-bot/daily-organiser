@@ -12,9 +12,12 @@ No SDK: it changed its imports twice in 2026, and this app needs only these.
 Errors raise ``MistralUnavailable`` with a short message that never holds the key.
 """
 
+import re
 from typing import Any
 
 import httpx
+
+from organiser.jsonlog import COORD_PATTERN, POSTCODE_PATTERN
 
 DEFAULT_BASE_URL = "https://api.mistral.ai"
 
@@ -73,6 +76,21 @@ class MistralClient:
 
     def update_agent(self, agent_id: str, body: dict) -> dict:
         return self._call("PATCH", f"/v1/agents/{agent_id}", body)
+
+    def embed(self, text: str, *, model: str = "mistral-embed") -> list[float]:
+        """One embedding. Refuses a postcode or a coordinate before the request is built."""
+        if POSTCODE_PATTERN.search(text) or COORD_PATTERN.search(text):
+            raise MistralUnavailable("Refused to send a location.")
+        if re.search(r"\b(lat(?:itude)?|lon(?:gitude)?|postcode)\s*[:=]", text, re.IGNORECASE):
+            raise MistralUnavailable("Refused to send a location.")
+        body = self._call("POST", "/v1/embeddings", {"model": model, "input": [text]})
+        data = body.get("data")
+        if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+            raise MistralUnavailable("Mistral sent no embedding.")
+        vector = data[0].get("embedding")
+        if not isinstance(vector, list) or not vector or not all(isinstance(item, (int, float)) for item in vector):
+            raise MistralUnavailable("Mistral sent no embedding.")
+        return [float(item) for item in vector]
 
     def complete(self, *, model: str, messages: list[dict], max_tokens: int = 80) -> str:
         """One short completion. Used for catch-up wording, not for an agent run."""

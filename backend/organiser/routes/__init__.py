@@ -11,6 +11,7 @@ from organiser.routes import (
     events,
     health,
     hooks,
+    memory,
     shopping,
     system,
     tasks,
@@ -27,6 +28,7 @@ def register(app: FastAPI) -> None:
     app.include_router(approvals.router)
     app.include_router(system.router)
     app.include_router(shopping.router)
+    app.include_router(memory.router)
     app.include_router(agent.router)
     app.include_router(catchup.router)
     app.include_router(commute.router)
