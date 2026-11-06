@@ -276,6 +276,7 @@ class CatchUpItem(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fallback_used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class ShoppingItem(Base):
@@ -311,6 +312,26 @@ class CalendarSubscription(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class CommuteShift(Base):
+    """One rota commute. The only stored facts are start, end, and ``Wembley``.
+
+    The id is the row key. Nothing else from the push is kept: no name, no
+    staff id, and no journey.
+    """
+
+    __tablename__ = "commute_shifts"
+    __table_args__ = (
+        CheckConstraint("location_label = 'Wembley'", name="ck_commute_shifts_label"),
+        CheckConstraint("end_at > start_at", name="ck_commute_shifts_order"),
+        Index("ix_commute_shifts_start", "start_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    location_label: Mapped[str] = mapped_column(String(40), nullable=False)
 
 
 class IntegrationStatus(Base):

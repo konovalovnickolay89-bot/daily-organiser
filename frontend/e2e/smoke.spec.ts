@@ -50,3 +50,43 @@ test("assistant switch persists and writes an activity line", async ({ page, req
   await page.getByRole("switch", { name: "Assistant" }).click();
   await expect(page.getByRole("switch", { name: "Assistant" })).toBeChecked({ checked: startedOn });
 });
+
+test("recent activity sits above the working steps", async ({ page }) => {
+  await page.goto("/");
+  const activity = page.getByRole("list", { name: "Recent activity" });
+  await expect(activity).toBeVisible();
+  const count = await activity.locator("li").count();
+  expect(count).toBeGreaterThan(0);
+  expect(count).toBeLessThanOrEqual(5);
+  const ticker = page.locator("[data-module=reasoning] .ticker-line").first();
+  await expect(ticker).toBeVisible();
+  const activityBox = await activity.boundingBox();
+  const tickerBox = await ticker.boundingBox();
+  expect(activityBox && tickerBox && activityBox.y < tickerBox.y).toBeTruthy();
+});
+
+test("smart add stays hidden while the assistant is off", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Add to the log")).toHaveCount(0);
+  await expect(page.getByText("The assistant is off.").first()).toBeVisible();
+});
+
+test("the brief says when the commute is not connected", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Brief" }).click();
+  await expect(page.getByText("Commute is not connected.").first()).toBeVisible();
+});
+
+test("a past date keeps Apply and Not now", async ({ page, request }) => {
+  const created = await request.post("/agent/proposals", {
+    data: { title: "Mend the stair rod", due_on: "2020-01-01", reason: "It was due." },
+  });
+  expect(created.ok()).toBeTruthy();
+  await page.goto("/");
+  const card = page.locator(".proposal-card", { hasText: "This date has passed." });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("button", { name: "Apply" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Not now" })).toBeVisible();
+  await card.getByRole("button", { name: "Not now" }).click();
+  await expect(card).toHaveCount(0);
+});

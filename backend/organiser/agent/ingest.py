@@ -5,14 +5,12 @@ same allowlist as every other card.
 """
 
 from datetime import date, datetime
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import summarise
 from organiser.agent.runner import outside_home
-from organiser.config import get_settings
 from organiser.models import AgentProposal, Commitment, Task
 from organiser.services.activity import record_line
 from organiser.services.system import ensure_system_state
@@ -54,13 +52,6 @@ def ingest_proposal(
     label = source_text or DEFAULT_LABEL
     if outside_home(" ".join(part for part in (title, reason_text, source_text) if part)):
         raise IngestRefused("Not for the house log.", 422)
-
-    today = now.astimezone(ZoneInfo(get_settings().house_timezone)).date()
-    if due_on is not None and due_on < today:
-        raise IngestRefused(
-            f"due_on {due_on.isoformat()} is before today ({today.isoformat()}). Pick today or later.",
-            422,
-        )
 
     lowered = title.lower()
     open_task = session.scalars(

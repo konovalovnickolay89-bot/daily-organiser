@@ -16,6 +16,7 @@ PATHS = (
     "/agent/activity",
     "/agent/proposals",
     "/shopping",
+    "/commute/shift",
     "/system/assistant",
     "/system/calendars",
 )

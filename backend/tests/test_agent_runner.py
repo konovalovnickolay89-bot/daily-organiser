@@ -39,7 +39,7 @@ def test_a_slow_run_stops_before_another_round():
 
 def test_journey_note_for_a_commute_and_not_outside_the_house():
     assert journey_note("Train to work tomorrow")
-    assert "journey source is not connected" in journey_note("I commute at 7")
+    assert "Do not invent disruptions" in journey_note("I commute at 7")
     assert journey_note("commute with a guest tomorrow") is None
     assert journey_note("buy milk") is None
 

@@ -74,6 +74,22 @@ class MistralClient:
     def update_agent(self, agent_id: str, body: dict) -> dict:
         return self._call("PATCH", f"/v1/agents/{agent_id}", body)
 
+    def complete(self, *, model: str, messages: list[dict], max_tokens: int = 80) -> str:
+        """One short completion. Used for catch-up wording, not for an agent run."""
+        body = self._call(
+            "POST",
+            "/v1/chat/completions",
+            {"model": model, "temperature": 0.2, "max_tokens": max_tokens, "messages": messages},
+        )
+        choices = body.get("choices")
+        if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+            raise MistralUnavailable("Mistral sent no note.")
+        message = choices[0].get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, str) or not content.strip():
+            raise MistralUnavailable("Mistral sent no note.")
+        return content.strip()
+
 
 def _detail(response: httpx.Response) -> str:
     """A short reason from Mistral's error body, such as an unknown model name."""

@@ -6,7 +6,8 @@ from organiser.models import ActionRequest
 
 
 def test_ops_tables_exist(db):
-    names = set(inspect(db.get_bind()).get_table_names())
+    inspector = inspect(db.get_bind())
+    names = set(inspector.get_table_names())
     assert {
         "tasks",
         "commitments",
@@ -15,7 +16,12 @@ def test_ops_tables_exist(db):
         "system_state",
         "catchup_passes",
         "catchup_items",
+        "commute_shifts",
     } <= names
+    catchup_columns = {column["name"] for column in inspector.get_columns("catchup_items")}
+    assert "fallback_used" in catchup_columns
+    commute_columns = {column["name"] for column in inspector.get_columns("commute_shifts")}
+    assert commute_columns == {"id", "start_at", "end_at", "location_label"}
 
 
 def test_actionable_records_have_owner_and_status(db):

@@ -21,8 +21,8 @@ Triggers
 - feed: Nick wrote something. Turn it into proposals: propose_change for a new task or commitment, a date or a status \
 move, add_note for a note on an existing item, and create_shopping_item when he is adding something to buy. \
 A shop item is a name only: changes.name, nothing else, and no allergen information. Search first. If the item already exists, propose an edit or a note \
-instead of a duplicate. When it is a commute or travel to work, propose the trip and also one task to check that \
-journey and any disruptions. The journey source is not connected: say so in the reason, and do not invent a live lookup.
+instead of a duplicate. When it is a commute or travel to work, propose the trip if it is not already on the log. \
+The brief reads the rota and TfL for a commute to Wembley Park. Do not invent disruptions or a live lookup.
 - morning_review: look over today's tasks and open commitments in the brief. Propose at most 2 next steps that make the \
 day easier: a date for an undated task, a first step for a vague task, a prep task for a commitment due soon, or closing \
 something that looks finished.
@@ -34,7 +34,7 @@ Rules
 1. Call get_state first. If paused is true, reply "Paused." and stop.
 2. Check facts with search_items and get_item before proposing. Never guess an id.
 3. Every proposal names one item and one change, with a reason under 20 words.
-4. Dates are in {timezone}. Never propose a date before today. Prefer a specific day.
+4. Dates are in {timezone}. Prefer a specific day, today or later. A date that has already passed still becomes a card. Do not drop it.
 5. Stop at the proposal limit in the brief.
 6. Before each proposal, check that:
    a. it is not already in the log or waiting as a proposal;
@@ -120,8 +120,8 @@ FUNCTIONS: list[dict] = [
             "Use it for a new task or commitment, a shop item (create_shopping_item, name only), a new due date, "
             "a status move, or a clearer title or detail. "
             "Never for deleting, changing the owner, or anything outside the house. Refused while the house is "
-            "paused, past the proposal limit, for a date before today, for a duplicate, or when a proposal for the "
-            "same item is already waiting."
+            "paused, past the proposal limit, for a duplicate, or when a proposal for the "
+            "same item is already waiting. A date before today stays on the card."
         ),
         "parameters": {
             "type": "object",
@@ -152,7 +152,7 @@ FUNCTIONS: list[dict] = [
                             "description": "Shopping only. The item name. No allergen information.",
                         },
                         "detail": {"type": "string", "maxLength": 1000},
-                        "due_on": {**_DATE, "description": "YYYY-MM-DD, today or later."},
+                        "due_on": {**_DATE, "description": "YYYY-MM-DD. Prefer today or later. A past date stays on the card."},
                         "priority": {
                             "type": "string",
                             "enum": ["low", "medium", "high"],

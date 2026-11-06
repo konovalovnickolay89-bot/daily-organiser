@@ -15,9 +15,10 @@ function waitingLabel(count) {
  */
 export function AssistantPane() {
   const view = useView();
-  const { state, error, text, setText, sorting, enabled, paused, proposals, submit } = useAssistant();
+  const { state, error, text, setText, sorting, enabled, reachable, paused, proposals, submit } = useAssistant();
   const inline = view !== "home";
-  const restingEmpty = enabled && !paused && proposals.length === 0;
+  const showForm = enabled && reachable;
+  const restingEmpty = showForm && !paused && proposals.length === 0;
   const sectionClass = [
     "module",
     "assistant",
@@ -32,7 +33,7 @@ export function AssistantPane() {
     <section className={sectionClass} aria-labelledby="assistant-title" data-module="assistant">
       <div className="module-head">
         <h2 id="assistant-title">Proposed changes</h2>
-        {enabled && !paused && inline && <p className="count">{waitingLabel(proposals.length)}</p>}
+        {showForm && !paused && inline && <p className="count">{waitingLabel(proposals.length)}</p>}
       </div>
       <p className={restingEmpty && inline ? "lede assistant-invite" : "lede"}>
         {inline
@@ -43,7 +44,8 @@ export function AssistantPane() {
       </p>
       {state === null && !error && <LoadingSkeleton label="Checking the assistant…" />}
       {state && !enabled && <p className="empty">The assistant is off.</p>}
-      {enabled && (
+      {state && enabled && !reachable && <p className="empty">The assistant is down.</p>}
+      {showForm && (
         <form className="feed-form" onSubmit={submit}>
           <label htmlFor="feed-text" className="sr-only">
             Add to the log

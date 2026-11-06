@@ -187,7 +187,6 @@ def test_not_now_on_an_ingested_card_creates_nothing(client, house_clock):
         {"title": "   "},
         {"title": ""},
         {"title": "Buy oat milk", "due_on": "Friday"},
-        {"title": "Buy oat milk", "due_on": "2026-11-01"},
         {"title": "Book a hotel room"},
         {"title": "Buy oat milk", "reason": "Ask the employer"},
         {"title": "x" * 201},

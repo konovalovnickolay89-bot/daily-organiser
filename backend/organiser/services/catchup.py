@@ -283,7 +283,32 @@ def _window_key(previous: datetime) -> str:
     return f"gap:{previous.astimezone(_UTC).isoformat()}"
 
 
-def _open_pass(session: Session, local: datetime, previous: datetime) -> None:
+def _notes_for(drafts: tuple[_Draft, ...], writer) -> list[tuple[str, bool]]:
+    """``(note, fallback_used)`` for each draft. A bad writer falls back to the template."""
+    if writer is None:
+        return [(draft.note, True) for draft in drafts]
+    try:
+        notes = writer(drafts)
+    except Exception:
+        return [(draft.note, True) for draft in drafts]
+    if not isinstance(notes, list) or len(notes) != len(drafts):
+        return [(draft.note, True) for draft in drafts]
+    chosen: list[tuple[str, bool]] = []
+    for draft, item in zip(drafts, notes):
+        if (
+            isinstance(item, tuple)
+            and len(item) == 2
+            and isinstance(item[0], str)
+            and item[0].strip()
+            and item[1] is False
+        ):
+            chosen.append((" ".join(item[0].split()), False))
+        else:
+            chosen.append((draft.note, True))
+    return chosen
+
+
+def _open_pass(session: Session, local: datetime, previous: datetime, writer=None) -> None:
     """Insert one pass for this gap. A second screen finds the same window and stops."""
     window_key = _window_key(previous)
     if session.scalar(select(CatchUpPass.id).where(CatchUpPass.window_key == window_key)) is not None:
@@ -291,13 +316,14 @@ def _open_pass(session: Session, local: datetime, previous: datetime) -> None:
     drafts = choose_items(session, local)
     if not drafts:
         return
+    notes = _notes_for(drafts, writer)
     try:
         with session.begin_nested():
             pass_row = CatchUpPass(window_key=window_key, opened_at=local, from_looked_at=previous)
             session.add(pass_row)
             session.flush()
-            for position, draft in enumerate(drafts):
-                changes = {"dated": local.date().isoformat(), "note": draft.note}
+            for position, (draft, (note, fallback_used)) in enumerate(zip(drafts, notes)):
+                changes = {"dated": local.date().isoformat(), "note": note}
                 session.add(
                     CatchUpItem(
                         pass_id=pass_row.id,
@@ -312,6 +338,7 @@ def _open_pass(session: Session, local: datetime, previous: datetime) -> None:
                         reason=draft.reason,
                         ref_updated_at=draft.ref_updated_at,
                         status="pending",
+                        fallback_used=fallback_used,
                         created_at=local,
                     )
                 )
@@ -320,7 +347,7 @@ def _open_pass(session: Session, local: datetime, previous: datetime) -> None:
         return
 
 
-def record_look(session: Session, now: datetime) -> dict:
+def record_look(session: Session, now: datetime, writer=None) -> dict:
     """Record a look and, when a gap qualifies, open one pass.
 
     The system row is locked, so two tabs share one pass.
@@ -341,7 +368,7 @@ def record_look(session: Session, now: datetime) -> dict:
         return _view(local, paused=False, quiet=True, items=[])
 
     if due and not _has_pending(session):
-        _open_pass(session, local, previous)
+        _open_pass(session, local, previous, writer)
     row.last_looked_at = local
     return _view(local, paused=False, quiet=False, items=_pending(session))
 

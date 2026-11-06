@@ -110,6 +110,7 @@ export function CatchUpStrip() {
               <p className="mode">{item.label}</p>
               <h3>{item.summary}</h3>
               <p>{item.reason}</p>
+              {item.fallback_used && <p className="fallback-mark">Fallback used</p>}
               <div className="actions">
                 <button
                   type="button"

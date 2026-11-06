@@ -94,6 +94,19 @@ def ensure_ingest_proposals() -> None:
         )
 
 
+def ensure_sprint3() -> None:
+    """Commute rows and the catch-up fallback flag on a database from 0002.
+
+    ``create_all`` creates a missing table and does not add a column. These
+    statements match Alembic ``0003_sprint3`` and can run twice.
+    """
+    from organiser.patches import SPRINT3_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in SPRINT3_UPGRADE:
+            connection.execute(text(statement))
+
+
 def ensure_sprint2() -> None:
     """Shopping, diary rows, and the assistant switch on a database from 0001.
 
