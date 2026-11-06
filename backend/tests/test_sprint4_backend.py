@@ -80,7 +80,7 @@ def test_logs_are_json_and_drop_secrets_places_and_bodies(client, caplog):
 
 def test_inbound_routes_refuse_outside_the_house(client, db):
     samples = [
-        ("/tasks", {"title": "Book a hotel room"}),
+        ("/tasks", {"title": "Book a Hilton room"}),
         ("/commitments", {"title": "Meet a colleague"}),
         ("/events", {"kind": "note", "title": "Guest list"}),
         ("/action-requests", {"title": "Email the employer", "mode": "observe"}),
@@ -218,6 +218,7 @@ def test_context_shape_window_and_home_filter(db):
     now = london(2026, 11, 6, 8, 0)
     db.add(Task(title="Put the bins out", detail="Green bin.", status="todo", priority="high", owner="Nick"))
     db.add(Task(title="Book a hotel room", status="todo", priority="low", owner="Nick"))
+    db.add(Task(title="Call Hilton", status="todo", priority="low", owner="Nick"))
     db.add(Task(title="Done already", status="done", priority="low", owner="Nick"))
     db.add(Commitment(title="Collect the dry cleaning", status="open", owner="Nick", source="manual"))
     db.add(Commitment(title="Meet a guest", status="open", owner="Nick", source="manual"))
@@ -253,6 +254,7 @@ def test_context_shape_window_and_home_filter(db):
     morning = build_context(db, purpose="smart_add", now=now)
     dumped = morning.model_dump()
     assert set(dumped) == {
+        "schema_version",
         "purpose",
         "time",
         "theme",
@@ -262,7 +264,12 @@ def test_context_shape_window_and_home_filter(db):
         "log",
         "log_days",
         "memory",
+        "focus",
+        "trimmed",
     }
+    assert morning.schema_version == 1
+    assert morning.trimmed is False
+    assert morning.focus is None
     assert set(dumped["tasks"][0]) == {"kind", "id", "title", "status", "due_on", "at"}
     assert morning.purpose == "smart_add"
     assert morning.theme == "morning"
@@ -270,7 +277,7 @@ def test_context_shape_window_and_home_filter(db):
     assert morning.log_days == 3
     assert morning.memory.limit == MEMORY_LIMIT == 10
     assert morning.memory.items == []
-    assert [item.title for item in morning.tasks] == ["Put the bins out"]
+    assert [item.title for item in morning.tasks] == ["Book a hotel room", "Put the bins out"]
     assert [item.title for item in morning.commitments] == ["Collect the dry cleaning"]
     assert [item.title for item in morning.log] == ["Milk is low"]
     assert morning.waiting == []

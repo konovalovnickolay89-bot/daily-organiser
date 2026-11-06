@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { cx, fieldInput, heading, lede, primary } from "../../arrival/ui";
 import { useView } from "../../arrival/view";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useAssistant } from "./AssistantContext";
 import { AssistantResult } from "./AssistantResult";
+import { VoiceControl } from "./VoiceControl";
 
 function waitingLabel(count: number) {
   if (count === 0) return "None waiting";
@@ -17,6 +19,7 @@ function waitingLabel(count: number) {
 export function AssistantPane() {
   const view = useView();
   const { state, error, text, setText, sorting, enabled, reachable, paused, proposals, submit } = useAssistant();
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const inline = view !== "home";
   const showForm = enabled && reachable;
   const restingEmpty = showForm && !paused && proposals.length === 0;
@@ -69,10 +72,23 @@ export function AssistantPane() {
             autoComplete="off"
             disabled={paused || sorting}
           />
+          <VoiceControl
+            disabled={paused || sorting}
+            onText={(value) => {
+              setText(value);
+              setVoiceError(null);
+            }}
+            onError={setVoiceError}
+          />
           <button type="submit" className={cx(primary, "shrink-0")} disabled={paused || sorting || !text.trim()}>
             {sorting ? "Sorting…" : "Add"}
           </button>
         </form>
+      )}
+      {showForm && voiceError && (
+        <p className="mb-3 text-[var(--danger)]" role="alert">
+          {voiceError}
+        </p>
       )}
       {paused && <p className="mb-2.5 text-left text-[var(--muted)]">Paused. Nothing goes to the assistant.</p>}
       {inline && <AssistantResult heading={false} />}

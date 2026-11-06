@@ -70,15 +70,18 @@ def db(database):
 def _reset_process_guards():
     from organiser.agent.reach import reset as reset_reach
     from organiser.limits import LIMITS
+    from organiser.metrics import METRICS
     from organiser.services.commute import clear_cache
 
     LIMITS.reset()
     reset_reach()
     clear_cache()
+    METRICS.reset()
     yield
     LIMITS.reset()
     reset_reach()
     clear_cache()
+    METRICS.reset()
 
 
 @pytest.fixture

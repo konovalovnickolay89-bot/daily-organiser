@@ -1,4 +1,4 @@
-"""House scope for inbound text. A hotel, a guest, a colleague, or an employer stays out."""
+"""House scope for inbound text. Hilton, a guest, a colleague, an employer, or work stays out."""
 
 from fastapi import HTTPException
 from pydantic import BaseModel

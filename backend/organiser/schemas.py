@@ -230,6 +230,8 @@ class HouseFacts(APIModel):
     weather_location: str
     tfl: str
     banto: str
+    # on when VOICE_INPUT_ENABLED. The mic stays hidden otherwise.
+    voice_input: str
 
 
 class AssistantSwitch(BaseModel):
@@ -456,6 +458,26 @@ class CatchUpRead(APIModel):
     as_of: datetime
     house_date: date
     items: list[CatchUpItemRead]
+
+
+class StatusRead(APIModel):
+    """Settings status. Times are instants. The database size is bytes. No house text."""
+
+    health: str
+    version: str
+    last_mistral_success: datetime | None = None
+    last_activity_poll: datetime | None = None
+    database_bytes: int | None = None
+
+
+class AlertRead(APIModel):
+    kind: str
+    title: str
+    detail: str
+
+
+class AlertList(APIModel):
+    items: list[AlertRead]
 
 
 class CatchUpApplyResult(APIModel):

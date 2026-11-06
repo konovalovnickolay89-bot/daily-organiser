@@ -93,8 +93,8 @@ export function MemoryScreen() {
         Memory
       </h3>
       <p className={lede}>
-        Household notes. Write “remember …” or “forget …” in the box. Nothing is saved until Apply. A hotel, a guest, a colleague, or
-        work stays out.
+        Household notes. Write “remember …” or “forget …” in the box. Nothing is saved until Apply. Hilton, a guest, a colleague, an
+        employer, or work stays out. A personal hotel booking can stay.
       </p>
       <div className="mb-3 flex flex-wrap gap-2">
         <label className="min-w-0 flex-1">

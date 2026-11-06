@@ -1,6 +1,7 @@
 from collections.abc import Generator
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from organiser.config import get_settings
@@ -57,6 +58,13 @@ def get_db() -> Generator[Session, None, None]:
     session = get_sessionmaker()()
     try:
         yield session
+    except SQLAlchemyError:
+        session.rollback()
+        from organiser import clock
+        from organiser.metrics import METRICS
+
+        METRICS.record_db_error(clock.current_time())
+        raise
     except Exception:
         session.rollback()
         raise
@@ -152,6 +160,15 @@ def ensure_vector_extension() -> None:
     with engine.begin() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     engine.dispose()
+
+
+def ensure_alerts() -> None:
+    """The dismissal table. These statements match Alembic ``0005_sprint6``."""
+    from organiser.patches import ALERT_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in ALERT_UPGRADE:
+            connection.execute(text(statement))
 
 
 def ensure_memory() -> None:

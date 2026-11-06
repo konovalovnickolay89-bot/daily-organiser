@@ -117,7 +117,7 @@ This is for discovery-system. The repo changes nothing on the host.
 
 ## Memory
 
-Household memory lives in this database (`memory_items`, pgvector). It is not a graph and it does not use Graphiti. Remember and forget in the box wait for Apply. Settings can list, search, pin, forget, and export JSON. Embeddings use the existing `MISTRAL_API_KEY` and `mistral-embed`. With no key, or if that call fails, retrieval uses words. A postcode or a coordinate is not sent. See `DEPLOY.md` before the house database is changed.
+Household memory lives in this database (`memory_items`, pgvector). It is not a graph and it does not use Graphiti. Remember and forget in the box wait for Apply. Settings can list, search, pin, forget, and export JSON. Embeddings use the existing `MISTRAL_API_KEY` and `mistral-embed`. With no key, or if that call fails, retrieval uses words. A postcode or a coordinate is not sent. Voice, when `VOICE_INPUT_ENABLED` is on, sends one in-memory recording to `MISTRAL_TRANSCRIBE_MODEL` (default `voxtral-mini`) and returns text for the box. The audio is not stored. See `DEPLOY.md` before the house database is changed.
 
 ## Not yet
 

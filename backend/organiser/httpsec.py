@@ -1,11 +1,16 @@
 """Response headers and an access line. Neither reads the body."""
 
 import logging
+import re
 import time
 
 from starlette.datastructures import MutableHeaders
 
+from organiser.metrics import METRICS
+
 logger = logging.getLogger("organiser.access")
+
+_UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 # Reviewed for a house app served on one origin. The theme boot script and the
 # built CSS are files, so script-src and style-src stay 'self'. Docs stay off;
@@ -14,7 +19,10 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    # The mic is allowed on this origin so Smart Add can ask when voice is on.
+    # Camera, location, and payment stay closed. The button itself stays hidden
+    # until VOICE_INPUT_ENABLED.
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), payment=()",
     "Content-Security-Policy": (
         "default-src 'self'; "
         "img-src 'self' data:; "
@@ -50,6 +58,16 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
+def route_label(scope: dict) -> str:
+    """The route template when Starlette has one, otherwise the path with ids folded."""
+    route = scope.get("route")
+    path = getattr(route, "path", None)
+    if isinstance(path, str) and path:
+        return path
+    raw = scope.get("path") or "/"
+    return _UUID.sub("{id}", raw.split("?", 1)[0])
+
+
 class AccessLogMiddleware:
     """Method, path, and status. No query string, no body, no headers."""
 
@@ -68,6 +86,12 @@ class AccessLogMiddleware:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 duration_ms = round((time.perf_counter() - started) * 1000, 1)
+                METRICS.record_request(
+                    scope.get("method", ""),
+                    route_label(scope),
+                    status,
+                    duration_ms / 1000,
+                )
                 logger.info(
                     "request",
                     extra={

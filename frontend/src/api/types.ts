@@ -126,6 +126,15 @@ export type HouseFacts = {
   weather_location: "configured" | "not configured";
   tfl: "configured" | "not configured";
   banto: "configured" | "not configured";
+  voice_input?: "on" | "off";
+};
+
+export type HouseStatus = {
+  health: "ok" | "degraded";
+  version: string;
+  last_mistral_success: string | null;
+  last_activity_poll: string | null;
+  database_bytes: number | null;
 };
 
 export type FeedResult = {

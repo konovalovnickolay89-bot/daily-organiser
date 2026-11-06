@@ -23,6 +23,11 @@ PATHS = (
     "/system/calendars",
     "/commute/shift",
     "/hooks/{source}",
+    "/metrics",
+    "/system/status",
+    "/alerts",
+    "/alerts/{kind}/dismiss",
+    "/voice/transcribe",
 )
 
 

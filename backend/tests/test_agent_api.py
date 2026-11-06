@@ -442,6 +442,7 @@ def test_morning_review_runs_once_with_two_proposals(client, house_clock, mistra
     packet = fake.calls[0][2]
     assert "Trigger: morning_review" in packet
     assert "Proposal limit: 2" in packet
+    assert "\n\nContext:\n" not in packet
     assert "Book the boiler service (Due today · Medium · To do)" in packet
 
     again = client.post("/agent/review", json=state["due"])
@@ -470,6 +471,10 @@ def test_stale_item_card_cools_down_and_the_daily_cap_holds(client, db, house_cl
     assert card["label"] == "In progress, no update for 4 days"
     assert "Item: task " + task["id"] in fake.calls[0][2]
     assert "Proposal limit: 1" in fake.calls[0][2]
+    follow = json.loads(fake.calls[0][2].split("\n\nContext:\n", 1)[1])
+    assert follow["purpose"] == "follow_up"
+    assert follow["schema_version"] == 1
+    assert follow["focus"]["title"] == task["title"]
     assert _state(client)["due"] is None  # one proactive card at a time
 
     client.post(f"/agent/proposals/{card['id']}/dismiss")

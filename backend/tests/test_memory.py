@@ -22,7 +22,7 @@ OUTSIDE = [
     "The Hilton guest wants a late checkout",
     "A colleague asked me to cover",
     "My employer moved the meeting",
-    "The hotel booking is Thursday",
+    "The Hilton booking is Thursday",
     "Remember my work email is on the desk",
     "Payroll is done at the workplace",
 ]

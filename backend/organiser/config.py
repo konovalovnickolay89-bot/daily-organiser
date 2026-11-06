@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     mistral_model: str = "mistral-medium-latest"
     # Embeddings for memory. Empty key skips the call and retrieval uses words.
     mistral_embed_model: str = "mistral-embed"
+    # Voice on Smart Add. Off until the house sets this. The model is Voxtral.
+    voice_input_enabled: bool = False
+    mistral_transcribe_model: str = "voxtral-mini"
     mistral_base_url: str = "https://api.mistral.ai"
     # One Mistral call. Together with the run deadline this stays inside the
     # proxy's ~100s limit. See RUN_DEADLINE_SECONDS in agent/runner.py.

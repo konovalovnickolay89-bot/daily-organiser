@@ -22,6 +22,7 @@ from organiser.agent.mistral import (
     used_web_search,
 )
 from organiser.agent.rules import Candidate
+from organiser.metrics import observe_mistral
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,8 @@ REPLY_LINES = 2
 REPLY_CHARS = 240
 READ_FUNCTIONS = frozenset({"get_state", "search_items", "get_item"})
 
-# Household travel only. A hotel, a guest, a colleague, or an employer stays out.
+# Household travel only. Hilton, a guest, a colleague, an employer, or a work
+# system stays out. A personal hotel booking does not.
 _JOURNEY_RE = re.compile(
     r"\b("
     r"commutes?|commuting"
@@ -49,7 +51,18 @@ _JOURNEY_RE = re.compile(
     re.IGNORECASE,
 )
 _OUTSIDE_HOME_RE = re.compile(
-    r"\b(hilton|hotels?|guests?|colleagues?|employers?)\b",
+    r"\b("
+    r"hilton"
+    r"|guests?"
+    r"|colleagues?"
+    r"|employers?"
+    r"|coworkers?|co-workers?|workmates?"
+    r"|workplace"
+    r"|payroll"
+    r"|work\s+emails?"
+    r"|work\s+phones?"
+    r"|at\s+work"
+    r")\b",
     re.IGNORECASE,
 )
 JOURNEY_NOTE = (
@@ -109,7 +122,7 @@ def iter_run(
     conversation_id: str | None = None
     try:
         yield "calling"
-        response = client.start(agent_id, packet)
+        response = observe_mistral(lambda: client.start(agent_id, packet))
         conversation_id = response.get("conversation_id") or None
         searched = used_web_search(response)
         rounds = 0
@@ -133,7 +146,7 @@ def iter_run(
                 for call in calls
             ]
             yield "calling"
-            response = client.append(conversation_id, results)
+            response = observe_mistral(lambda: client.append(conversation_id, results))
             searched = searched or used_web_search(response)
             rounds += 1
         yield RunResult(reply=clean_reply(message_text(response)), searched=searched, rounds=rounds)
@@ -183,7 +196,10 @@ def _header(trigger: str, local_now: datetime, tz_name: str, limit: int) -> list
 
 
 def outside_home(text: str) -> bool:
-    """A hotel, a guest, a colleague, or an employer is not house business."""
+    """Hilton, a guest, a colleague, an employer, or work is not house business.
+
+    A personal hotel booking, such as a stay in Lisbon, is household life.
+    """
     return _OUTSIDE_HOME_RE.search(text) is not None
 
 
@@ -194,6 +210,13 @@ def journey_note(text: str) -> str | None:
     return JOURNEY_NOTE
 
 
+def _with_context(packet: str, context: object | None) -> str:
+    if context is None:
+        return packet
+    rendered = context.model_dump_json() if hasattr(context, "model_dump_json") else str(context)
+    return packet + "\n\nContext:\n" + rendered
+
+
 def feed_packet(local_now: datetime, tz_name: str, limit: int, text: str, context: object | None = None) -> str:
     """The Smart Add packet. A context, when passed, is appended and does not rewrite the head."""
     lines = _header("feed", local_now, tz_name, limit)
@@ -201,11 +224,7 @@ def feed_packet(local_now: datetime, tz_name: str, limit: int, text: str, contex
     note = journey_note(text)
     if note:
         lines.append(note)
-    packet = "\n".join(lines)
-    if context is None:
-        return packet
-    rendered = context.model_dump_json() if hasattr(context, "model_dump_json") else str(context)
-    return packet + "\n\nContext:\n" + rendered
+    return _with_context("\n".join(lines), context)
 
 
 def morning_packet(local_now: datetime, tz_name: str, limit: int, brief: dict) -> str:
@@ -221,7 +240,13 @@ def morning_packet(local_now: datetime, tz_name: str, limit: int, brief: dict) -
     return "\n".join(lines)
 
 
-def stale_packet(local_now: datetime, tz_name: str, limit: int, candidate: Candidate) -> str:
+def stale_packet(
+    local_now: datetime,
+    tz_name: str,
+    limit: int,
+    candidate: Candidate,
+    context: object | None = None,
+) -> str:
     lines = _header(candidate.rule, local_now, tz_name, limit)
     changed = candidate.ref_updated_at.astimezone(local_now.tzinfo)
     lines += [
@@ -233,4 +258,4 @@ def stale_packet(local_now: datetime, tz_name: str, limit: int, candidate: Candi
         f"Why now: {candidate.reason}",
         "Propose exactly one fix for this item, or nothing if no fix helps.",
     ]
-    return "\n".join(lines)
+    return _with_context("\n".join(lines), context)

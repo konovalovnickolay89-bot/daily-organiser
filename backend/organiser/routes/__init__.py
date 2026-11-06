@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from organiser.routes import (
     action_requests,
     agent,
+    alerts,
     approvals,
     brief,
     catchup,
@@ -12,14 +13,19 @@ from organiser.routes import (
     health,
     hooks,
     memory,
+    metrics,
     shopping,
     system,
     tasks,
+    voice,
 )
 
 
 def register(app: FastAPI) -> None:
     app.include_router(health.router)
+    app.include_router(metrics.router)
+    app.include_router(alerts.router)
+    app.include_router(voice.router)
     app.include_router(tasks.router)
     app.include_router(commitments.router)
     app.include_router(events.router)
