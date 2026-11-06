@@ -41,11 +41,19 @@ describe("8px spacing", () => {
   it("keeps the mono, radius, and rail tokens", () => {
     const css = readFileSync(resolve(SRC, "styles.css"), "utf8");
     expect(css).toContain('--mono: "IBM Plex Mono"');
-    expect(css).toContain("--radius: 12px");
+    expect(css).toContain("--radius: 20px");
+    expect(css).toContain("--radius-inset: 16px");
+    expect(css).toContain("--radius-pill: 999px");
+    expect(css).toContain("--radius-rail: 12px");
+    expect(css).toContain("--line-canvas: rgba(243, 230, 212, 0.07)");
+    expect(css).toContain("--line-card: rgba(26, 22, 19, 0.08)");
     expect(css).toContain("--rail: 76px");
     const tailwind = readFileSync(resolve(process.cwd(), "tailwind.config.js"), "utf8");
     expect(tailwind).toContain('mono: ["var(--mono)"]');
     expect(tailwind).toContain('house: "var(--radius)"');
+    expect(tailwind).toContain('inset: "var(--radius-inset)"');
+    expect(tailwind).toContain('pill: "var(--radius-pill)"');
+    expect(tailwind).toContain('rail: "var(--radius-rail)"');
     expect(tailwind).toContain('rail: "var(--rail)"');
   });
 });

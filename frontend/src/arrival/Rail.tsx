@@ -84,7 +84,7 @@ export function Rail({ view, onView }: RailProps) {
         <span key={item.id} className={item.spaced ? "mt-auto flex max-[720px]:mt-0" : "flex"}>
           <button
             type="button"
-            className="calm grid h-11 w-11 place-items-center rounded-house border-0 bg-transparent p-0 text-accent hover:bg-[rgba(244,236,223,0.06)] hover:text-cream aria-[current=page]:bg-[var(--accent-soft)] aria-[current=page]:text-accent aria-[current=page]:hover:bg-[var(--accent-soft)] aria-[current=page]:hover:text-accent"
+            className="calm grid h-11 w-11 place-items-center rounded-rail border-0 bg-transparent p-0 text-accent hover:bg-[rgba(244,236,223,0.06)] hover:text-cream aria-[current=page]:bg-[var(--accent-soft)] aria-[current=page]:text-accent aria-[current=page]:hover:bg-[var(--accent-soft)] aria-[current=page]:hover:text-accent"
             title={item.label}
             aria-current={view === item.id ? "page" : undefined}
             onClick={() => onView(item.id)}

@@ -10,8 +10,10 @@ html {
   --card: #eddcc6;
   --ink-card: #1a1613;
   --muted-card: #655d54;
-  --line-canvas: rgba(243, 230, 212, 0.14);
-  --line-card: rgba(26, 22, 19, 0.12);
+  /* Hairline on the near-black canvas: 1px cream, barely there. */
+  --line-canvas: rgba(243, 230, 212, 0.07);
+  /* The same weight, in ink, for rules and fields on a cream card. */
+  --line-card: rgba(26, 22, 19, 0.08);
   --accent: #d39a4e;
   --accent-deep: #b8833d;
   /* #7a4e17 on card #eddcc6 is 5.34:1. */
@@ -34,8 +36,14 @@ html {
   --sans: "Inter", "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   /* Numbers, codes, and times. One stack, used as font-mono. */
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  /* Cards, buttons, fields, and dialogs share this radius. */
-  --radius: 12px;
+  /* Cards and dialogs. */
+  --radius: 20px;
+  /* Inner panels and inputs. */
+  --radius-inset: 16px;
+  /* Pills. Fully round. */
+  --radius-pill: 999px;
+  /* Icon buttons on the rail keep their corner. */
+  --radius-rail: 12px;
   /* The icon rail is the one measure that is not on the 8px grid. */
   --rail: 76px;
 }
@@ -47,8 +55,8 @@ html[data-theme="morning"] {
   --card: #fffaf3;
   --ink-card: #1c1915;
   --muted-card: #6a6158;
-  --line-canvas: rgba(255, 250, 243, 0.16);
-  --line-card: rgba(28, 25, 21, 0.1);
+  --line-canvas: rgba(255, 250, 243, 0.08);
+  --line-card: rgba(28, 25, 21, 0.08);
   --accent: #f0c27a;
   --accent-deep: #d4a45c;
   /* #8f621f on card #fffaf3 is 5.14:1. */
