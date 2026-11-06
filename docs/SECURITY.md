@@ -4,9 +4,11 @@ Reviewed for this sprint. The house hostname stays behind Cloudflare Access, whi
 
 ## Secrets stay in the environment
 
-`MISTRAL_API_KEY`, the Google OAuth values, `HOUSE_LAT`, `HOUSE_LON`, `HOUSE_POSTCODE`, `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN`, `WEBHOOK_SECRET_BANTO`, and `WEBHOOK_SECRET_BANTO_X` are read from the environment. They are `SecretStr` fields, so a settings dump does not print them. They are not in git, fixtures, or logs. `.env.example` lists the names with empty placeholders. The Compose database password is a local default only.
+`MISTRAL_API_KEY`, the Google OAuth values, `HOUSE_LAT`, `HOUSE_LON`, `HOUSE_POSTCODE`, `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN`, `WEBHOOK_SECRET_BANTO`, `WEBHOOK_SECRET_BANTO_X`, `X_CLIENT_ID`, `X_CLIENT_SECRET`, and `X_TOKEN_KEY` are read from the environment. The secret ones are `SecretStr` fields, so a settings dump does not print them. They are not in git, fixtures, or logs. `.env.example` lists the names with empty placeholders. The Compose database password is a local default only.
 
-`WEBHOOK_SECRET_BANTO_X` is reserved for a later X relay. That source is not registered, so the value does nothing until a later change adds it.
+`X_CLIENT_ID` is sent on the authorize redirect, which is how OAuth 2.0 works. `X_CLIENT_SECRET` and `X_TOKEN_KEY` are not. Refresh tokens and access tokens are sealed with Fernet (`X_TOKEN_KEY`) before they are stored. Disconnect revokes the refresh token. Logs do not include the token, the authorization code, or the code verifier.
+
+`WEBHOOK_SECRET_BANTO_X` signs `POST /hooks/banto_x`. The events `x.bookmark`, `x.watch_match`, and `x.draft` join the same pipeline as the poll. The door stays closed when the secret is empty, and it answers 503 while `X_ENABLED` is off.
 
 ## CORS
 
@@ -21,7 +23,7 @@ Every response, including `/health` and the built UI, sets:
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `no-referrer` |
 | `X-Frame-Options` | `DENY` |
-| `Content-Security-Policy` | `default-src 'self'`; images `self` and `data:`; style, font, script, and connect `self`; `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'` |
+| `Content-Security-Policy` | `default-src 'self'`; images `self`, `data:`, and `https://img.hearthis.at` (the playlist thumb); style, font, script, and connect `self`; `frame-ancestors 'none'`; `base-uri 'self'`; `form-action 'self'` |
 | `Permissions-Policy` | camera, geolocation, and payment disabled. Microphone is `self` so Smart Add can ask when voice is on. The button stays hidden until `VOICE_INPUT_ENABLED` |
 | `Cross-Origin-Opener-Policy` | `same-origin` |
 | `X-Permitted-Cross-Domain-Policies` | `none` |

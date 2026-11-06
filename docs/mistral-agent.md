@@ -2,6 +2,8 @@
 
 The assistant reads the house log and proposes changes. Each proposal is a card with **Apply** and **Not now**. Apply makes exactly the change on the card to one task, one commitment, or one shopping item in this database. Nothing is sent, bought, or booked, and nothing changes until you tap.
 
+`propose_draft` can add one X draft when `X_ENABLED` is on. That card is not posted by Apply. Nick taps **Post**, then confirms. A draft expires after 7 days. Hilton, a guest, a colleague, an employer, or a work system is refused.
+
 It speaks in two ways:
 
 - **When you write in the box** on the arrival screen ("need filters for the boiler before Friday", or "buy oat milk"). The right-hand column shows up to five recent log lines, then the working steps, then one or two lines and up to 3 cards. That column is not a chat. The next line replaces the strip. A shop line is a name only, and it waits for Apply. A commute or travel to work can propose the trip. The live journey is the brief, from the rota, and the card must not invent one. If the run does not finish, the column says so and nothing is changed. That answer is HTTP 424, so the page stays in the app. If Mistral cannot be reached, the add line hides until a later try.
@@ -35,14 +37,14 @@ Run `sync` again whenever `spec.py` changes. With `MISTRAL_AGENT_ID` set, it upd
 
 ### Or fill in the console by hand
 
-`python -m organiser.agent show` prints every value below, including the five function blocks for **Functions → Add**. No key is needed.
+`python -m organiser.agent show` prints every value below, including the function blocks for **Functions → Add**. No key is needed.
 
 | Field in the agent builder | Value | Why |
 | --- | --- | --- |
 | Model | `mistral-medium-latest` | Good at calling functions, and it has the reasoning switch. `mistral-small-latest` costs less. |
 | Built-in tools | **Search** on. Premium Search, Code and Image off. | Search covers web lookups (opening hours, prices, collection days). Nothing else is needed. |
 | Reasoning effort | **High** | The judgement calls are the point: which date, duplicate or not, worth a card or not. Reviews run in the background, so the extra seconds cost nothing. |
-| Functions | `get_state`, `search_items`, `get_item`, `propose_change`, `add_note` | Defined in `backend/organiser/agent/spec.py`. The app runs them. |
+| Functions | `get_state`, `search_items`, `get_item`, `propose_change`, `add_note`, `propose_draft` | Defined in `backend/organiser/agent/spec.py`. The app runs them. `propose_draft` does not post. |
 | Response format | Text | Proposals arrive as function calls, not as JSON. |
 | Instructions | From `spec.py`, printed by `show` | The rulebook below, in the model's words. |
 

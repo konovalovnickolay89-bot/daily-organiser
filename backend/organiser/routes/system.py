@@ -95,12 +95,15 @@ def status(session: Session = Depends(get_db)) -> StatusRead:
         METRICS.record_db_error(now)
         size = None
     health = "degraded" if size is None else METRICS.health(now)
+    from organiser.x.store import meter_view
+
     return StatusRead(
         health=health,
         version=__version__,
         last_mistral_success=METRICS.last_mistral_success,
         last_activity_poll=METRICS.last_poll,
         database_bytes=size,
+        x=meter_view(session, enabled=get_settings().x_enabled, now=now),
     )
 
 

@@ -14,10 +14,12 @@ from organiser.routes import (
     hooks,
     memory,
     metrics,
+    playlist,
     shopping,
     system,
     tasks,
     voice,
+    xfeed,
 )
 
 
@@ -39,3 +41,5 @@ def register(app: FastAPI) -> None:
     app.include_router(catchup.router)
     app.include_router(commute.router)
     app.include_router(hooks.router)
+    app.include_router(xfeed.router)
+    app.include_router(playlist.router)

@@ -61,6 +61,17 @@ services:
       HOUSE_POSTCODE: ${HOUSE_POSTCODE:-}
       TFL_APP_KEY: ${TFL_APP_KEY:-}
       BANTO_COMMUTE_TOKEN: ${BANTO_COMMUTE_TOKEN:-}
+      WEBHOOK_SECRET_BANTO: ${WEBHOOK_SECRET_BANTO:-}
+      WEBHOOK_SECRET_BANTO_X: ${WEBHOOK_SECRET_BANTO_X:-}
+      X_ENABLED: ${X_ENABLED:-false}
+      X_CLIENT_ID: ${X_CLIENT_ID:-}
+      X_CLIENT_SECRET: ${X_CLIENT_SECRET:-}
+      X_REDIRECT_URI: ${X_REDIRECT_URI:-https://organiser.apidiscoverysolution.uk/x/callback}
+      X_TOKEN_KEY: ${X_TOKEN_KEY:-}
+      X_POLL_MINUTES: ${X_POLL_MINUTES:-30}
+      PLAYLIST_SOURCE: ${PLAYLIST_SOURCE:-}
+      HEARTHIS_PROFILE: ${HEARTHIS_PROFILE:-chlorophil}
+      SHOW_PLAYLIST: ${SHOW_PLAYLIST:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

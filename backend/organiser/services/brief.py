@@ -115,7 +115,7 @@ def morning_brief(session: Session, today: date, paused: bool, now: datetime | N
         note = "The house is paused. This brief is only a reading."
     moment = now or clock.current_time()
 
-    return {
+    brief = {
         "title": "Morning brief",
         "as_of": utcnow(),
         "house_date": today,
@@ -158,3 +158,16 @@ def morning_brief(session: Session, today: date, paused: bool, now: datetime | N
             weather_section(session, get_settings(), utcnow()),
         ],
     }
+    return _with_x(session, brief, moment)
+
+
+def _with_x(session: Session, brief: dict, moment: datetime) -> dict:
+    settings = get_settings()
+    if not settings.x_enabled:
+        return brief
+    from organiser.x.store import brief_section
+
+    section = brief_section(session, moment)
+    if section is not None:
+        brief["sections"].append(section)
+    return brief

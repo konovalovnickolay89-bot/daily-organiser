@@ -3,7 +3,7 @@ import { getStatus, type HouseStatus } from "../../api/system";
 import { errorText } from "../../arrival/ui";
 import { useHouseTick } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
-import { formatBytes, formatHouseTime } from "./format";
+import { formatBytes, formatHouseTime, formatXLine } from "./format";
 
 /**
  * Status on the Settings card. Health, version, the last Mistral success,
@@ -38,6 +38,7 @@ export function StatusPanel() {
     ["Last Mistral success", status ? formatHouseTime(status.last_mistral_success) : "…", "mistral"],
     ["Last activity poll", status ? formatHouseTime(status.last_activity_poll) : "…", "poll"],
     ["Database", status ? formatBytes(status.database_bytes) : "…", "database"],
+    ["X credits / rate", status ? formatXLine(status.x) : "…", "x"],
   ];
 
   return (

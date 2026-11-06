@@ -28,6 +28,18 @@ PATHS = (
     "/alerts",
     "/alerts/{kind}/dismiss",
     "/voice/transcribe",
+    "/x/status",
+    "/x/connect",
+    "/x/callback",
+    "/x/disconnect",
+    "/x/watches",
+    "/x/watches/{watch_id}",
+    "/x/items",
+    "/x/poll",
+    "/x/items/{item_id}/apply",
+    "/x/items/{item_id}/dismiss",
+    "/x/items/{item_id}/post",
+    "/playlist",
 )
 
 

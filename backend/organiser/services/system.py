@@ -39,7 +39,7 @@ def present_system(row: SystemState, now: datetime, tz_name: str) -> dict:
         "greeting_reason": greet["greeting_reason"],
         "arrived_at": greet["arrived_at"],
         "debounce_until": greet["debounce_until"],
-        "playlist_stub": get_settings().show_playlist_stub,
+        "playlist": get_settings().playlist_on,
     }
 
 

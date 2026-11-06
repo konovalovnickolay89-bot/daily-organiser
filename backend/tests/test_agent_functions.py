@@ -1,4 +1,4 @@
-"""The five functions Mistral may call. Every refusal is enforced here, not in the prompt."""
+"""The functions Mistral may call. Every refusal is enforced here, not in the prompt."""
 
 from datetime import date, timedelta
 from uuid import uuid4

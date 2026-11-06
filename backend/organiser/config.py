@@ -97,12 +97,25 @@ class Settings(BaseSettings):
     banto_commute_token: SecretStr = SecretStr("")
 
     # Signed inbound webhooks. Empty means that source answers 503.
-    # WEBHOOK_SECRET_BANTO_X is reserved for the X relay and is not a source yet.
+    # WEBHOOK_SECRET_BANTO_X signs POST /hooks/banto_x. Those x.* events join the
+    # same pipeline as the poll. Nothing is accepted while X_ENABLED is off.
     webhook_secret_banto: SecretStr = SecretStr("")
     webhook_secret_banto_x: SecretStr = SecretStr("")
 
-    # The quiet playlist line stays off until this is set. It still does not play.
-    show_playlist_stub: bool = False
+    # X, Nick's own developer app. Off until X_ENABLED is set. Tokens are sealed
+    # with X_TOKEN_KEY and are never logged. The redirect must match the app.
+    x_enabled: bool = False
+    x_client_id: SecretStr = SecretStr("")
+    x_client_secret: SecretStr = SecretStr("")
+    x_redirect_uri: str = "https://organiser.apidiscoverysolution.uk/x/callback"
+    x_token_key: SecretStr = SecretStr("")
+    x_poll_minutes: int = 30
+
+    # hearthis.at profile. Empty source keeps the line hidden. SHOW_PLAYLIST
+    # defaults to on once a source is set. The line links out. It does not play.
+    playlist_source: str = ""
+    hearthis_profile: str = "chlorophil"
+    show_playlist: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -149,6 +162,21 @@ class Settings(BaseSettings):
     @property
     def banto_configured(self) -> bool:
         return _secret_set(self.banto_commute_token)
+
+    @property
+    def playlist_on(self) -> bool:
+        """True when a source is set and the line has not been turned off.
+
+        An empty SHOW_PLAYLIST means on, once PLAYLIST_SOURCE is hearthis.
+        """
+        if self.playlist_source.strip().casefold() != "hearthis":
+            return False
+        flag = self.show_playlist.strip().casefold()
+        return flag not in {"0", "false", "no", "off"}
+
+    @property
+    def poll_interval_minutes(self) -> int:
+        return min(24 * 60, max(1, self.x_poll_minutes))
 
 
 @lru_cache

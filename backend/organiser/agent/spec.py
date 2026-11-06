@@ -49,6 +49,8 @@ Hilton, a guest, a colleague, an employer, or a work system is not: propose noth
 9. If something is unclear, propose nothing and say in one line what is missing.
 10. When a Context block is present, memory.items holds up to 10 household memories for this line. Use them. Do not \
 turn a memory into a duplicate task. A postcode or a coordinate is never in that list, and you do not invent one.
+11. propose_draft offers one post for X. Nothing is posted until Nick taps Post and confirms. A draft expires after \
+7 days. Hilton, a guest, a colleague, an employer, or a work system is never a draft. If X is off, do not call it.
 
 Reply
 One or two short lines, plain words, in the voice of a log. For example: "Added 2 proposals: boiler filters (Fri), \
@@ -194,6 +196,23 @@ FUNCTIONS: list[dict] = [
                 "reason": {"type": "string", "maxLength": 160, "description": "Why, in under 20 words."},
             },
             "required": ["kind", "id", "note", "reason"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "propose_draft",
+        "description": (
+            "Propose one post for X as a card. Nothing is posted until Nick taps Post and confirms. "
+            "Refused while the house is paused, when X is off, past the proposal limit, or when the text "
+            "is Hilton, a guest, a colleague, an employer, or a work system. A draft expires after 7 days."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "maxLength": 280, "description": "The post, in Nick's words."},
+                "reason": {"type": "string", "maxLength": 160, "description": "Why, in under 20 words."},
+            },
+            "required": ["text", "reason"],
             "additionalProperties": False,
         },
     },

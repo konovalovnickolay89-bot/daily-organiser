@@ -95,12 +95,15 @@ def test_inbound_routes_refuse_outside_the_house(client, db):
     assert _count_events(db) == before
 
 
-def test_playlist_stub_is_off_unless_configured(client, monkeypatch):
-    assert client.get("/system").json()["playlist_stub"] is False
-    monkeypatch.setenv("SHOW_PLAYLIST_STUB", "true")
+def test_playlist_line_stays_off_without_a_source(client, monkeypatch):
+    assert client.get("/system").json()["playlist"] is False
+    monkeypatch.setenv("PLAYLIST_SOURCE", "hearthis")
     get_settings.cache_clear()
     try:
-        assert client.get("/system").json()["playlist_stub"] is True
+        assert client.get("/system").json()["playlist"] is True
+        monkeypatch.setenv("SHOW_PLAYLIST", "false")
+        get_settings.cache_clear()
+        assert client.get("/system").json()["playlist"] is False
     finally:
         get_settings.cache_clear()
 
@@ -190,7 +193,7 @@ def test_webhook_rejects_bad_signatures_unknowns_and_stores_nothing(client, db, 
             missing = client.post("/hooks/banto", json={"event": "commute"})
         assert bad_sig.status_code == 401
         assert old.status_code == 401
-        assert unknown_source.status_code == 404
+        assert unknown_source.status_code == 401
         assert unknown_event.status_code == 404
         assert outside.status_code == 422
         assert extra.status_code == 422

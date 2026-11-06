@@ -25,7 +25,7 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), payment=()",
     "Content-Security-Policy": (
         "default-src 'self'; "
-        "img-src 'self' data:; "
+        "img-src 'self' data: https://img.hearthis.at; "
         "style-src 'self'; "
         "font-src 'self'; "
         "script-src 'self'; "
