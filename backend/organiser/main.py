@@ -7,6 +7,8 @@ from fastapi.staticfiles import StaticFiles
 
 from organiser import __version__
 from organiser.config import get_settings
+from organiser.httpsec import AccessLogMiddleware, SecurityHeadersMiddleware
+from organiser.jsonlog import configure_logging
 from organiser.db import (
     ensure_arrived_at_column,
     ensure_ingest_proposals,
@@ -60,6 +62,7 @@ _DOCS_PATHS = ("/docs", "/redoc", "/openapi.json")
 
 
 def create_app() -> FastAPI:
+    configure_logging()
     settings = get_settings()
     # Both switches. ENABLE_DOCS alone does not publish /docs.
     # DOCS_BEHIND_ACCESS means this process is only reached through Cloudflare Access.
@@ -87,6 +90,9 @@ def create_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+    # Added last so it is the outer wrapper. Headers apply to errors and static files.
+    app.add_middleware(AccessLogMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
     register(app)
     ui_dist = _ui_dist()
     if ui_dist is not None:

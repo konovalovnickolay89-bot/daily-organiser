@@ -194,13 +194,18 @@ def journey_note(text: str) -> str | None:
     return JOURNEY_NOTE
 
 
-def feed_packet(local_now: datetime, tz_name: str, limit: int, text: str) -> str:
+def feed_packet(local_now: datetime, tz_name: str, limit: int, text: str, context: object | None = None) -> str:
+    """The Smart Add packet. A context, when passed, is appended and does not rewrite the head."""
     lines = _header("feed", local_now, tz_name, limit)
     lines += ["Nick wrote:", '"""', text.strip(), '"""']
     note = journey_note(text)
     if note:
         lines.append(note)
-    return "\n".join(lines)
+    packet = "\n".join(lines)
+    if context is None:
+        return packet
+    rendered = context.model_dump_json() if hasattr(context, "model_dump_json") else str(context)
+    return packet + "\n\nContext:\n" + rendered
 
 
 def morning_packet(local_now: datetime, tz_name: str, limit: int, brief: dict) -> str:

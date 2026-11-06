@@ -14,6 +14,7 @@ from organiser.schemas import (
     ActionRequestUpdate,
     apply_changes,
 )
+from organiser.scope import require_house_fields
 from organiser.timeutil import utcnow
 
 router = APIRouter(prefix="/action-requests", tags=["action requests"])
@@ -57,6 +58,7 @@ def list_action_requests(
 
 @router.post("", response_model=ActionRequestRead, status_code=201)
 def create_action_request(payload: ActionRequestCreate, session: Session = Depends(get_db)) -> ActionRequest:
+    require_house_fields(payload, "title", "detail", "owner")
     row = ActionRequest(**_values(payload))
     session.add(row)
     session.commit()
@@ -75,6 +77,7 @@ def update_action_request(
     payload: ActionRequestUpdate,
     session: Session = Depends(get_db),
 ) -> ActionRequest:
+    require_house_fields(payload, "title", "detail", "owner")
     row = _get(session, request_id)
     previous = row.status
     apply_changes(row, payload)

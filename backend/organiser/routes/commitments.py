@@ -14,6 +14,7 @@ from organiser.schemas import (
     CommitmentUpdate,
     apply_changes,
 )
+from organiser.scope import require_house_fields
 from organiser.services.activity import record_line
 
 router = APIRouter(prefix="/commitments", tags=["commitments"])
@@ -53,6 +54,7 @@ def list_commitments(
 
 @router.post("", response_model=CommitmentRead, status_code=201)
 def create_commitment(payload: CommitmentCreate, session: Session = Depends(get_db)) -> Commitment:
+    require_house_fields(payload, "title", "detail", "owner", "source")
     row = Commitment(**_values(payload))
     session.add(row)
     record_line(
@@ -77,6 +79,7 @@ def update_commitment(
     payload: CommitmentUpdate,
     session: Session = Depends(get_db),
 ) -> Commitment:
+    require_house_fields(payload, "title", "detail", "owner", "source")
     row = _get(session, commitment_id)
     apply_changes(row, payload)
     session.commit()

@@ -23,6 +23,7 @@ from organiser import clock
 from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
+from organiser.agent.context import build_context
 from organiser.agent.runner import outside_home
 from organiser.agent.rules import (
     FEED_LABEL,
@@ -345,7 +346,13 @@ def _feed_events(app, text: str) -> Iterator[str]:
             label=FEED_LABEL,
             max_proposals=FEED_PROPOSALS,
         )
-        packet = feed_packet(local_now, settings.house_timezone, FEED_PROPOSALS, text)
+        packet = feed_packet(
+            local_now,
+            settings.house_timezone,
+            FEED_PROPOSALS,
+            text,
+            build_context(session, purpose="smart_add", now=local_now),
+        )
         try:
             outcome: RunResult | None = None
             for item in iter_run(client, settings.mistral_agent_id.strip(), ctx, packet):
@@ -401,7 +408,13 @@ def feed(
         label=FEED_LABEL,
         max_proposals=FEED_PROPOSALS,
     )
-    packet = feed_packet(local_now, settings.house_timezone, FEED_PROPOSALS, payload.text)
+    packet = feed_packet(
+        local_now,
+        settings.house_timezone,
+        FEED_PROPOSALS,
+        payload.text,
+        build_context(session, purpose="smart_add", now=local_now),
+    )
     try:
         return _execute(session, client, run, ctx, packet)
     except AssistantRunError as exc:

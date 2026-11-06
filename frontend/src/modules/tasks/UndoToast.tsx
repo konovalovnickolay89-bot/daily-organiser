@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { ghost } from "../../arrival/ui";
 
 type Offer = {
   message: string;
@@ -33,9 +34,12 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     <UndoContext.Provider value={show}>
       {children}
       {offer && (
-        <p className="toast" role="status">
+        <p
+          className="fixed bottom-6 left-1/2 z-40 m-0 flex max-w-[calc(100vw-32px)] -translate-x-1/2 items-center gap-4 rounded-house bg-card px-4 py-3 pl-[18px] text-ink-card shadow-[var(--card-shadow)]"
+          role="status"
+        >
           <span>{offer.message}</span>
-          <button type="button" className="ghost" onClick={() => void undo()}>
+          <button type="button" className={ghost} onClick={() => void undo()}>
             Undo
           </button>
         </p>

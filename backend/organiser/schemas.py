@@ -214,6 +214,7 @@ class SystemRead(APIModel):
     greeting_reason: GreetingReason
     arrived_at: datetime | None = None
     debounce_until: datetime | None = None
+    playlist_stub: bool = False
 
 
 class HouseFacts(APIModel):

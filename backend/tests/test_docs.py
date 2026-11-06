@@ -18,6 +18,8 @@ PATHS = (
     "/shopping",
     "/system/assistant",
     "/system/calendars",
+    "/commute/shift",
+    "/hooks/{source}",
 )
 
 

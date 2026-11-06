@@ -9,7 +9,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.{js,jsx,ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -25,9 +25,5 @@ export default [
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
-  },
-  {
-    files: ["src/**/*.{js,jsx}"],
-    rules: { "@typescript-eslint/no-unused-vars": "off" },
   },
 ];

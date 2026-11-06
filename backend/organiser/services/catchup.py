@@ -20,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import DETAIL_LIMIT, clip, note_line, summarise, with_note
+from organiser.agent.context import build_context
 from organiser.config import get_settings
 from organiser.domain import DEFAULT_OWNER
 from organiser.models import CatchUpItem, CatchUpPass, Commitment, SystemState, Task
@@ -343,6 +344,8 @@ def record_look(session: Session, now: datetime) -> dict:
     if due and not _has_pending(session):
         _open_pass(session, local, previous)
     row.last_looked_at = local
+    # Ready for a later read. The cards above are still chosen in code.
+    build_context(session, purpose="catch_up", now=local)
     return _view(local, paused=False, quiet=False, items=_pending(session))
 
 

@@ -90,6 +90,13 @@ Add nothing secret to git. In the existing house file:
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
 | `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
 | `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN` | Leave empty. Not connected. `Wembley` means Wembley Park, origin home |
+| `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Leave empty to keep the webhook closed (503). The signature is hex HMAC-SHA256 of `{unix timestamp}.{raw body}`, headers `X-Organiser-Timestamp` and `X-Organiser-Signature`. The timestamp must be within five minutes, and each signature is accepted once in that window. The only event is `commute`: `start`, `end`, and `location_label`. A rejected body is not stored |
+| `WEBHOOK_SECRET_BANTO_X` | Reserve the name for the X relay. Do not set it until that source is registered. It does nothing now |
+| `SHOW_PLAYLIST_STUB` | Leave unset or `false`. The playlist line stays hidden. `true` shows the text only; nothing plays |
+
+Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. `/health` adds `version` (currently `0.2.0`) beside `status` and `database`.
+
+No new migration. Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process, because the arrival screen moved to TypeScript. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
 Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
 

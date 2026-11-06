@@ -1,9 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { getCommitment, updateCommitment } from "../../api/commitments";
 import type { CommitmentStatus, CommitmentWrite } from "../../api/types";
-import { useHouse } from "../../house/HouseContext.jsx";
-import { COMMITMENT_STATUS_LABELS } from "../../lib/labels";
+import { cx, dialog, errorText, fieldInput, fieldLabel, ghost, heading, lede, primary } from "../../arrival/ui";
+import { DatePassedNote } from "../../components/DatePassedNote";
+import { useHouse } from "../../house/HouseContext";
 import { useHouseDialog } from "../../lib/dialog";
+import { COMMITMENT_STATUS_LABELS } from "../../lib/labels";
 
 const STATUSES: CommitmentStatus[] = ["open", "kept", "dropped"];
 
@@ -39,7 +41,7 @@ type CommitmentEditorProps = {
  * Save and Mark kept use PATCH /commitments/{id}.
  */
 export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProps) {
-  const { refresh } = useHouse() as { refresh: () => void };
+  const { refresh, system } = useHouse();
   const { dialogRef, requestClose } = useHouseDialog(onClose);
   const titleRef = useRef<HTMLInputElement>(null);
   const focused = useRef(false);
@@ -108,23 +110,25 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
   const alreadyKept = form?.status === "kept";
 
   return (
-    <dialog ref={dialogRef} className="house-dialog" aria-labelledby={headingId}>
-      <p className="eyebrow">Commitment</p>
-      <h2 id={headingId}>Edit commitment</h2>
-      <p className="lede">Change the title, detail, date, or status. Dismiss leaves it as it is.</p>
+    <dialog ref={dialogRef} className={cx(dialog, "house-dialog")} aria-labelledby={headingId}>
+      <p className="m-0 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">Commitment</p>
+      <h2 id={headingId} className={cx(heading, "mt-1")}>
+        Edit commitment
+      </h2>
+      <p className={lede}>Change the title, detail, date, or status. Dismiss leaves it as it is.</p>
       {loadError && (
         <>
-          <p className="error" role="alert">
+          <p className={errorText} role="alert">
             {loadError.message}
           </p>
-          <div className="actions task-actions">
-            <button type="button" className="ghost" onClick={requestClose}>
+          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+            <button type="button" className={ghost} onClick={requestClose}>
               Dismiss
             </button>
           </div>
         </>
       )}
-      {!form && !loadError && <p className="empty">Opening the commitment…</p>}
+      {!form && !loadError && <p className="text-[0.9rem] text-[var(--muted)]">Opening the commitment…</p>}
       {form && (
         <form
           onSubmit={(event) => {
@@ -133,15 +137,16 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
           }}
         >
           {error && (
-            <p className="error" role="alert">
+            <p className={errorText} role="alert">
               {error.message}
             </p>
           )}
-          <label className="field" htmlFor={titleFieldId}>
-            <span>Title</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={titleFieldId}>
+            <span className={fieldLabel}>Title</span>
             <input
               ref={titleRef}
               id={titleFieldId}
+              className={fieldInput}
               type="text"
               value={form.title}
               maxLength={200}
@@ -151,10 +156,11 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               onChange={(event) => update("title", event.target.value)}
             />
           </label>
-          <label className="field" htmlFor={detailFieldId}>
-            <span>Detail</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={detailFieldId}>
+            <span className={fieldLabel}>Detail</span>
             <textarea
               id={detailFieldId}
+              className={cx(fieldInput, "min-h-[4.5rem] resize-y py-2")}
               rows={3}
               value={form.detail}
               maxLength={4000}
@@ -162,21 +168,24 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               onChange={(event) => update("detail", event.target.value)}
             />
           </label>
-          <label className="field" htmlFor={dueFieldId}>
-            <span>Due</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={dueFieldId}>
+            <span className={fieldLabel}>Due</span>
             <input
               id={dueFieldId}
+              className={fieldInput}
               type="date"
               value={form.due_on}
               disabled={busy}
               onChange={(event) => update("due_on", event.target.value)}
             />
-            <span className="field-hint">Leave blank if there is no date.</span>
+            <span className="text-[0.78rem] font-normal normal-case tracking-normal text-[var(--muted)]">Leave blank if there is no date.</span>
+            <DatePassedNote dueOn={form.due_on} houseDate={system?.house_date} />
           </label>
-          <label className="field" htmlFor={statusFieldId}>
-            <span>Status</span>
+          <label className="mb-3 flex flex-col gap-[5px]" htmlFor={statusFieldId}>
+            <span className={fieldLabel}>Status</span>
             <select
               id={statusFieldId}
+              className={fieldInput}
               value={form.status}
               disabled={busy}
               onChange={(event) => update("status", event.target.value as CommitmentStatus)}
@@ -188,14 +197,14 @@ export function CommitmentEditor({ commitmentId, onClose }: CommitmentEditorProp
               ))}
             </select>
           </label>
-          <div className="actions task-actions">
-            <button type="button" className="primary" disabled={busy || alreadyKept} onClick={() => void save("kept")}>
+          <div className="mt-1 flex flex-wrap gap-2 border-t border-[var(--line)] pt-3.5">
+            <button type="button" className={primary} disabled={busy || alreadyKept} onClick={() => void save("kept")}>
               {alreadyKept ? "Kept" : "Mark kept"}
             </button>
-            <button type="submit" className="ghost" disabled={busy}>
+            <button type="submit" className={ghost} disabled={busy}>
               {busy ? "Saving…" : "Save"}
             </button>
-            <button type="button" className="ghost" disabled={busy} onClick={requestClose}>
+            <button type="button" className={ghost} disabled={busy} onClick={requestClose}>
               Dismiss
             </button>
           </div>
