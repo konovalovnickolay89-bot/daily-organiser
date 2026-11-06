@@ -100,6 +100,7 @@ def test_eight_hours_opens_one_shared_pass(client, db, house_clock):
     assert card["summary"] == "Note on Put the bins out: “Due today.”"
     assert card["reason"] == "Due today"
     assert card["status"] == "pending"
+    assert card["fallback_used"] is True
     assert _count(db, CatchUpPass) == 1
 
     again = _look(client)

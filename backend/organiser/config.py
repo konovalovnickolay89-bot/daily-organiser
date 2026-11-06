@@ -17,9 +17,9 @@ def calendar_id_list(raw: str) -> tuple[str, ...]:
     return parts or ("primary",)
 
 
-# Bantō may later send the label "Wembley". That word means this TfL point.
-# The journey origin is home (coordinates or postcode), not a station name.
-# Nothing in this module calls TfL or Bantō.
+# The label "Wembley" means this TfL point. The journey origin is home
+# (coordinates or postcode), not a station name. The lookup lives in
+# services/commute.py and does not log the origin or the key.
 WEMBLEY_POINT = "Wembley Park"
 COMMUTE_ORIGIN = "home"
 
@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # Cost guard across every trigger, and the cap on proposals Nick did not ask for.
     agent_runs_per_day: int = 12
     agent_proactive_per_day: int = 3
+    # Burst limits for this process. They reset on restart. See organiser/limits.py.
+    rate_feed_per_minute: int = 6
+    rate_ingest_per_minute: int = 30
+    rate_commute_per_hour: int = 12
 
     # Home location for a later weather line and commute origin.
     # Set both coordinates, or a postcode, in the house file only.
@@ -82,7 +86,8 @@ class Settings(BaseSettings):
     # Blank means primary. The ids are not shown on Settings and are not logged.
     google_calendar_ids: SecretStr = SecretStr("")
 
-    # Commute, later. A label of Wembley means Wembley Park. Origin is home.
+    # Commute. A label of Wembley means Wembley Park. Origin is home.
+    # Empty leaves the brief line and the push unwired. Never log either value.
     tfl_app_key: SecretStr = SecretStr("")
     banto_commute_token: SecretStr = SecretStr("")
 

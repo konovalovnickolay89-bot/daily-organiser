@@ -6,6 +6,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+import httpx
 from sqlalchemy.orm import Session
 
 from organiser.config import Settings
@@ -76,6 +77,11 @@ def _mark(session: Session, *, ok: bool, error_class: str | None) -> None:
     session.commit()
 
 
+def home_coordinates(settings: Settings) -> tuple[float, float] | None:
+    """The house point, or nothing. The values are not logged and not returned."""
+    return _coordinates(settings)
+
+
 def _coordinates(settings: Settings) -> tuple[float, float] | None:
     """Resolve the house point. The values are not logged and not returned."""
     kind = settings.home_location_kind
@@ -89,23 +95,61 @@ def _coordinates(settings: Settings) -> tuple[float, float] | None:
             return None
         return lat, lon
     if kind == "postcode":
-        postcode = settings.house_postcode.get_secret_value().strip()
-        try:
-            body = request_json("GET", "https://api.postcodes.io/postcodes/" + quote(postcode))
-        except Exception:
-            return None
-        result = body.get("result")
-        if not isinstance(result, dict):
-            return None
-        try:
-            lat = float(result["latitude"])
-            lon = float(result["longitude"])
-        except (KeyError, TypeError, ValueError):
-            return None
-        if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
-            return None
-        return lat, lon
+        return _postcode_point(settings.house_postcode.get_secret_value().strip())
     return None
+
+
+def _point(body: object) -> tuple[float, float] | None:
+    if not isinstance(body, dict):
+        return None
+    result = body.get("result")
+    if not isinstance(result, dict):
+        return None
+    try:
+        lat = float(result["latitude"])
+        lon = float(result["longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
+        return None
+    return lat, lon
+
+
+def _missed(exc: Exception) -> bool:
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 404
+
+
+def _postcode_point(postcode: str) -> tuple[float, float] | None:
+    """A full postcode, or the outcode when that lookup is a 404.
+
+    The value is never logged. A 404 is a warning, then the outcode is tried.
+    """
+    encoded = quote(postcode)
+    try:
+        body = request_json("GET", "https://api.postcodes.io/postcodes/" + encoded)
+    except httpx.HTTPStatusError as exc:
+        if not _missed(exc):
+            logger.warning("postcode lookup failed (%s)", exc.response.status_code)
+            return None
+        logger.warning("postcode lookup missed; trying the outcode")
+    except Exception:
+        logger.warning("postcode lookup failed")
+        return None
+    else:
+        return _point(body)
+
+    try:
+        body = request_json("GET", "https://api.postcodes.io/outcodes/" + encoded)
+    except httpx.HTTPStatusError as exc:
+        if _missed(exc):
+            logger.warning("outcode lookup missed")
+        else:
+            logger.warning("outcode lookup failed (%s)", exc.response.status_code)
+        return None
+    except Exception:
+        logger.warning("outcode lookup failed")
+        return None
+    return _point(body)
 
 
 def _phrase(code: int) -> str:

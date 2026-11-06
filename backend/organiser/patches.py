@@ -63,3 +63,26 @@ SPRINT2_DOWNGRADE: tuple[str, ...] = (
     "DROP TABLE IF EXISTS shopping_items",
     "ALTER TABLE system_state DROP COLUMN IF EXISTS assistant_enabled",
 )
+
+
+# Idempotent SQL for Sprint 3. The process applies this on boot. Alembic 0003
+# runs the same statements. Either order is safe.
+SPRINT3_UPGRADE: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS commute_shifts (
+        id UUID PRIMARY KEY,
+        start_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        location_label VARCHAR(40) NOT NULL,
+        CONSTRAINT ck_commute_shifts_label CHECK (location_label = 'Wembley'),
+        CONSTRAINT ck_commute_shifts_order CHECK (end_at > start_at)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS ix_commute_shifts_start ON commute_shifts (start_at)",
+    "ALTER TABLE catchup_items ADD COLUMN IF NOT EXISTS fallback_used BOOLEAN NOT NULL DEFAULT false",
+)
+
+SPRINT3_DOWNGRADE: tuple[str, ...] = (
+    "ALTER TABLE catchup_items DROP COLUMN IF EXISTS fallback_used",
+    "DROP TABLE IF EXISTS commute_shifts",
+)

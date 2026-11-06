@@ -40,7 +40,8 @@ def test_instructions_name_every_function_and_trigger():
     assert "Europe/London" in text
     assert "Not for the house log." in text
     assert "No greeting" in text
-    assert "journey source is not connected" in text
+    assert "Do not invent disruptions" in text
+    assert "create_shopping_item" in text
     assert "travel to work" in text
 
 

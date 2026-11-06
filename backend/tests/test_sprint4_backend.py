@@ -15,6 +15,7 @@ from organiser.agent.runner import feed_packet
 from organiser.config import get_settings
 from organiser.httpsec import SECURITY_HEADERS
 from organiser.jsonlog import JsonFormatter, scrub
+from organiser.limits import LIMITS
 from organiser.models import Commitment, Event, Task
 from organiser.routes.hooks import clear_replay_cache
 from organiser.timeutil import utcnow
@@ -107,8 +108,10 @@ def test_playlist_stub_is_off_unless_configured(client, monkeypatch):
 def test_commute_shift_and_signed_webhook_share_one_check(client, db, house_clock, monkeypatch):
     monkeypatch.setenv("WEBHOOK_SECRET_BANTO", SECRET)
     monkeypatch.setenv("WEBHOOK_SECRET_BANTO_X", "later-secret")
+    monkeypatch.setenv("BANTO_COMMUTE_TOKEN", "banto-push-token")
     get_settings.cache_clear()
     clear_replay_cache()
+    LIMITS.reset()
     house_clock["now"] = london(2026, 11, 6, 8, 0)
     shift = {
         "start": "2026-11-06T07:00:00+00:00",
@@ -116,36 +119,37 @@ def test_commute_shift_and_signed_webhook_share_one_check(client, db, house_cloc
         "location_label": "Wembley",
     }
     try:
-        direct = client.post("/commute/shift", json=shift)
-        assert direct.status_code == 200
-        assert direct.json()["location_label"] == "Wembley Park"
-        assert direct.json()["origin"] == "home"
+        direct = client.post("/commute/shift", json=shift, headers={"Authorization": "Bearer banto-push-token"})
+        assert direct.status_code == 201
+        assert direct.json()["location_label"] == "Wembley"
         assert "staff" not in direct.text
+        assert "Wembley Park" not in direct.text
 
         raw = json.dumps({"event": "commute", **shift}).encode()
         hooked = _post_hook(client, raw)
         assert hooked.status_code == 200, hooked.text
-        assert hooked.json()["location_label"] == "Wembley Park"
-        assert hooked.json()["origin"] == "home"
+        assert hooked.json()["location_label"] == "Wembley"
+        assert hooked.json()["id"] == direct.json()["id"]
 
         again = _post_hook(client, raw)
         assert again.status_code == 409
-        titles = [item["title"] for item in client.get("/events?kind=system").json()["items"]]
-        assert titles.count("Commute shift") == 2
-        stored = client.get("/events?kind=system").json()["items"]
-        assert all("Wembley Park" in item["body"] and "Nothing was booked." in item["body"] for item in stored)
+        titles = [item["title"] for item in client.get("/events?kind=brief").json()["items"]]
+        assert titles.count("Commute: Wembley 07:00–08:10") == 1
         assert SECRET not in hooked.text
         assert "later-secret" not in repr(get_settings())
     finally:
         get_settings.cache_clear()
         clear_replay_cache()
+        LIMITS.reset()
 
 
 def test_webhook_rejects_bad_signatures_unknowns_and_stores_nothing(client, db, house_clock, monkeypatch, caplog):
     monkeypatch.setenv("WEBHOOK_SECRET_BANTO", SECRET)
     monkeypatch.setenv("WEBHOOK_SECRET_BANTO_X", "later-secret")
+    monkeypatch.setenv("BANTO_COMMUTE_TOKEN", "banto-push-token")
     get_settings.cache_clear()
     clear_replay_cache()
+    LIMITS.reset()
     house_clock["now"] = london(2026, 11, 6, 8, 0)
     before = _count_events(db)
     raw = json.dumps(
@@ -180,6 +184,7 @@ def test_webhook_rejects_bad_signatures_unknowns_and_stores_nothing(client, db, 
                     "end": "2026-11-06T08:10:00+00:00",
                     "location_label": "hotel",
                 },
+                headers={"Authorization": "Bearer banto-push-token"},
             )
             extra = _post_hook(client, raw)
             missing = client.post("/hooks/banto", json={"event": "commute"})
@@ -196,6 +201,7 @@ def test_webhook_rejects_bad_signatures_unknowns_and_stores_nothing(client, db, 
     finally:
         get_settings.cache_clear()
         clear_replay_cache()
+        LIMITS.reset()
 
 
 def test_unconfigured_webhook_stays_closed(client, monkeypatch):

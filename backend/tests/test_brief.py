@@ -21,6 +21,7 @@ def test_morning_brief_composes_live_items_and_placeholders(client):
     assert [section["key"] for section in body["sections"]] == [
         "tasks",
         "commitments",
+        "commute",
         "appointments",
         "shopping",
         "weather",
@@ -44,6 +45,7 @@ def test_morning_brief_composes_live_items_and_placeholders(client):
     assert by_key["shopping"]["summary"] == "Shopping list is empty."
     assert "Diary not connected" in by_key["appointments"]["summary"]
     assert by_key["appointments"]["items"] == []
+    assert by_key["commute"]["summary"] == "Commute is not connected."
     assert by_key["weather"]["summary"] == "Weather location is not set."
     assert by_key["weather"]["items"] == []
 

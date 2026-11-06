@@ -16,9 +16,10 @@ function waitingLabel(count: number) {
  */
 export function AssistantPane() {
   const view = useView();
-  const { state, error, text, setText, sorting, enabled, paused, proposals, submit } = useAssistant();
+  const { state, error, text, setText, sorting, enabled, reachable, paused, proposals, submit } = useAssistant();
   const inline = view !== "home";
-  const restingEmpty = enabled && !paused && proposals.length === 0;
+  const showForm = enabled && reachable;
+  const restingEmpty = showForm && !paused && proposals.length === 0;
 
   return (
     <section
@@ -30,7 +31,7 @@ export function AssistantPane() {
         <h2 id="assistant-title" className={heading}>
           Proposed changes
         </h2>
-        {enabled && !paused && inline && (
+        {showForm && !paused && inline && (
           <p className={cx("m-0 whitespace-nowrap text-[0.82rem] font-medium", proposals.length > 0 ? "font-semibold text-accent-ink" : "text-[var(--muted)]")}>
             {waitingLabel(proposals.length)}
           </p>
@@ -45,7 +46,8 @@ export function AssistantPane() {
       </p>
       {state === null && !error && <LoadingSkeleton label="Checking the assistant…" />}
       {state && !enabled && <p className="text-[0.9rem] text-[var(--muted)]">The assistant is off.</p>}
-      {enabled && (
+      {state && enabled && !reachable && <p className="text-[0.9rem] text-[var(--muted)]">The assistant is down.</p>}
+      {showForm && (
         <form
           className={cx(
             "mb-3 flex min-w-0 max-w-full gap-2",

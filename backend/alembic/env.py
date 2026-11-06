@@ -16,7 +16,9 @@ from organiser.models import Base
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Leave loggers that already exist enabled. The default turns them off,
+    # which hides a later warning in the same process.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

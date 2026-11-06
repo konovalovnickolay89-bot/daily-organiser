@@ -57,7 +57,9 @@ WantedBy=multi-user.target
 
 The process still creates tables with `create_all` and the small `ensure_*` patches, so a database from before this revision still boots. Alembic `0001_baseline` was stamped, not upgraded, on the house database.
 
-`0002_sprint2` adds `shopping_items`, `calendar_subscriptions`, `integration_status`, the `system_state.assistant_enabled` column, and `create_shopping_item` on proposal actions. The boot patch applies the same SQL, so the process starts before the version is moved. After a backup and a yes to deploy, record the revision:
+`0002_sprint2` adds `shopping_items`, `calendar_subscriptions`, `integration_status`, the `system_state.assistant_enabled` column, and `create_shopping_item` on proposal actions.
+
+`0003_sprint3` adds `commute_shifts` (start, end, and the label `Wembley` only) and `catchup_items.fallback_used`. The boot patch applies the same SQL, so the process starts before the version is moved. After a backup and a yes to deploy, record the revision:
 
 ```bash
 cd /opt/daily-organiser/backend
@@ -75,6 +77,7 @@ Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for 
 - `/system` and `/system/facts`
 - `/tasks`, `/commitments`, `/events`, `/brief`, `/approvals`, `/action-requests`
 - `/agent`, `/agent/activity`, `/agent/proposals`, `/catch-up`
+- `/commute/shift`
 
 Do not change Cloudflare, tunnels, or DNS from this repo. Access is the only login.
 
@@ -89,18 +92,20 @@ Add nothing secret to git. In the existing house file:
 | `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Weather. Do not commit or log the value. Coordinates win when both are set. A postcode is resolved through postcodes.io and not stored |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
 | `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
-| `TFL_APP_KEY`, `BANTO_COMMUTE_TOKEN` | Leave empty. Not connected. `Wembley` means Wembley Park, origin home |
-| `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Leave empty to keep the webhook closed (503). The signature is hex HMAC-SHA256 of `{unix timestamp}.{raw body}`, headers `X-Organiser-Timestamp` and `X-Organiser-Signature`. The timestamp must be within five minutes, and each signature is accepted once in that window. The only event is `commute`: `start`, `end`, and `location_label`. A rejected body is not stored |
+| `TFL_APP_KEY` | Journey check. Empty leaves the brief line “Journey check is not connected.” Do not commit or log the key |
+| `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired. The body is only `start`, `end`, and `location_label`, and the only label stored is `Wembley` |
+| `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Leave empty to keep the webhook closed (503). The signature is hex HMAC-SHA256 of `{unix timestamp}.{raw body}`, headers `X-Organiser-Timestamp` and `X-Organiser-Signature`. The timestamp must be within five minutes, and each signature is accepted once in that window. The only event is `commute`, and it uses the same shift check. A rejected body is not stored |
 | `WEBHOOK_SECRET_BANTO_X` | Reserve the name for the X relay. Do not set it until that source is registered. It does nothing now |
 | `SHOW_PLAYLIST_STUB` | Leave unset or `false`. The playlist line stays hidden. `true` shows the text only; nothing plays |
+| `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
 
 Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, or secret. `/health` adds `version` (currently `0.2.0`) beside `status` and `database`.
 
-No new migration. Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process, because the arrival screen moved to TypeScript. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
+Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0003_sprint3` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
-Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
+Outbound HTTPS to allow when those values are set: `api.open-meteo.com`, `api.postcodes.io` (only if a postcode is used), `api.tfl.gov.uk` (only if `TFL_APP_KEY` is set), `oauth2.googleapis.com`, `www.googleapis.com`. No bodies, tokens, coordinates, or postcodes in logs.
 
-The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0002_sprint2` is recorded. Do not stamp over it.
+The app boots without the migration because of the boot patch. Still run `alembic upgrade head` after a backup so `0003_sprint3` is recorded. Do not stamp over it.
 
 ## Mistral assistant, later
 

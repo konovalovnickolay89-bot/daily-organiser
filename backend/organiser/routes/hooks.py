@@ -8,15 +8,17 @@ and a signature is accepted once in that window. A rejected body is not stored.
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from organiser import clock
+from organiser.agent.runner import outside_home
 from organiser.config import get_settings
 from organiser.db import get_db
-from organiser.services.commute import ShiftRefused, normalise_shift, record_shift
+from organiser.limits import LIMITS
+from organiser.services.commute import ShiftRejected, store_shift
 
 router = APIRouter(prefix="/hooks", tags=["hooks"])
 
@@ -69,13 +71,35 @@ def _verify(secret: str, raw: bytes, timestamp: str, signature: str, now: dateti
         raise HTTPException(status_code=409, detail="This webhook was already used.")
 
 
+def _when(value: object, name: str) -> datetime:
+    if not isinstance(value, str) or not value.strip():
+        raise ShiftRejected(f"Give the shift a {name}.")
+    text = value.strip()
+    if outside_home(text):
+        raise ShiftRejected("Not for the house log.")
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        raise ShiftRejected(f"{name} is not a time.") from None
+
+
 def _commute(session: Session, body: dict) -> dict:
+    """The same shift check as POST /commute/shift. A bad body is not stored."""
     if set(body) != {"event", "start", "end", "location_label"}:
-        raise ShiftRefused("The shift body is only start, end, and location_label.")
-    shift = normalise_shift({key: body[key] for key in ("start", "end", "location_label")})
-    record_shift(session, shift)
+        raise ShiftRejected("The shift body is only start, end, and location_label.")
+    label = body["location_label"]
+    if not isinstance(label, str) or outside_home(label):
+        raise ShiftRejected("Not for the house log.")
+    if not LIMITS.allow("commute"):
+        raise HTTPException(status_code=429, detail="Too many shift updates. Nothing was stored.")
+    row = store_shift(session, _when(body["start"], "start"), _when(body["end"], "end"), label)
     session.commit()
-    return shift
+    return {
+        "id": str(row.id),
+        "start": row.start_at.isoformat(),
+        "end": row.end_at.isoformat(),
+        "location_label": row.location_label,
+    }
 
 
 # source → event → handler. banto_x is not registered; its secret waits for later.
@@ -117,5 +141,5 @@ async def receive(source: str, request: Request, session: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Unknown event.")
     try:
         return handler(session, body)
-    except ShiftRefused as exc:
-        raise HTTPException(status_code=422, detail=exc.detail) from None
+    except ShiftRejected as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from None

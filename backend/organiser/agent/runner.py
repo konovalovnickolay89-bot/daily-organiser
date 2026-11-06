@@ -53,9 +53,9 @@ _OUTSIDE_HOME_RE = re.compile(
     re.IGNORECASE,
 )
 JOURNEY_NOTE = (
-    "Journey: this is travel to work. Propose the trip, and also one task to check the journey "
-    "and disruptions for that day. The journey source is not connected: the card must say so. "
-    "Do not invent disruptions or a live lookup."
+    "Journey: this is travel to work. Propose the trip if it is not already a task. "
+    "The morning brief reads the rota and TfL for a commute to Wembley Park. "
+    "Do not invent disruptions or a live lookup on the card."
 )
 
 

@@ -20,10 +20,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from organiser import clock
+from organiser.agent.cards import date_passed_note
 from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.context import build_context
+from organiser.agent.reach import is_reachable, mark_down, mark_up
 from organiser.agent.runner import outside_home
 from organiser.agent.rules import (
     FEED_LABEL,
@@ -46,6 +48,7 @@ from organiser.agent.service import (
 )
 from organiser.config import get_settings
 from organiser.db import get_db, get_sessionmaker
+from organiser.limits import LIMITS
 from organiser.models import AgentProposal, AgentRun
 from organiser.schemas import (
     ActivityList,
@@ -72,6 +75,8 @@ PAUSED = "The house is paused. Nothing was sent to the assistant."
 OFF = "The assistant is off. Nothing was sent."
 SPENT = "The assistant has used its runs for today. Nothing was sent."
 FAILED = "The assistant did not finish. Nothing was changed."
+TOO_MANY_FEED = "Too many lines. Wait a moment. Nothing was sent."
+TOO_MANY_INGEST = "Too many proposals. Wait a moment."
 VISIBLE_PROPOSALS = 10
 
 
@@ -104,7 +109,9 @@ def _local_now():
 
 
 def _proposal(row: AgentProposal) -> ProposalRead:
-    return ProposalRead.model_validate(row)
+    payload = ProposalRead.model_validate(row)
+    payload.date_note = date_passed_note(row.changes, _local_now().date())
+    return payload
 
 
 def _due(session: Session, local_now) -> tuple[Due | None, object]:
@@ -157,6 +164,7 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
     return AgentState(
         enabled=enabled,
         paused=paused,
+        reachable=is_reachable(enabled),
         as_of=local_now,
         house_date=local_now.date(),
         due=DueRead(trigger=due.trigger, window_key=due.window_key, label=due.label) if due else None,
@@ -182,6 +190,8 @@ def activity(
 @router.post("/proposals", response_model=ProposalRead, status_code=201)
 def propose(payload: ProposalIngest, session: Session = Depends(get_db)) -> ProposalRead:
     """Store one pending task card. Does not create a task, and does not call Mistral."""
+    if not LIMITS.allow("ingest"):
+        raise HTTPException(status_code=429, detail=TOO_MANY_INGEST)
     try:
         proposal = ingest_proposal(
             session,
@@ -211,6 +221,8 @@ def _failure_detail(exc: Exception) -> str:
 
 
 def _fail_run(session: Session, run_id: UUID, exc: Exception) -> None:
+    if isinstance(exc, MistralUnavailable):
+        mark_down()
     session.rollback()
     failed = session.get(AgentRun, run_id)
     if failed is not None:
@@ -223,6 +235,7 @@ def _fail_run(session: Session, run_id: UUID, exc: Exception) -> None:
 
 
 def _complete(session: Session, run: AgentRun, ctx: RunContext, result: RunResult) -> AgentResult:
+    mark_up()
     run.status = "done"
     run.reply = result.reply
     run.searched = result.searched
@@ -386,6 +399,8 @@ def feed(
     or one error event. Anything else gets the same result as JSON.
     """
     _guard_feed(session)
+    if not LIMITS.allow("feed"):
+        raise HTTPException(status_code=429, detail=TOO_MANY_FEED)
     if client is None:
         raise HTTPException(status_code=503, detail=OFF)
     if _wants_stream(request):

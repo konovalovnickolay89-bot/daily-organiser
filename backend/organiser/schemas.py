@@ -320,6 +320,7 @@ class ProposalRead(APIModel):
     created_at: datetime
     decided_at: datetime | None
     applied_ref_id: UUID | None
+    date_note: str | None = None
 
 
 class DueRead(APIModel):
@@ -337,6 +338,7 @@ class LastReply(APIModel):
 class AgentState(APIModel):
     enabled: bool
     paused: bool
+    reachable: bool
     as_of: datetime
     house_date: date
     due: DueRead | None
@@ -374,6 +376,28 @@ class CatchUpItemRead(APIModel):
     ref_type: str
     ref_id: UUID
     status: str
+    fallback_used: bool = False
+
+
+class ShiftPush(BaseModel):
+    """A rota shift. Extra fields are refused. The label ``Wembley`` is the only one kept."""
+
+    model_config = ConfigDict(extra="forbid")
+    start: datetime
+    end: datetime
+    location_label: str = Field(min_length=1, max_length=40)
+
+    @field_validator("location_label")
+    @classmethod
+    def _one_line(cls, value: str) -> str:
+        return " ".join(value.split())
+
+
+class ShiftRead(APIModel):
+    id: UUID
+    start: datetime
+    end: datetime
+    location_label: str
 
 
 class CatchUpRead(APIModel):

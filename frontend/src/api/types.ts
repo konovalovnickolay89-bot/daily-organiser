@@ -68,6 +68,7 @@ export type Proposal = {
   label: string;
   summary: string;
   reason: string;
+  date_note?: string | null;
 };
 
 export type AgentDue = {
@@ -79,6 +80,7 @@ export type AgentDue = {
 export type AgentState = {
   enabled: boolean;
   paused: boolean;
+  reachable?: boolean;
   proposals: Proposal[];
   due: AgentDue | null;
   last_reply: { text: string } | null;
@@ -97,6 +99,7 @@ export type CatchUpCard = {
   label: string;
   summary: string;
   reason: string;
+  fallback_used?: boolean;
 };
 
 export type CatchUpState = {

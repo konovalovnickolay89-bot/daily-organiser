@@ -161,7 +161,6 @@ summary::-webkit-details-marker {
   display: none;
 }
 
-/* Off-screen until focused, so it does not cover the rail at 200% zoom. */
 .skip-link {
   position: absolute;
   left: 16px;

@@ -21,13 +21,13 @@ type CatchUpCardViewProps = {
 };
 
 export function CatchUpCardView({ item, busy, onApply, onDismiss }: CatchUpCardViewProps) {
-  const marker = catchUpFallbackMarker(item.rule);
+  const marker = item.fallback_used ? "Fallback used" : catchUpFallbackMarker(item.rule);
   return (
     <li className="m-0 rounded-house border border-[var(--line)] bg-card px-3.5 pb-3 pt-3.5" data-rule={item.rule}>
       <p className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">
         {item.label}
         {marker && (
-          <span className="ml-2" data-marker="fallback">
+          <span className="ml-2 normal-case tracking-normal" data-marker="fallback">
             {marker}
           </span>
         )}

@@ -7,6 +7,17 @@ export function getAgent() {
   return request<AgentState>("/agent");
 }
 
+export type ActivityLine = {
+  id: string;
+  at: string;
+  text: string;
+  type: string;
+};
+
+export function listActivity(limit = 5) {
+  return request<{ items: ActivityLine[] }>(`/agent/activity?limit=${limit}`);
+}
+
 function detailFrom(payload: { detail?: unknown } | null) {
   if (payload && typeof payload.detail === "string" && payload.detail.trim()) return payload.detail.trim();
   return "";

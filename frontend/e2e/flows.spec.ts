@@ -151,6 +151,7 @@ async function installAssistant(page: Page, card: ReturnType<typeof proposal>) {
   const state = () => ({
     enabled: true,
     paused: false,
+    reachable: true,
     as_of: "2026-11-06T08:00:00+00:00",
     house_date: "2026-11-06",
     due: null,

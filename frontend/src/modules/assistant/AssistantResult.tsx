@@ -12,20 +12,23 @@ import { orderedSteps, STEP_LABEL, type StepName } from "./steps";
 function Ticker({
   steps,
   enabled,
+  reachable,
   paused,
   loading,
   known,
 }: {
   steps: StepName[];
   enabled: boolean;
+  reachable: boolean;
   paused: boolean;
   loading: boolean;
   known: boolean;
 }) {
-  const line = "serif m-0 text-[1.28rem] font-medium leading-[1.28] tracking-[-0.02em] text-[var(--ink)]";
+  const line = "ticker-line serif m-0 text-[1.28rem] font-medium leading-[1.28] tracking-[-0.02em] text-[var(--ink)]";
   if (loading) return <p className={cx(line, "text-[var(--muted)]")}>Checking the assistant…</p>;
   if (!known) return null;
   if (!enabled) return <p className={line}>The assistant is off.</p>;
+  if (!reachable) return <p className={line}>The assistant is down.</p>;
   if (paused) {
     return (
       <div className="grid gap-2.5" role="status">
@@ -134,7 +137,7 @@ function DecisionList({ hideEmpty }: { hideEmpty: boolean }) {
       )}
       <ul className="m-0 mt-1 grid list-none gap-3 p-0" data-surface="decisions">
         {waiting.map((item) => (
-          <li key={`approval-${item.id}`} className="w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-kind="approval">
+          <li key={`approval-${item.id}`} className="proposal-card w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-kind="approval">
             <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">{MODE_LABELS[item.mode] ?? item.mode}</p>
             <h3 className="serif m-0 text-[1.2rem] font-medium leading-[1.25] tracking-[-0.02em] text-[var(--ink)] [overflow-wrap:anywhere]">{item.title}</h3>
             {item.detail && <p className="mt-2 text-[0.9rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">{item.detail}</p>}
@@ -143,10 +146,11 @@ function DecisionList({ hideEmpty }: { hideEmpty: boolean }) {
           </li>
         ))}
         {proposals.map((proposal) => (
-          <li key={`proposal-${proposal.id}`} className="w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-origin={proposal.origin} data-kind="proposal">
+          <li key={`proposal-${proposal.id}`} className="proposal-card w-full min-w-0 rounded-house border border-[var(--line)] bg-card px-4 pb-3.5 pt-4" data-origin={proposal.origin} data-kind="proposal">
             <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-accent-ink">{proposal.label}</p>
             <h3 className="serif m-0 text-[1.2rem] font-medium leading-[1.25] tracking-[-0.02em] text-[var(--ink)] [overflow-wrap:anywhere]">{proposal.summary}</h3>
             <p className="mt-2 text-[0.9rem] leading-snug text-[var(--muted)] [overflow-wrap:anywhere]">{proposal.reason}</p>
+            {proposal.date_note && <p className="mt-2 text-[0.9rem] font-semibold leading-snug text-accent-ink">{proposal.date_note}</p>}
             <DecisionButtons busy={pendingId === proposal.id} onApply={() => void decide(proposal, "apply")} onDismiss={() => void decide(proposal, "dismiss")} />
           </li>
         ))}
@@ -157,12 +161,12 @@ function DecisionList({ hideEmpty }: { hideEmpty: boolean }) {
 
 /** Working strip, then the cards. The next Add replaces the strip. There is no thread. */
 export function AssistantResult({ heading: showHeading = true }: { heading?: boolean }) {
-  const { state, error, feedError, replyLine, notice: note, steps, reviewing, enabled, paused, sorting } = useAssistant();
+  const { state, error, feedError, replyLine, notice: note, steps, reviewing, enabled, reachable, paused, sorting } = useAssistant();
   const loading = state === null && !error;
 
   return (
     <div>
-      <Ticker steps={steps} enabled={enabled} paused={paused} loading={loading} known={state !== null} />
+      <Ticker steps={steps} enabled={enabled} reachable={reachable} paused={paused} loading={loading} known={state !== null} />
       {!paused && replyLine && (
         <p className={cx(notice, "serif mt-3.5 text-[1.05rem] whitespace-pre-line")} role="status">
           {replyLine}
