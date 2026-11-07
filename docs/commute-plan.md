@@ -61,14 +61,12 @@ The journey read that already fills the brief, when `TFL_APP_KEY` is set, is unc
 
 PR 21 adds `backend/alembic/versions/0007_settings_search.py`. PR 23 adds `backend/alembic/versions/0007_x_poll_pause.py`. Those two revisions share the number `0007`. This branch adds no revision and does not run Alembic. A later schema change has to pick a free revision after those two are reconciled, and only after a backup of the live database. That gate is not this pull request.
 
-## Seams with open pull requests
+## Seams
 
-This branch is taken from `main` at `e5ce5d1823e7a6c5d9ee37ca02e55cfd993ea358` (PR 27). It does not contain PR 28, PR 21, or PR 23.
+Main at `db7ac660ac4b94e97e6e512e52a91b46a3f49567` includes the line-status read (PR 28). This branch merges that main and keeps both Home rows. Order: Brief, Commute, Lines, Today, Proposed changes, Decisions. `GET /tfl/status` and `GET /commute/plan` stay separate. Settings does not repeat the line board, and it does not say the journey source is disconnected. Rule 10 in `AGENTS.md` names both reads. Departure checks stay off.
 
-**PR 28** (TfL line status on Home) is independent. It adds a Lines row and `GET /tfl/status`. This branch adds a Commute row and `GET /commute/plan`. They read different routes. When both are merged, the Home order should be Brief, Commute, Lines, Today, Proposed changes, Decisions. PR 28 also edits the same sentence in `AGENTS.md` rule 10 (to mention `GET /tfl/status`) and removes the Settings line “The journey source is not connected.” This branch replaces that line with the disruption-check sentence and adds the commute sentence to rule 10. Keep both sentences. Do not drop the Lines row or the Commute row.
+**PR 21** adds `tfl_outcome()` in `backend/organiser/services/commute.py`, wrapping the old `_fetch` success path and the old `commute_section` failure path. This branch replaced that one-way fetch with `fetch_leg` and builds the brief from `commute_plan.section_for_brief`. On a merge, call the outcome note after a successful `fetch_leg`, and the attention note when the outward leg fails. PR 21 also inserts `FeatureSettings` in `ThemeCard` after the diary paragraph. Keep that insert and this branch’s diary sentence. PR 21 is not in this merge.
 
-**PR 21** adds `tfl_outcome()` in `backend/organiser/services/commute.py`, wrapping the old `_fetch` success path and the old `commute_section` failure path. This branch replaced that one-way fetch with `fetch_leg` and builds the brief from `commute_plan.section_for_brief`. On a merge, call the outcome note after a successful `fetch_leg`, and the attention note when the outward leg fails. PR 21 also inserts `FeatureSettings` in `ThemeCard` after the diary paragraph. Keep that insert and this branch’s diary sentence.
-
-**PR 23** is the X card and `0007_x_poll_pause`. It does not share the commute route. The revision number is the collision above. Do not rename or absorb that file here.
+**PR 23** is the X card and `0007_x_poll_pause`. It does not share the commute route. The revision number is the collision above. Do not rename or absorb that file here. PR 29 is not in this merge.
 
 No force-push and no rebase of history that has already been pushed.

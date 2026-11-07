@@ -460,6 +460,60 @@ def test_a_paused_house_and_the_hourly_limit_skip_the_check(client, db, monkeypa
     get_settings.cache_clear()
 
 
+def test_line_status_is_separate_while_departure_checks_stay_off(client, monkeypatch):
+    """Home can read lines. The pre-departure note does not call anyone while it is off."""
+    _use(
+        monkeypatch,
+        BANTO_COMMUTE_TOKEN="",
+        TFL_APP_KEY=TFL,
+        HOUSE_LAT="",
+        HOUSE_LON="",
+        HOUSE_POSTCODE="",
+        COMMUTE_DISRUPTION_CHECKS="false",
+        MISTRAL_API_KEY="",
+        MISTRAL_AGENT_ID="",
+    )
+    _freeze(monkeypatch, 2026, 11, 7, 9, 0)
+    plan_calls = _trap(monkeypatch)
+    line_calls = []
+
+    def line_fake(method, url, **kwargs):
+        line_calls.append((method, url, kwargs.get("params"), kwargs.get("timeout")))
+        return [
+            {
+                "id": "jubilee",
+                "name": "Jubilee",
+                "modeName": "tube",
+                "modified": "2026-11-07T09:00:00Z",
+                "lineStatuses": [{"statusSeverityDescription": "Good Service"}],
+            }
+        ]
+
+    monkeypatch.setattr("organiser.services.lines.request_json_any", line_fake)
+    plan = client.get("/commute/plan")
+    assert plan.status_code == 200
+    body = plan.json()
+    assert body["summary"] == "Commute is not connected."
+    assert body["advisory"]["active"] is False
+    assert body["advisory"]["state"] == "inactive"
+    assert plan_calls == []
+    status = client.get("/tfl/status")
+    assert status.status_code == 200
+    assert status.json()["configured"] is True
+    assert status.json()["state"] == "fresh"
+    assert status.json()["lines"][0]["name"] == "Jubilee"
+    assert len(line_calls) == 1
+    assert line_calls[0][3] == 5.0
+    assert "Journey" not in line_calls[0][1]
+    facts = client.get("/system/facts").json()
+    assert facts["disruption_checks"] == "not active"
+    assert facts["tfl"] == "configured"
+    brief = next(section for section in client.get("/brief/morning").json()["sections"] if section["key"] == "commute")
+    assert brief["summary"] == "Commute is not connected."
+    assert plan_calls == []
+    get_settings.cache_clear()
+
+
 def test_a_failed_journey_stays_a_short_line(client, monkeypatch, caplog):
     _use(
         monkeypatch,

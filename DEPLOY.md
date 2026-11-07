@@ -125,7 +125,7 @@ Add nothing secret to git. In the existing house file:
 | `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Weather. Do not commit or log the value. Coordinates win when both are set. A postcode is resolved through postcodes.io and not stored |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
 | `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
-| `TFL_APP_KEY` | Journey check for the outward and return. Empty leaves the brief line “Journey check is not connected.” Do not commit or log the key |
+| `TFL_APP_KEY` | Journey check for the outward and return, and `GET /tfl/status` for line status on Home with no shift. Empty leaves the brief line “Journey check is not connected.” and the Home line row “TfL is not configured.” Settings only records whether the key is set. Do not commit or log the key. No new variable |
 | `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired. The body is only `start`, `end`, and `location_label`, and the only label stored is `Wembley` |
 | `COMMUTE_ARRIVAL_BUFFER_MINUTES` | Optional. Default 10. Arrive this many minutes before the shift. 0–180 |
 | `COMMUTE_RETURN_BUFFER_MINUTES` | Optional. Default 0. The return departs this many minutes after the finish. 0–180 |

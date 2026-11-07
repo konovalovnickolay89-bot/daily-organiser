@@ -222,3 +222,90 @@ test("the commute pane sits beside the overview and under it on a phone", async 
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
 });
+
+const lineStatus = {
+  configured: true,
+  state: "fresh",
+  stale: false,
+  fetched_at: "2026-11-07T14:06:00+00:00",
+  source_at: "2026-11-07T14:05:00Z",
+  failure: null,
+  detail: null,
+  lines: [
+    {
+      id: "jubilee",
+      name: "Jubilee",
+      mode: "Tube",
+      severity: "Minor Delays",
+      reason: "Minor delays due to a signal failure at Baker Street.",
+    },
+    { id: "central", name: "Central", mode: "Tube", severity: "Good Service", reason: null },
+  ],
+};
+
+test("lines and the round trip share Home while departure checks stay off", async ({ page }) => {
+  let outside = 0;
+  await page.route(OUTSIDE, (route) => {
+    outside += 1;
+    return route.abort();
+  });
+  await page.route("**/commute/plan", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({ json: today });
+  });
+  await page.route("**/tfl/status", async (route) => {
+    expect(route.request().method()).toBe("GET");
+    expect(new URL(route.request().url()).search).toBe("");
+    await route.fulfill({ json: lineStatus });
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  const home = board(page);
+  const commute = home.getByRole("button", { name: /Commute/ });
+  const lines = home.getByRole("button", { name: /Lines/ });
+  await expect(commute).toContainText("Today · Out 07:22 · back 16:05");
+  await expect(lines).toContainText("1 line disrupted.");
+  await expect(lines).toContainText("Jubilee: Minor Delays");
+
+  const brief = home.getByRole("button", { name: /Brief/ });
+  await brief.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("heading", { name: "Commute" })).toBeVisible();
+  await expect(page.locator("[data-advisory='inactive']")).toContainText("not active");
+  await expect(commute).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("heading", { name: "Line status" })).toBeVisible();
+  await expect(page.getByText("Minor delays due to a signal failure at Baker Street.")).toBeVisible();
+  await expect(lines).toHaveAttribute("aria-expanded", "true");
+  await expect(commute).toContainText("Today · Out 07:22 · back 16:05");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+
+  const rail = page.getByRole("navigation", { name: "House" });
+  await rail.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Line status" })).toHaveCount(0);
+  await expect(page.getByText("The journey source is not connected.")).toHaveCount(0);
+  await expect(page.locator(".fact-row", { hasText: "Disruption checks" }).locator("dd")).toHaveText("Not active");
+  expect(outside).toBe(0);
+
+  await page.getByRole("radio", { name: "Morning" }).check();
+  await rail.getByRole("button", { name: "Home" }).click();
+  await lines.click();
+  await home.screenshot({ path: test.info().outputPath("home-lines-desktop.png") });
+  await commute.click();
+  await home.screenshot({ path: test.info().outputPath("home-commute-desktop.png") });
+
+  await rail.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radio", { name: "Evening" }).check();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await rail.getByRole("button", { name: "Home" }).click();
+  await commute.click();
+  const mobileDetail = await page.locator("#home-detail").boundingBox();
+  const mobileBoard = await home.boundingBox();
+  expect(mobileDetail && mobileBoard && mobileDetail.width).toBeGreaterThan((mobileBoard?.width ?? 0) * 0.9);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await home.screenshot({ path: test.info().outputPath("home-both-mobile.png") });
+  await lines.click();
+  await expect(page.getByRole("heading", { name: "Jubilee" })).toBeVisible();
+});

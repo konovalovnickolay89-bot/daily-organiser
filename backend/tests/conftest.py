@@ -72,6 +72,7 @@ def _reset_process_guards():
     from organiser.limits import LIMITS
     from organiser.metrics import METRICS
     from organiser.services.commute import clear_cache
+    from organiser.services.lines import clear_cache as clear_line_status
     from organiser.services.playlist import clear_cache as clear_playlist
     from organiser.services.playlist import set_transport as set_playlist_transport
     from organiser.x.client import set_transport as set_x_transport
@@ -79,6 +80,7 @@ def _reset_process_guards():
     LIMITS.reset()
     reset_reach()
     clear_cache()
+    clear_line_status()
     clear_playlist()
     set_playlist_transport(None)
     set_x_transport(None)
@@ -87,6 +89,7 @@ def _reset_process_guards():
     LIMITS.reset()
     reset_reach()
     clear_cache()
+    clear_line_status()
     clear_playlist()
     set_playlist_transport(None)
     set_x_transport(None)
