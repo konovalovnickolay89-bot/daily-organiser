@@ -17,7 +17,7 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
   await page.getByRole("button", { name: "Decisions" }).click();
   const remember = page.locator("[data-kind='proposal']", { hasText: `Remember: ${milk}` });
   await expect(remember).toBeVisible();
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   const memory = page.locator("[data-screen='memory']");
   await expect(page.getByRole("heading", { name: "Memory" })).toBeVisible();
   await expect(memory.getByText(milk)).toHaveCount(0);
@@ -26,7 +26,7 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
   await remember.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText(`Applied: Remember: ${milk}`)).toBeVisible();
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(memory.getByText(milk)).toBeVisible();
   await memory.getByRole("searchbox", { name: "Search memory" }).fill(String(stamp));
   await expect(memory.getByText(milk)).toBeVisible();
@@ -56,7 +56,7 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
   await forget.getByRole("checkbox", { name: tea }).uncheck();
   await forget.getByRole("button", { name: "Apply" }).click();
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await memory.getByRole("searchbox", { name: "Search memory" }).fill(String(stamp));
   await expect(memory.getByText(milk)).toHaveCount(0);
   await expect(memory.getByText(tea)).toBeVisible();

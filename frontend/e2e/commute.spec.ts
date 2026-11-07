@@ -270,6 +270,8 @@ test("lines and the round trip share Home while departure checks stay off", asyn
   const brief = home.getByRole("button", { name: /Brief/ });
   await brief.focus();
   await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
+  await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("heading", { name: "Commute" })).toBeVisible();
   await expect(page.locator("[data-advisory='inactive']")).toContainText("not active");
   await expect(commute).toHaveAttribute("aria-expanded", "true");

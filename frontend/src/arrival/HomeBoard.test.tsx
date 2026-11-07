@@ -143,6 +143,9 @@ describe("Home board", () => {
     const brief = await screen.findByRole("button", { name: /Brief/ });
     brief.focus();
     fireEvent.keyDown(brief, { key: "ArrowDown" });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy());
+    expect(screen.getByRole("button", { name: /Calendar/ }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("button", { name: /Calendar/ }), { key: "ArrowDown" });
     await waitFor(() => expect(screen.getByRole("heading", { name: "Commute plan" })).toBeTruthy());
     expect(screen.getByRole("button", { name: /Commute/ }).getAttribute("aria-expanded")).toBe("true");
     fireEvent.keyDown(screen.getByRole("button", { name: /Commute/ }), { key: "ArrowDown" });
@@ -197,5 +200,86 @@ describe("Home board", () => {
     expect(screen.getByText(/Read at/)).toBeTruthy();
     expect(screen.getByText(/Source time/)).toBeTruthy();
     expect(getLineStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows today's fixture on the calendar row and remembers that pane", async () => {
+    listTasks.mockResolvedValue({ items: [] });
+    getAgent.mockResolvedValue({ enabled: false, reachable: true, proposals: [] });
+    listApprovals.mockResolvedValue({ items: [] });
+    listXItems.mockResolvedValue({ enabled: false, items: [] });
+    getMorningBrief.mockResolvedValue({
+      sections: [
+        {
+          key: "appointments",
+          title: "Appointments",
+          summary: "1 appointment",
+          footnote: "Read only. This is not a calendar.",
+          items: [{ title: "Test data: put the bins out", meta: "09:30", ref: "fixturebins" }],
+        },
+      ],
+    });
+
+    render(<HomeBoard />);
+    const row = await screen.findByRole("button", { name: /Calendar/ });
+    expect(row.textContent).toContain("1 appointment");
+    expect(row.textContent).toContain("Test data: put the bins out");
+    expect(screen.getByRole("button", { name: /Commute/ }).textContent).toContain("Commute is not connected.");
+    expect(screen.getByRole("button", { name: /Lines/ }).textContent).toContain("TfL is not configured.");
+    fireEvent.click(row);
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeTruthy();
+    expect(screen.getByText("Today only. Read only. This is not a calendar.")).toBeTruthy();
+    expect(screen.getByText("09:30")).toBeTruthy();
+    expect(window.localStorage.getItem("organiser-home-open")).toBe("calendar");
+    const board = document.querySelector("[data-home-board]");
+    expect(board?.className).toContain("grid");
+    expect(board?.className).toContain("min-[900px]:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)]");
+    expect(document.getElementById("home-detail")?.textContent).toContain("Test data: put the bins out");
+
+    cleanup();
+    render(<HomeBoard />);
+    expect(await screen.findByRole("heading", { name: "Calendar" })).toBeTruthy();
+  });
+
+  it("shows an empty diary day without treating it as a failed read", async () => {
+    listTasks.mockResolvedValue({ items: [] });
+    getAgent.mockResolvedValue({ enabled: false, reachable: true, proposals: [] });
+    listApprovals.mockResolvedValue({ items: [] });
+    listXItems.mockResolvedValue({ enabled: false, items: [] });
+    getMorningBrief.mockResolvedValue({
+      sections: [
+        {
+          key: "appointments",
+          title: "Appointments",
+          summary: "Nothing on the diary today.",
+          footnote: "Read only. This is not a calendar.",
+          items: [],
+        },
+      ],
+    });
+
+    render(<HomeBoard />);
+    const row = await screen.findByRole("button", { name: /Calendar/ });
+    expect(row.textContent).toContain("0");
+    expect(row.textContent).toContain("Nothing on the diary today.");
+    fireEvent.click(row);
+    expect(screen.getAllByText("Nothing on the diary today.").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "Test data: put the bins out" })).toBeNull();
+  });
+
+  it("shows a failed brief on the calendar row without a health status", async () => {
+    listTasks.mockResolvedValue({ items: [] });
+    getAgent.mockResolvedValue({ enabled: false, reachable: true, proposals: [] });
+    listApprovals.mockResolvedValue({ items: [] });
+    listXItems.mockResolvedValue({ enabled: false, items: [] });
+    getMorningBrief.mockRejectedValue(new Error("The brief did not answer."));
+
+    render(<HomeBoard />);
+    const row = await screen.findByRole("button", { name: /Calendar/ });
+    expect(row.textContent).toContain("The diary could not be read.");
+    expect(row.textContent).toContain("The brief did not answer.");
+    expect(screen.getByRole("button", { name: /Brief/ }).textContent).toContain("The brief could not be read.");
+    fireEvent.click(row);
+    expect(screen.getByRole("alert").textContent).toBe("The brief did not answer.");
+    expect(screen.queryByText(/last check/i)).toBeNull();
   });
 });
