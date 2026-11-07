@@ -52,10 +52,14 @@ test("voice fills the box with a fake transcription and does not add until asked
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const line = page.getByLabel("Add to the log");
+  const voice = page.locator("[data-voice='mic']");
+  const add = page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true });
   await line.fill("oats typed");
   const mic = page.getByRole("button", { name: "Start recording" });
   await expect(mic).toBeVisible();
-  await expect(page.getByText(/Nothing is sent until you stop and transcribe/)).toBeVisible();
+  await expect(voice.locator("#voice-help")).toHaveText(
+    "Up to 30 seconds and 512 KB. Nothing is sent until you stop and transcribe. Audio is not kept.",
+  );
   const box = await mic.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
@@ -66,17 +70,22 @@ test("voice fills the box with a fake transcription and does not add until asked
   const cancel = page.getByRole("button", { name: "Cancel recording" });
   await expect(stop).toBeVisible();
   await expect(cancel).toBeVisible();
-  await expect(page.getByText("Recording")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add" })).toBeDisabled();
+  await expect(voice).toHaveAttribute("data-voice-phase", "recording");
+  await expect(voice.getByText("Recording", { exact: true })).toBeVisible();
+  await expect(voice.locator("#voice-help")).toContainText("Stop and transcribe sends this clip to Mistral.");
+  await expect(voice.locator("#voice-help")).toContainText("Cancel recording does not upload.");
+  await expect(add).toBeDisabled();
   await page.keyboard.press("Escape");
-  await expect(page.getByText(/Nothing was uploaded/)).toBeVisible();
+  await expect(voice).toHaveAttribute("data-voice-phase", "idle");
+  await expect(voice.getByText("Cancelled. Nothing was uploaded. The line is unchanged.", { exact: true })).toBeVisible();
   await expect(line).toHaveValue("oats typed");
   expect(uploads).toBe(0);
 
   await page.getByRole("button", { name: "Start recording" }).click();
   await page.getByRole("button", { name: "Stop and transcribe" }).click();
   await expect(line).toHaveValue("buy oat milk");
-  await expect(page.getByText(/Edit them, then press Add/)).toBeVisible();
+  await expect(voice.locator("#voice-help")).toHaveText("Words are in the line. Edit them, then press Add. Nothing is added until then.");
+  await expect(add).toBeEnabled();
   await expect(page.locator("[data-kind='proposal']")).toHaveCount(0);
   expect(uploads).toBe(1);
   const results = await new AxeBuilder({ page }).analyze();
