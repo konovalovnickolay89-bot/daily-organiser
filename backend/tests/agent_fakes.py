@@ -27,6 +27,28 @@ def say(text: str) -> dict:
     return {"object": "entry", "type": "message.output", "role": "assistant", "content": text}
 
 
+class ReminderAssessor:
+    """One scripted chat completion. ``embed`` fails if the reminder path asks for one."""
+
+    def __init__(self, answer):
+        self.answer = answer
+        self.calls: list[dict] = []
+
+    def complete(self, *, model, messages, max_tokens=80, response_format=None):
+        self.calls.append({"model": model, "messages": messages, "response_format": response_format, "max_tokens": max_tokens})
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        if callable(self.answer):
+            return self.answer(messages)
+        return self.answer
+
+    def embed(self, *args, **kwargs):
+        raise AssertionError("embeddings were requested")
+
+    def close(self):
+        pass
+
+
 class ScriptedMistral:
     """Stands in for Mistral. Each script step is one response's outputs, or an exception to raise."""
 

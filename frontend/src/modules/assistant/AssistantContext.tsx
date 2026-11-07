@@ -81,6 +81,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const due = state?.due;
+    // Local reminders assess one item on this screen. Starting the review as well
+    // would make a second card for the same rules.
     if (state?.local_reminders === "on") return;
     if (!due || !state.enabled || state.paused || sorting) return;
     if (reviewed.current.has(due.window_key)) return;

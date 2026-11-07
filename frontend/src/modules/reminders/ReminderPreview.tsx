@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { getReminderPreview, prepareLocalReminders, type ReminderPreview as Preview, type ReminderSwitchName } from "../../api/agent";
+import { useEffect, useRef, useState } from "react";
+import {
+  getReminderPreview,
+  prepareLocalReminders,
+  type LocalReminderResult,
+  type ReminderPreview as Preview,
+  type ReminderSwitchName,
+} from "../../api/agent";
 import { setLocalReminders } from "../../api/system";
 import type { HouseFacts } from "../../api/types";
 import { cx, empty, errorText, kickerAccent, meta } from "../../arrival/ui";
@@ -23,16 +29,30 @@ function withFacts(current: Preview, facts: HouseFacts): Preview {
   };
 }
 
+function outcome(prepared: LocalReminderResult): string | null {
+  if (prepared.assessment === "assessed" && prepared.prepared > 0) return "Assessed. A card is waiting. Apply adds the note.";
+  if (prepared.assessment === "declined") return prepared.reason;
+  if (prepared.assessment === "unavailable" || prepared.assessment === "unreachable" || prepared.assessment === "rejected") {
+    return null;
+  }
+  if (prepared.prepared === 0 && prepared.reason && prepared.reason !== "nothing due" && prepared.reason !== "off") {
+    return prepared.reason;
+  }
+  return null;
+}
+
 /**
- * Reads the reminder rules and, only when the house switch is on, asks for
- * one local card. The prepare call does not reach a provider. A type that is
- * off is not prepared, and a card already waiting is left in place.
+ * Reads the reminder rules and, when the house switch is on, asks once for an
+ * assessment. A later refresh of this screen does not ask again. The review
+ * pipeline stays off while this switch is on.
  */
 export function ReminderPreview() {
   const { tick, refresh } = useHouse();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const ask = useRef(true);
 
   const enabled = preview?.local_reminders === "on";
   const typesReady = preview?.reminder_types_ready !== false;
@@ -44,12 +64,14 @@ export function ReminderPreview() {
         if (cancelled) return;
         setPreview(data);
         setError(null);
-        if (data.local_reminders !== "on") return;
+        if (data.local_reminders !== "on" || !ask.current) return;
+        ask.current = false;
         const prepared = await prepareLocalReminders();
         if (cancelled) return;
-        if (prepared.calls_assistant) {
-          setError(new Error("Local reminders must not call the assistant."));
-          return;
+        const line = outcome(prepared);
+        setNotice(line);
+        if (prepared.assessment === "unavailable" || prepared.assessment === "unreachable" || prepared.assessment === "rejected") {
+          setError(new Error(prepared.reason));
         }
         if (prepared.prepared > 0) refresh();
       })
@@ -68,6 +90,8 @@ export function ReminderPreview() {
     try {
       const facts = await setLocalReminders(body);
       setPreview((current) => (current ? withFacts(current, facts) : current));
+      ask.current = true;
+      setNotice(null);
       refresh();
     } catch (err: unknown) {
       setError(asError(err));
@@ -97,8 +121,8 @@ export function ReminderPreview() {
       </div>
       <p className={cx(meta, "mt-2")}>
         {enabled
-          ? "On. Saved for the house. One card may be prepared when its type is also on. Nothing is sent until Apply."
-          : "Off. Saved for the house. Nothing is prepared, even when a type below is on. This switch does not call the assistant."}
+          ? "On. Saved for the house. Opening Decisions can assess one item whose type is on. A card is added only when that assessment says it is worth flagging. Apply adds the note."
+          : "Off. Saved for the house. These types are not assessed. The usual Decisions review still runs when one is due."}
       </p>
       <fieldset className="mt-4 grid gap-2 border-0 p-0" disabled={!preview || saving || !typesReady}>
         <legend className={cx(kickerAccent, "mb-1")}>Reminder types</legend>
@@ -128,6 +152,11 @@ export function ReminderPreview() {
           );
         })}
       </fieldset>
+      {notice && (
+        <p className={cx(meta, "mt-2")} role="status">
+          {notice}
+        </p>
+      )}
       {error && (
         <p className={errorText} role="alert">
           {error.message}

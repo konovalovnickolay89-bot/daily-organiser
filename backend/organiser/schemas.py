@@ -419,7 +419,7 @@ class PreviewCandidate(APIModel):
 
 
 class ReminderPreview(APIModel):
-    """A reading of the reminder rules. ``calls_assistant`` stays false."""
+    """A reading of the reminder rules. This GET does not call the assistant."""
 
     calls_assistant: bool = False
     label: str = "Preview"
@@ -442,12 +442,14 @@ class ReminderPreview(APIModel):
 
 
 class LocalReminderResult(APIModel):
-    """Result of one local prepare. ``calls_assistant`` stays false."""
+    """Result of one reminder assessment. A card exists only when ``assessment`` is ``assessed``."""
 
     prepared: int
     reason: str
     calls_assistant: bool = False
     summary: str | None = None
+    # skipped, unavailable, unreachable, rejected, declined, or assessed.
+    assessment: str = "skipped"
 
 
 class LastReply(APIModel):
