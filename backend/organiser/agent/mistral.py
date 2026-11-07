@@ -24,7 +24,17 @@ DEFAULT_BASE_URL = "https://api.mistral.ai"
 
 
 class MistralUnavailable(Exception):
-    """Mistral could not be reached, or refused the call."""
+    """Mistral could not be reached, or refused the call.
+
+    ``category`` is timeout, network, http, unreadable, or empty.
+    ``upstream_status`` is the HTTP status when Mistral sent one.
+    The message never includes the response body, the audio, or the key.
+    """
+
+    def __init__(self, message: str, *, category: str = "unknown", upstream_status: int | None = None) -> None:
+        super().__init__(message)
+        self.category = category
+        self.upstream_status = upstream_status
 
 
 class MistralClient:
@@ -112,29 +122,56 @@ class MistralClient:
         return content.strip()
 
     def transcribe(self, audio: bytes, *, model: str, media_type: str) -> str:
-        """One transcription. The audio bytes stay on this request and are not logged."""
+        """One transcription. The audio bytes stay on this request and are not logged.
+
+        The part name has an extension that matches the base media type. A codecs
+        parameter is not forwarded. The model id is the caller's.
+        """
         if not audio:
-            raise MistralUnavailable("There was no audio.")
+            raise MistralUnavailable("There was no audio.", category="empty")
+        name, base = upload_part(media_type)
         try:
             response = self._http.post(
                 "/v1/audio/transcriptions",
                 data={"model": model},
-                files={"file": ("audio", audio, media_type or "application/octet-stream")},
+                files={"file": (name, audio, base)},
             )
         except httpx.TimeoutException:
-            raise MistralUnavailable("Mistral did not answer in time.") from None
+            raise MistralUnavailable("Mistral did not answer in time.", category="timeout") from None
         except httpx.HTTPError:
-            raise MistralUnavailable("Mistral could not be reached.") from None
+            raise MistralUnavailable("Mistral could not be reached.", category="network") from None
         if response.status_code >= 400:
-            raise MistralUnavailable(f"Mistral refused the call ({response.status_code}{_detail(response)}).")
+            raise MistralUnavailable(
+                "Mistral refused the transcription.",
+                category="http",
+                upstream_status=response.status_code,
+            ) from None
         try:
             body = response.json()
         except ValueError:
-            raise MistralUnavailable("Mistral sent something that is not JSON.") from None
+            raise MistralUnavailable("Mistral sent something that is not JSON.", category="unreadable") from None
         text = body.get("text") if isinstance(body, dict) else None
         if not isinstance(text, str) or not text.strip():
-            raise MistralUnavailable("Mistral sent no text.")
+            raise MistralUnavailable("Mistral sent no text.", category="empty")
         return text.strip()
+
+
+_UPLOAD_EXT = {
+    "audio/webm": "webm",
+    "audio/ogg": "ogg",
+    "audio/wav": "wav",
+    "audio/wave": "wav",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "mp4",
+    "audio/x-m4a": "m4a",
+    "video/webm": "webm",
+}
+
+
+def upload_part(media_type: str) -> tuple[str, str]:
+    """Filename and base type for one transcription part. No codecs parameter."""
+    base = (media_type or "").split(";", 1)[0].strip().lower() or "application/octet-stream"
+    return f"line.{_UPLOAD_EXT.get(base, 'bin')}", base
 
 
 def _detail(response: httpx.Response) -> str:

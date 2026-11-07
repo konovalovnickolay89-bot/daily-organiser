@@ -11,8 +11,10 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
   const tea = `the cupboard ${stamp} holds the tea towels`;
 
   await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   await page.getByLabel("Add to the log").fill(`remember ${milk}`);
   await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
   const remember = page.locator("[data-kind='proposal']", { hasText: `Remember: ${milk}` });
   await expect(remember).toBeVisible();
   await page.getByRole("button", { name: "Settings" }).click();
@@ -36,14 +38,18 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
   await expect(row.getByRole("button", { name: "Unpin" })).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Home" }).click();
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   await page.getByLabel("Add to the log").fill(`remember ${tea}`);
   await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
   const second = page.locator("[data-kind='proposal']", { hasText: `Remember: ${tea}` });
   await expect(second.getByText("Used 1 memory")).toBeVisible();
   await second.getByRole("button", { name: "Apply" }).click();
 
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   await page.getByLabel("Add to the log").fill(`forget cupboard ${stamp}`);
   await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
   const forget = page.locator("[data-kind='proposal']", { hasText: `Forget: cupboard ${stamp}` });
   await expect(forget.getByRole("checkbox", { name: milk })).toBeChecked();
   await expect(forget.getByRole("checkbox", { name: tea })).toBeChecked();

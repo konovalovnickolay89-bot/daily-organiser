@@ -23,7 +23,7 @@ from organiser.agent.context import (
     token_count,
     trim_to_budget,
 )
-from organiser.agent.mistral import MistralClient
+from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.runner import outside_home
 from organiser.agent.voice import voice_kind
 from organiser.config import get_settings
@@ -395,5 +395,63 @@ def test_voxtral_posts_audio_from_memory(caplog):
     assert seen["url"].endswith(b"/v1/audio/transcriptions")
     assert MARKER in seen["body"]
     assert b"voxtral-mini" in seen["body"]
+    assert b'filename="line.webm"' in seen["body"]
+    assert b"audio/webm" in seen["body"]
     assert b"test-key" not in seen["body"]
     assert MARKER.decode() not in caplog.text
+
+
+def test_voxtral_strips_codecs_and_names_the_part(caplog):
+    seen: dict[str, bytes] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = request.content
+        return httpx.Response(422, json={"message": "provider body must not be kept"})
+
+    client = MistralClient("test-key", "https://api.mistral.ai", transport=httpx.MockTransport(handler))
+    with caplog.at_level(logging.DEBUG):
+        try:
+            client.transcribe(MARKER, model="voxtral-mini", media_type="audio/mp4;codecs=mp4a.40.2")
+        except MistralUnavailable as exc:
+            assert exc.category == "http"
+            assert exc.upstream_status == 422
+            assert "provider body" not in str(exc)
+        else:
+            raise AssertionError("the refusal was dropped")
+    client.close()
+    assert b'filename="line.mp4"' in seen["body"]
+    assert b"audio/mp4" in seen["body"]
+    assert b"codecs" not in seen["body"].lower()
+    assert "provider body" not in caplog.text
+    assert MARKER.decode() not in caplog.text
+
+
+def test_voice_failure_keeps_the_status_and_drops_the_body(client, monkeypatch, caplog):
+    monkeypatch.setenv("VOICE_INPUT_ENABLED", "true")
+    get_settings.cache_clear()
+
+    class Refusing:
+        def transcribe(self, audio: bytes, media_type: str) -> str:
+            raise MistralUnavailable(
+                "Mistral refused the transcription.",
+                category="http",
+                upstream_status=422,
+            )
+
+    app.dependency_overrides[get_transcriber] = lambda: Refusing()
+    try:
+        with caplog.at_level(logging.INFO):
+            response = client.post(
+                "/voice/transcribe",
+                files={"file": ("line.webm", b"clip", "audio/webm")},
+            )
+        assert response.status_code == 503
+        detail = response.json()["detail"]
+        assert detail == "This recording was sent. Mistral refused it (HTTP 422). Nothing was saved."
+        assert "provider" not in detail.lower()
+        assert "category=http" in caplog.text
+        assert "upstream_status=422" in caplog.text
+        assert client.get("/tasks").json()["items"] == []
+    finally:
+        app.dependency_overrides.pop(get_transcriber, None)
+        get_settings.cache_clear()

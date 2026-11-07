@@ -23,7 +23,7 @@ type VoiceControlProps = {
 const IDLE_HELP =
   "Up to 30 seconds and 512 KB. Nothing is sent until you stop and transcribe. Audio is not kept.";
 const RECORDING_HELP =
-  "Stop and transcribe sends this clip to Mistral. The words replace the line. Cancel recording does not upload. Escape does the same.";
+  "Stop and transcribe sends this clip to Mistral. At 30 seconds it is sent on its own. The words replace the line. Cancel recording does not upload. Escape does the same.";
 const SENDING_HELP = "Sending this recording to Mistral. Nothing is added until you press Add. Audio is not kept.";
 const CAPPED_HELP = "Reached 30 seconds. Sending this recording to Mistral. Nothing is added until you press Add. Audio is not kept.";
 const REVIEW_HELP = "Words are in the line. Edit them, then press Add. Nothing is added until then.";
