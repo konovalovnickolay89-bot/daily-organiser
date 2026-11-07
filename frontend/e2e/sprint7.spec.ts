@@ -91,7 +91,7 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   const connect = page.getByRole("button", { name: "Connect" });
   await expect(connect).toBeVisible();
   const connectBox = await connect.boundingBox();
@@ -131,7 +131,7 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   const home = await new AxeBuilder({ page }).analyze();
   expect(home.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByText("Connected as @nickhome")).toBeVisible();
   const settings = await new AxeBuilder({ page }).analyze();
   expect(settings.violations).toEqual([]);
