@@ -97,9 +97,12 @@ function CalendarEditor({ diary }: { diary?: HouseFacts["diary"] }) {
           ))}
         </ul>
       )}
-      <form className="mt-4 flex gap-2" onSubmit={(event) => void add(event)}>
+      <p className="mb-0 mt-4 text-base leading-normal text-[var(--muted)]" id="calendar-add-note">
+        Adds a calendar to read, by its name. This does not create an event.
+      </p>
+      <form className="mt-2 flex gap-2" onSubmit={(event) => void add(event)}>
         <label className="sr-only" htmlFor="calendar-name">
-          Calendar name
+          Calendar to read
         </label>
         <input
           id="calendar-name"
@@ -108,7 +111,8 @@ function CalendarEditor({ diary }: { diary?: HouseFacts["diary"] }) {
           value={name}
           maxLength={200}
           autoComplete="off"
-          placeholder="Calendar name"
+          placeholder="Calendar to read"
+          aria-describedby="calendar-add-note"
           disabled={busy}
           onChange={(event) => setName(event.target.value)}
         />
