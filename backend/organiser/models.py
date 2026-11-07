@@ -168,6 +168,12 @@ class ReminderControl(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Each type stays off until saved. ``create_all`` does not add these columns
+    # to a ``reminder_control`` table that already exists. Alembic
+    # ``reminder_types_off`` does.
+    overdue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    stalled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    upcoming: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 

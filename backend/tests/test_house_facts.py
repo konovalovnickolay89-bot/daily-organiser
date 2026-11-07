@@ -30,6 +30,10 @@ FACT_KEYS = {
     "voice_input",
     "disruption_checks",
     "local_reminders",
+    "reminder_overdue",
+    "reminder_stalled",
+    "reminder_upcoming",
+    "reminder_types_ready",
 }
 
 
@@ -75,6 +79,10 @@ def test_house_facts_when_nothing_is_configured(client, reload_settings):
     assert body["voice_input"] == "off"
     assert body["disruption_checks"] == "not active"
     assert body["local_reminders"] == "off"
+    assert body["reminder_overdue"] == "off"
+    assert body["reminder_stalled"] == "off"
+    assert body["reminder_upcoming"] == "off"
+    assert body["reminder_types_ready"] is True
 
 
 def test_house_facts_do_not_echo_or_log_secrets(client, reload_settings, caplog):

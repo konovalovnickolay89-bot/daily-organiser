@@ -236,6 +236,11 @@ class HouseFacts(APIModel):
     disruption_checks: str
     # Local reminder cards. Off until a person saves the switch.
     local_reminders: str = "off"
+    # Each type is independent and defaults off. Master off still prepares nothing.
+    reminder_overdue: str = "off"
+    reminder_stalled: str = "off"
+    reminder_upcoming: str = "off"
+    reminder_types_ready: bool = True
 
 
 class AssistantSwitch(BaseModel):
@@ -243,6 +248,22 @@ class AssistantSwitch(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     enabled: bool
+
+
+class LocalReminderWrite(BaseModel):
+    """Switches that were sent are saved. Omitted type switches stay as they are.
+
+    An older client sends only ``enabled``. That does not turn a type on.
+    """
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    enabled: bool | None = None
+    overdue: bool | None = None
+    stalled: bool | None = None
+    upcoming: bool | None = None
+
+    def any_set(self) -> bool:
+        return any(value is not None for value in (self.enabled, self.overdue, self.stalled, self.upcoming))
 
 
 class ShoppingCreate(APIModel):
@@ -394,6 +415,7 @@ class PreviewCandidate(APIModel):
     rule: str
     title: str
     reason: str
+    type_on: bool = False
 
 
 class ReminderPreview(APIModel):
@@ -412,6 +434,11 @@ class ReminderPreview(APIModel):
     candidates: list[PreviewCandidate]
     note: str
     local_reminders: str = "off"
+    reminder_overdue: str = "off"
+    reminder_stalled: str = "off"
+    reminder_upcoming: str = "off"
+    reminder_types_ready: bool = True
+    waiting_note: str | None = None
 
 
 class LocalReminderResult(APIModel):
