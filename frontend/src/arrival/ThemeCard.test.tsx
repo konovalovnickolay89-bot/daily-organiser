@@ -54,5 +54,8 @@ describe("Settings journey status", () => {
     expect(screen.queryByRole("heading", { name: "Line status" })).toBeNull();
     expect(screen.queryByText(/Jubilee/)).toBeNull();
     expect(screen.queryByText(/journey source is not connected/i)).toBeNull();
+    const checks = screen.getByText("Disruption checks");
+    expect(checks.closest(".fact-row")?.querySelector("dd")?.textContent).toBe("Not active");
+    expect(screen.getByText(/Pre-departure disruption checks stay off/)).toBeTruthy();
   });
 });

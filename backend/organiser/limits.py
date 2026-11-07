@@ -15,6 +15,7 @@ _WINDOWS = {
     "feed": ("rate_feed_per_minute", 60.0),
     "ingest": ("rate_ingest_per_minute", 60.0),
     "commute": ("rate_commute_per_hour", 3600.0),
+    "commute_disruption": ("rate_commute_disruption_per_hour", 3600.0),
 }
 
 

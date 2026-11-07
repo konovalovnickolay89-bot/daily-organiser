@@ -152,7 +152,7 @@ def morning_brief(session: Session, today: date, paused: bool, now: datetime | N
                     for commitment in commitments
                 ],
             },
-            commute_section(session, get_settings(), today, moment),
+            commute_section(session, get_settings(), today, moment, paused),
             appointments_section(session, get_settings(), utcnow()),
             _shopping_section(session),
             weather_section(session, get_settings(), utcnow()),

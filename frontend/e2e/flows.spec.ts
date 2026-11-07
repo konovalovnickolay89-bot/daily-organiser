@@ -34,6 +34,8 @@ test("settings show the commute is not connected and can hold a theme", async ({
   await expect(page.getByRole("button", { name: /Lines/ })).toContainText("TfL is not configured.");
   await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Settings" }).click();
   await expect(page.locator(".fact-row", { hasText: "TfL" }).locator("dd")).toHaveText("Not configured");
+  await expect(page.locator(".fact-row", { hasText: "Disruption checks" }).locator("dd")).toHaveText("Not active");
+  await expect(page.getByText("Pre-departure disruption checks stay off until the house turns them on.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Line status" })).toHaveCount(0);
   await expect(page.getByText("The journey source is not connected.")).toHaveCount(0);
 

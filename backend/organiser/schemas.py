@@ -232,6 +232,8 @@ class HouseFacts(APIModel):
     banto: str
     # on when VOICE_INPUT_ENABLED. The mic stays hidden otherwise.
     voice_input: str
+    # Pre-departure disruption checks. "not active" until the house flag is set.
+    disruption_checks: str
 
 
 class AssistantSwitch(BaseModel):
@@ -450,6 +452,74 @@ class ShiftRead(APIModel):
     start: datetime
     end: datetime
     location_label: str
+
+
+class CommutePlace(APIModel):
+    """A home or a destination. ``check`` stays ``not_verified`` until a provider says otherwise.
+
+    This reading does not ask a provider, so nonempty configuration is not verification.
+    No coordinate, postcode, or stop id is included.
+    """
+
+    state: Literal["missing", "configured", "unusable"]
+    check: Literal["not_verified"]
+    kind: Literal["coordinates", "postcode"] | None = None
+    label: str
+    override: Literal["default", "used", "ignored"] | None = None
+    note: str | None = None
+
+
+class CommuteLeg(APIModel):
+    role: Literal["outward", "return"]
+    time_is: Literal["Arriving", "Departing"]
+    target: datetime
+    clock: str | None = None
+    minutes: int | None = None
+    lines: list[str] = Field(default_factory=list)
+    detail: str
+    meta: str
+    state: Literal["planned", "unconnected", "unavailable", "no_home"]
+
+
+class CommuteShiftPlan(APIModel):
+    id: UUID
+    start: datetime
+    end: datetime
+    location_label: str
+    when: Literal["today", "overnight", "upcoming"]
+    overnight: bool
+
+
+class CommuteAdvisory(APIModel):
+    """In-app only. ``active`` is the house flag, not a claim that a check just ran."""
+
+    active: bool
+    state: Literal[
+        "inactive",
+        "paused",
+        "held",
+        "waiting",
+        "fresh",
+        "stale",
+        "error",
+        "limited",
+        "unconfigured",
+    ]
+    detail: str
+
+
+class CommutePlanRead(APIModel):
+    """One round trip. No secret, coordinate, postcode, or stop id."""
+
+    summary: str
+    shift: CommuteShiftPlan | None = None
+    home: CommutePlace
+    destination: CommutePlace
+    arrival_buffer_minutes: int
+    return_buffer_minutes: int
+    outward: CommuteLeg | None = None
+    back: CommuteLeg | None = None
+    advisory: CommuteAdvisory
 
 
 class CatchUpRead(APIModel):

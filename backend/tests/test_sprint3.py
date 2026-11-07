@@ -76,6 +76,14 @@ def _use(monkeypatch, **env):
     get_settings.cache_clear()
 
 
+def _freeze(monkeypatch, year, month, day, hour, minute=0):
+    """House clock and the brief's date, so a stored shift is still ahead."""
+    moment = london(year, month, day, hour, minute)
+    monkeypatch.setattr("organiser.clock.current_time", lambda: moment)
+    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: moment.date())
+    return moment
+
+
 # --- catch-up wording -------------------------------------------------------
 
 
@@ -433,17 +441,25 @@ def test_brief_reads_tfl_without_logging_the_origin_or_the_key(client, monkeypat
         HOUSE_LON=LON,
         HOUSE_POSTCODE=POSTCODE,
     )
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 11, 6))
+    _freeze(monkeypatch, 2026, 11, 6, 7, 0)
     calls = []
 
     def fake(method, url, **kwargs):
         calls.append((url, kwargs.get("params")))
         if "JourneyResults" in url:
-            assert kwargs["params"]["date"] == "20261106"
-            assert kwargs["params"]["time"] == "0800"
-            assert kwargs["params"]["timeIs"] == "Arriving"
-            assert kwargs["params"]["app_key"] == TFL
+            params = kwargs["params"]
+            assert params["app_key"] == TFL
             assert "postcodes.io" not in url
+            if params["timeIs"] == "Arriving":
+                assert params["date"] == "20261106"
+                assert params["time"] == "0750"
+                assert url.endswith("/to/940GZZLUWYP")
+            elif params["timeIs"] == "Departing":
+                assert params["date"] == "20261106"
+                assert params["time"] == "1600"
+                assert "/JourneyResults/940GZZLUWYP/to/" in url
+            else:
+                raise AssertionError(params["timeIs"])
             return _journey_body()
         if url.endswith("/Status"):
             return _status_body()
@@ -468,6 +484,8 @@ def test_brief_reads_tfl_without_logging_the_origin_or_the_key(client, monkeypat
     for secret in (TOKEN, TFL, LAT, LON, POSTCODE):
         assert secret not in blob
     assert calls and "940GZZLUWYP" in calls[0][0]
+    directions = {params["timeIs"] for _url, params in calls if params and params.get("timeIs")}
+    assert directions == {"Arriving", "Departing"}
     get_settings.cache_clear()
 
 
@@ -480,7 +498,7 @@ def test_brief_uses_a_postcode_without_storing_or_logging_it(client, monkeypatch
         HOUSE_LON="",
         HOUSE_POSTCODE=POSTCODE,
     )
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 11, 6))
+    _freeze(monkeypatch, 2026, 11, 6, 7, 0)
 
     def resolve(method, url, **kwargs):
         if "postcodes.io" in url:
@@ -527,22 +545,24 @@ def test_tfl_spring_and_autumn_query_times(client, monkeypatch):
 
     monkeypatch.setattr("organiser.services.commute.request_json_any", fake)
     assert _shift(client, start="2026-03-29T08:00:00+01:00", end="2026-03-29T16:00:00+01:00").status_code == 201
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 3, 29))
+    _freeze(monkeypatch, 2026, 3, 29, 7, 0)
     assert client.get("/brief/morning").status_code == 200
     assert _shift(client, start="2026-10-25T08:00:00+00:00", end="2026-10-25T16:00:00+00:00").status_code == 201
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 10, 25))
+    _freeze(monkeypatch, 2026, 10, 25, 7, 0)
     from organiser.services.commute import clear_cache
 
     clear_cache()
     assert client.get("/brief/morning").status_code == 200
-    assert ("20260329", "0800") in seen
-    assert ("20261025", "0800") in seen
+    assert ("20260329", "0750") in seen
+    assert ("20260329", "1600") in seen
+    assert ("20261025", "0750") in seen
+    assert ("20261025", "1600") in seen
     get_settings.cache_clear()
 
 
 def test_journey_degrades_when_the_key_or_the_call_fails(client, monkeypatch, caplog):
     _use(monkeypatch, BANTO_COMMUTE_TOKEN=TOKEN, TFL_APP_KEY="", HOUSE_LAT=LAT, HOUSE_LON=LON)
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 11, 6))
+    _freeze(monkeypatch, 2026, 11, 6, 7, 0)
     assert _shift(client).status_code == 201
     unkeyed = next(
         section for section in client.get("/brief/morning").json()["sections"] if section["key"] == "commute"
@@ -643,7 +663,7 @@ def test_a_missed_postcode_and_outcode_are_logged_without_the_value(monkeypatch,
 
 def test_no_shift_today_says_so_when_the_push_is_configured(client, monkeypatch):
     _use(monkeypatch, BANTO_COMMUTE_TOKEN=TOKEN)
-    monkeypatch.setattr("organiser.routes.brief.house_today", lambda tz: __import__("datetime").date(2026, 11, 6))
+    _freeze(monkeypatch, 2026, 11, 6, 7, 0)
     commute = next(section for section in client.get("/brief/morning").json()["sections"] if section["key"] == "commute")
     assert commute["summary"] == "No commute on the rota today."
     get_settings.cache_clear()

@@ -7,6 +7,7 @@ const listTasks = vi.fn();
 const getAgent = vi.fn();
 const listApprovals = vi.fn();
 const listXItems = vi.fn();
+const getCommutePlan = vi.fn();
 const getLineStatus = vi.fn();
 
 vi.mock("../house/HouseContext", () => ({
@@ -33,12 +34,21 @@ vi.mock("../api/x", () => ({
   listXItems: () => listXItems(),
 }));
 
+vi.mock("../api/commute", () => ({
+  getCommutePlan: () => getCommutePlan(),
+}));
+
 vi.mock("../api/lines", () => ({
   getLineStatus: () => getLineStatus(),
 }));
 
 vi.mock("../modules/brief/MorningBrief", () => ({
   MorningBrief: () => <h2>Morning brief</h2>,
+}));
+
+vi.mock("../modules/commute/CommutePlan", () => ({
+  commuteOverview: () => ({ count: "—", summary: "Commute is not connected.", urgent: null }),
+  CommuteDetail: () => <h2>Commute plan</h2>,
 }));
 
 vi.mock("../modules/tasks/TodayList", () => ({
@@ -57,6 +67,12 @@ vi.mock("../modules/x/XCards", () => ({
   XCards: () => <p>X cards</p>,
 }));
 
+const quietPlan = {
+  summary: "Commute is not connected.",
+  shift: null,
+  advisory: { active: false, state: "inactive", detail: "Pre-departure disruption checks are not active." },
+};
+
 const quietLines = {
   configured: false,
   state: "missing",
@@ -70,6 +86,8 @@ const quietLines = {
 
 describe("Home board", () => {
   beforeEach(() => {
+    getCommutePlan.mockReset();
+    getCommutePlan.mockResolvedValue(quietPlan);
     getLineStatus.mockReset();
     getLineStatus.mockResolvedValue(quietLines);
   });
@@ -80,6 +98,7 @@ describe("Home board", () => {
   });
 
   it("keeps an urgent line visible and remembers the open section", async () => {
+    getCommutePlan.mockResolvedValue(quietPlan);
     getMorningBrief.mockResolvedValue({
       sections: [
         {
@@ -97,6 +116,8 @@ describe("Home board", () => {
     render(<HomeBoard />);
     expect(screen.getByRole("heading", { name: "Morning brief" })).toBeTruthy();
     expect(await screen.findByText("Overdue: Test data: boiler filters")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Commute/ }).textContent).toContain("Commute is not connected.");
+    expect(screen.getByRole("button", { name: /Lines/ }).textContent).toContain("TfL is not configured.");
     fireEvent.click(screen.getByRole("button", { name: /Today/ }));
     expect(screen.getByRole("heading", { name: "Today list" })).toBeTruthy();
     expect(screen.getByText("Overdue: Test data: boiler filters")).toBeTruthy();
@@ -112,6 +133,7 @@ describe("Home board", () => {
   });
 
   it("moves the open section from the keyboard", async () => {
+    getCommutePlan.mockResolvedValue(quietPlan);
     getMorningBrief.mockResolvedValue({ sections: [] });
     listTasks.mockResolvedValue({ items: [] });
     getAgent.mockResolvedValue({ enabled: true, reachable: true, proposals: [] });
@@ -121,6 +143,9 @@ describe("Home board", () => {
     const brief = await screen.findByRole("button", { name: /Brief/ });
     brief.focus();
     fireEvent.keyDown(brief, { key: "ArrowDown" });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Commute plan" })).toBeTruthy());
+    expect(screen.getByRole("button", { name: /Commute/ }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("button", { name: /Commute/ }), { key: "ArrowDown" });
     await waitFor(() => expect(screen.getByRole("heading", { name: "Line status" })).toBeTruthy());
     expect(screen.getByRole("button", { name: /Lines/ }).getAttribute("aria-expanded")).toBe("true");
     fireEvent.keyDown(screen.getByRole("button", { name: /Lines/ }), { key: "ArrowDown" });
@@ -166,6 +191,8 @@ describe("Home board", () => {
     expect(screen.queryByRole("heading", { name: "Line status" })).toBeNull();
     fireEvent.click(lines);
     expect(screen.getByRole("heading", { name: "Line status" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Commute/ }).textContent).toContain("Commute is not connected.");
+    expect(screen.queryByRole("heading", { name: "Commute plan" })).toBeNull();
     expect(screen.getByText("Minor delays due to a signal failure at Baker Street.")).toBeTruthy();
     expect(screen.getByText(/Read at/)).toBeTruthy();
     expect(screen.getByText(/Source time/)).toBeTruthy();

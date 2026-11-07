@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Any
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -78,6 +79,7 @@ class Settings(BaseSettings):
     rate_feed_per_minute: int = 6
     rate_ingest_per_minute: int = 30
     rate_commute_per_hour: int = 12
+    rate_commute_disruption_per_hour: int = 6
 
     # Home location for a later weather line and commute origin.
     # Set both coordinates, or a postcode, in the house file only.
@@ -99,6 +101,18 @@ class Settings(BaseSettings):
     # Empty leaves the brief line and the push unwired. Never log either value.
     tfl_app_key: SecretStr = SecretStr("")
     banto_commute_token: SecretStr = SecretStr("")
+    # Minutes before the shift to be at the destination. The return waits
+    # until this many minutes after the finish. Both are London instants.
+    commute_arrival_buffer_minutes: int = 10
+    commute_return_buffer_minutes: int = 0
+    # How long before the outward leave the in-app check may run. Off unless
+    # the flag below is set. There is no scheduler either way.
+    commute_predeparture_minutes: int = 90
+    commute_disruption_checks: bool = False
+    # Both must be set, or the house stays on Wembley Park. A stop id is not
+    # a postcode and is not logged. Leave both empty in git.
+    commute_destination_label: str = ""
+    commute_destination_stop: str = ""
 
     # Signed inbound webhooks. Empty means that source answers 503.
     # WEBHOOK_SECRET_BANTO_X signs POST /hooks/banto_x. Those x.* events join the
@@ -122,6 +136,26 @@ class Settings(BaseSettings):
     show_playlist: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator(
+        "commute_arrival_buffer_minutes",
+        "commute_return_buffer_minutes",
+        "commute_predeparture_minutes",
+        mode="before",
+    )
+    @classmethod
+    def _bound_commute_minutes(cls, value: Any, info: ValidationInfo) -> int:
+        bounds = {
+            "commute_arrival_buffer_minutes": (10, 0, 180),
+            "commute_return_buffer_minutes": (0, 0, 180),
+            "commute_predeparture_minutes": (90, 15, 240),
+        }
+        default, low, high = bounds[info.field_name]
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            return default
+        return min(high, max(low, number))
 
     @property
     def cors_origin_list(self) -> list[str]:
