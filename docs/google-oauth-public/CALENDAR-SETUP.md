@@ -40,7 +40,7 @@ Google’s sentence for the events scope is “view events on all your calendars
 ## Gates still shut
 
 1. discovery-system yes for the Cloudflare Pages project in `HOSTING-PLAN.md`. Email approval is not that yes.
-2. Pages project with only the three HTML files, DNS for `organiser-info`, no Access app on that name, app host still behind Access.
+2. discovery-system publishes exactly `index.html`, `privacy.html`, `terms.html`, and `404.html` to the Pages project and the `organiser-info` DNS record. Nick approved that on 7 November 2026 at 15:41 GMT. It is not done in this repository. No Access app on that name. The app host stays behind Access. The hostname is not live until those checks pass.
 3. Unauthenticated checks in `HOSTING-PLAN.md`. Not run against the live hosts here.
 4. Search Console verification of `apidiscoverysolution.uk`, if it is not already verified. Unknown.
 5. Authorized domain saved in the Google Auth Platform before the three URLs. Unknown.

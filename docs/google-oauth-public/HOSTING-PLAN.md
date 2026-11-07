@@ -16,7 +16,7 @@ Use a new hostname, on the domain already owned, whose only origin is the three 
 
 `apidiscoverysolution.uk` is the top private domain to register as a Google authorized domain, if it is not already. This draft did not open Search Console or the Cloud console, so that registration is unknown.
 
-The three HTML files are the publication text, including the approved support email. They are in git only. The app does not serve `docs/`. `backend/organiser/main.py` mounts the built UI at `/` only when `frontend/dist` exists. These HTML files are not part of that build. The hostname is still PROPOSED: it does not resolve because of this work.
+The publication set is four HTML files: `index.html`, `privacy.html`, `terms.html`, and `404.html`. They are in git only. The app does not serve `docs/`. `backend/organiser/main.py` mounts the built UI at `/` only when `frontend/dist` exists. These HTML files are not part of that build. The hostname is not live until discovery-system publishes it and the checks below pass. This file does not claim that it has.
 
 ### Why a separate hostname
 
@@ -28,7 +28,7 @@ A dedicated hostname can have no route to `127.0.0.1:8080`, no database, and no 
 
 ### What the public origin must contain
 
-Only the three publication HTML files: `index.html`, `privacy.html`, and `terms.html`. Do not upload this markdown, the evidence notes, or the rest of the repository. The HTML no longer carries a draft banner. The support email on those pages is `mykolakonovalov@gmail.com`, which is approved for that public contact and for the consent-screen user-support field. That approval does not create this host.
+Exactly these four files, and no others: `index.html`, `privacy.html`, `terms.html`, and `404.html`. Do not upload this markdown, the evidence notes, or the rest of the repository. Do not add a `_redirects` rule that sends every path to `index.html` with status 200, and do not turn on single-page-application handling. The support email on the four pages is `mykolakonovalov@gmail.com`. The consent-screen name on them is Daily Organiser bot.
 
 The origin must not contain:
 
@@ -48,11 +48,21 @@ Suggested response headers, only on this static host:
 
 `style-src 'unsafe-inline'` is only there because each page carries its own stylesheet. There is no script. Do not copy the app’s header set onto this host without allowing that inline style, and do not loosen the app’s header set so these pages can live inside it.
 
-A request for `/favicon.ico`, `/health`, `/brief/morning`, `/docs`, or `/assets/` should be a 404 from this origin, not a forward to the app.
+A request for `/favicon.ico`, `/health`, `/brief/morning`, `/docs`, or `/assets/` has to be a 404 from this origin, not a forward to the app, and not the app description with status 200.
 
-## One host, and it is not set up
+## Why `404.html` is in the set
 
-Cloudflare Pages, with a project that contains only those three HTML files, on the hostname `organiser-info.apidiscoverysolution.uk`.
+[Serving Pages](https://developers.cloudflare.com/pages/configuration/serving-pages/), last updated 10 October 2026 and fetched 7 November 2026, says two things that matter here.
+
+Without a top-level `404.html`, Pages assumes a single-page application and serves `/` for any path that is not a static asset. That is the fallback that would answer `/health` and `/brief/morning` with the app description. Publication was held for that reason. The Pages paragraph does not print the status code. The [Workers static-assets](https://developers.cloudflare.com/workers/static-assets/) page documents the same split: `not_found_handling = "single-page-application"` returns `200 OK` with `index.html`, and `not_found_handling = "404-page"` returns `404 Not Found` with the nearest `404.html`. The [Pages-to-Workers migration](https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/) says Pages chose between those by looking for `404.html`.
+
+With a top-level `404.html`, Pages serves that not-found page instead of the single-page-application fallback. `check_pages.py` models that rule on the four files: the four paths are 200, and the absent API paths are 404. The same paths are 200 in the model when `404.html` is treated as absent. That run is not a request to `organiser-info`, and this plan does not say the hostname is live.
+
+The same Serving Pages page says Pages redirects an HTML file to its extension-less path, for example `/contact.html` to `/contact`. That redirect was not observed, because the host is not published. After publication, discovery-system should record the status of `/privacy.html` and `/terms.html`. If either address redirects, the consent-screen URL and the link on the homepage have to be changed to the stable address in a later edit. This commit leaves those strings as they are.
+
+## One host
+
+Cloudflare Pages, with a project that contains only those four HTML files, on the hostname `organiser-info.apidiscoverysolution.uk`.
 
 That is the lowest-exposure option because the pages have no tunnel, no process, and no route that can be pointed at `127.0.0.1:8080`. discovery-system already operates Cloudflare for `apidiscoverysolution.uk`. This plan does not add a second DNS provider, a house port, or an Access bypass. It does not state a price. Whether the existing Cloudflare account can hold a static project is for discovery-system to know. No paid add-on is requested.
 
@@ -64,7 +74,7 @@ None of this is created here.
 
 | Resource | What it is |
 | --- | --- |
-| Pages project | A new static project. Suggested name `organiser-info`. Contents are only `index.html`, `privacy.html`, and `terms.html`. Not the git repository. |
+| Pages project | A new static project. Suggested name `organiser-info`. Contents are only `index.html`, `privacy.html`, `terms.html`, and `404.html`. Not the git repository. |
 | DNS record | `organiser-info.apidiscoverysolution.uk` pointed at that Pages project. Leave the `organiser` record alone. Leave `organiser.grok.me` alone. |
 | TLS | The certificate Cloudflare already issues for names in this zone. No separate certificate product is requested. |
 | Access | No Access application on `organiser-info`. The Access application on `organiser.apidiscoverysolution.uk` stays, including `/health` and `/brief/morning`. |
@@ -72,13 +82,13 @@ None of this is created here.
 
 ### Approval gate for discovery-system
 
-The support-email approval does not authorize discovery-system to do this. A later yes has to name this Pages project, this hostname, and the three files, and it has to say the app tunnel and the Access application are untouched. Until that yes, do not create the project or the DNS record.
+On 7 November 2026 at 15:41 GMT, Nick approved publishing these four files through this Pages project and the `organiser-info` DNS record. `organiser.apidiscoverysolution.uk` stays behind Cloudflare Access. This repository does not create the project, the DNS record, or the Access application. The hostname is not live until discovery-system publishes the four files and the checks pass.
 
 ## Other yeses, separate from the email
 
 The email `mykolakonovalov@gmail.com` is approved as the public support contact and as the value for the consent-screen user-support field. It is not approval for the rows below.
 
-1. discovery-system creates the Pages project and the DNS record, as above.
+1. discovery-system publishes the four files and runs the access tests. Nick has approved that publication. It is not done in this repository, and the hostname is not live yet.
 2. Run the access tests in the next section. They are not run here.
 3. In Google Search Console, verify `apidiscoverysolution.uk` with an account that is an Owner or Editor of the Cloud project. Unknown whether this is already done.
 4. In the Google Auth Platform, add the authorized domain `apidiscoverysolution.uk` before saving the homepage, privacy, or terms URLs. Unknown whether this is already done.
@@ -141,6 +151,8 @@ Publishing the pages does not submit the app, and a public page does not mean Go
 
 ## Approvals
 
-Approved: `mykolakonovalov@gmail.com` as the public support email for Daily Organiser bot, on these pages and as the consent-screen user-support value. The consent-screen name stays Daily Organiser bot.
+Approved earlier: `mykolakonovalov@gmail.com` as the public support email for Daily Organiser bot, on these pages and as the consent-screen user-support value. The consent-screen name stays Daily Organiser bot.
 
-Not approved by that email: the Pages project, the DNS record, Access changes, pasting URLs into Google, Verify branding, Publish branding, scope verification, token minting, or the in-app link. Encrypting the Google refresh token and adding a revoke-and-delete path would be a later code change. It is not this branch.
+Approved at 15:41 GMT on 7 November 2026: discovery-system may publish the four HTML files on the Cloudflare Pages project and the `organiser-info` DNS record. `organiser.apidiscoverysolution.uk` stays protected. That publication is not done in this repository.
+
+Not approved: changing Access, pasting URLs into Google, Verify branding, Publish branding, scope verification, token minting, or the in-app link. Encrypting the Google refresh token and adding a revoke-and-delete path would be a later code change. It is not this branch.
