@@ -8,10 +8,6 @@ vi.mock("../house/HouseContext", () => ({
   useHouseTick: () => 1,
 }));
 
-vi.mock("../modules/lines/LineStatusPanel", () => ({
-  LineStatusPanel: () => <p>Jubilee Minor Delays</p>,
-}));
-
 vi.mock("../modules/status/StatusPanel", () => ({
   StatusPanel: () => <h3>Status</h3>,
 }));
@@ -46,7 +42,7 @@ vi.mock("../api/system", () => ({
 describe("Settings journey status", () => {
   beforeEach(() => cleanup());
 
-  it("shows the key as configured and the line read in place of a fixed disconnected line", async () => {
+  it("keeps the TfL key fact and leaves operational line status off this card", async () => {
     render(
       <ViewProvider view="settings">
         <ThemeCard choice="auto" onChoose={() => {}} />
@@ -55,8 +51,8 @@ describe("Settings journey status", () => {
     expect(await screen.findByText("Configured")).toBeTruthy();
     const tfl = screen.getByText("TfL");
     expect(tfl.closest(".fact-row")?.querySelector("dd")?.textContent).toBe("Configured");
-    expect(screen.getByText("Jubilee Minor Delays")).toBeTruthy();
-    expect(screen.getByText(/The diary is read-only/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Line status" })).toBeNull();
+    expect(screen.queryByText(/Jubilee/)).toBeNull();
     expect(screen.queryByText(/journey source is not connected/i)).toBeNull();
   });
 });

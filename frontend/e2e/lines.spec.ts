@@ -50,6 +50,10 @@ const lines = {
   ],
 };
 
+function rail(page: Page, name: string) {
+  return page.getByRole("navigation", { name: "House" }).getByRole("button", { name });
+}
+
 async function install(page: Page) {
   let hits = 0;
   await page.route(OUTSIDE, (route) => route.abort());
@@ -70,47 +74,71 @@ async function install(page: Page) {
   };
 }
 
-test("line status stays unread on Home and shows on Settings", async ({ page }) => {
+test("line status is on Home and stays out of Settings", async ({ page }) => {
   const api = await install(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Pause the house" })).toBeVisible();
-  expect(api.hits()).toBe(0);
+  const board = page.locator("[data-home-board]");
+  const overview = board.getByRole("button", { name: /Lines/ });
+  await expect(overview).toContainText("2");
+  await expect(overview).toContainText("2 lines disrupted.");
+  await expect(overview).toContainText("Jubilee: Minor Delays");
+  expect(api.hits()).toBe(1);
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await overview.click();
   await expect(page.getByRole("heading", { name: "Line status" })).toBeVisible();
-  await expect(page.locator(".fact-row", { hasText: "TfL" }).locator("dd")).toHaveText("Configured");
   await expect(page.getByText("Minor delays due to a signal failure at Baker Street.")).toBeVisible();
   await expect(page.locator("[data-line='central'] [data-severity]")).toHaveText("Good Service");
   await expect(page.locator("[data-line='central'] [data-reason]")).toHaveCount(0);
   await expect(page.getByText("Part suspended between Abbey Wood and Paddington while trains are held.")).toBeVisible();
   await expect(page.getByText(/Read at/)).toBeVisible();
   await expect(page.getByText(/Source time/)).toBeVisible();
-  await expect(page.getByText("The journey source is not connected.")).toHaveCount(0);
   const readout = (await page.locator("[data-readout]").innerText()).toLowerCase();
   expect(readout).not.toMatch(/real-?time|\blive\b/);
   expect(api.hits()).toBe(1);
 
+  await board.getByRole("button", { name: /Brief/ }).click();
+  await expect(page.getByText("Commute is not connected.").first()).toBeVisible();
+  await expect(overview).toContainText("Jubilee: Minor Delays");
+  expect(api.hits()).toBe(1);
+
+  await rail(page, "Settings").click();
+  await expect(page.locator(".fact-row", { hasText: "TfL" }).locator("dd")).toHaveText("Configured");
+  await expect(page.getByRole("heading", { name: "Line status" })).toHaveCount(0);
+  await expect(page.locator("[data-panel='settings']").getByText("Baker Street")).toHaveCount(0);
+  await expect(page.getByText("The journey source is not connected.")).toHaveCount(0);
+  expect(api.hits()).toBe(1);
+
   await page.getByRole("radio", { name: "Morning" }).check();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "morning");
+  await rail(page, "Home").click();
+  await overview.click();
   await expect(page.getByRole("heading", { name: "Jubilee" })).toBeVisible();
-  await page.locator("[data-panel='settings']").screenshot({ path: test.info().outputPath("line-status-desktop.png") });
+  expect(api.hits()).toBe(2);
+  const desktopDetail = await page.locator("#home-detail").boundingBox();
+  const desktopBoard = await page.locator("[data-home-board]").boundingBox();
+  expect(desktopDetail && desktopBoard && desktopDetail.x > (desktopBoard.x ?? 0)).toBeTruthy();
+  await page.locator("[data-home-board]").screenshot({ path: test.info().outputPath("line-status-desktop.png") });
 
+  await rail(page, "Settings").click();
   await page.getByRole("radio", { name: "Evening" }).check();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "evening");
   await page.setViewportSize({ width: 390, height: 844 });
+  await rail(page, "Home").click();
+  await overview.click();
   await expect(page.getByRole("heading", { name: "Jubilee" })).toBeVisible();
+  const mobileDetail = await page.locator("#home-detail").boundingBox();
+  const mobileBoard = await page.locator("[data-home-board]").boundingBox();
+  expect(mobileDetail && mobileBoard && mobileDetail.width).toBeGreaterThan((mobileBoard?.width ?? 0) * 0.9);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.locator("[data-panel='lines']").screenshot({ path: test.info().outputPath("line-status-mobile.png") });
+  await page.locator("[data-home-board]").screenshot({ path: test.info().outputPath("line-status-mobile.png") });
 
-  await page.getByRole("radio", { name: "House clock" }).check();
-  await expect(page.getByText("Minor delays due to a signal failure at Baker Street.")).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
 });
 
-test("a stale line status is not labelled live", async ({ page }) => {
+test("a stale line status is evident on Home and is not labelled live", async ({ page }) => {
   await page.route(OUTSIDE, (route) => route.abort());
   await page.route("**/tfl/status", async (route) => {
     await route.fulfill({
@@ -124,7 +152,10 @@ test("a stale line status is not labelled live", async ({ page }) => {
     });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
+  const overview = page.locator("[data-home-board]").getByRole("button", { name: /Lines/ });
+  await expect(overview).toContainText("A newer read failed");
+  await expect(overview).toContainText("Jubilee: Minor Delays");
+  await overview.click();
   const readout = page.locator("[data-readout]");
   await expect(readout).toContainText("A newer read failed");
   await expect(readout).toContainText("TfL did not answer in time.");

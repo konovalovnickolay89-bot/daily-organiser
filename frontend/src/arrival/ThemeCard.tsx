@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import { addCalendar, getHouseFacts, listCalendars, removeCalendar, setAssistantSwitch, type CalendarList } from "../api/system";
 import type { HouseFacts } from "../api/types";
 import { useHouse } from "../house/HouseContext";
-import { LineStatusPanel } from "../modules/lines/LineStatusPanel";
 import { MemoryScreen } from "../modules/memory/MemoryScreen";
 import { StatusPanel } from "../modules/status/StatusPanel";
 import { XSettings } from "../modules/x/XSettings";
@@ -239,7 +238,6 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
           </div>
         ))}
       </dl>
-      <LineStatusPanel />
       <p className={cx(kickerMuted, "mb-2 mt-8")}>Diary</p>
       <CalendarEditor diary={facts?.diary} />
       <p className="mb-0 mt-2 text-base leading-normal text-[var(--muted)]">

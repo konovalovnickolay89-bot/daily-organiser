@@ -1,48 +1,68 @@
-import { useEffect, useState } from "react";
-import { getLineStatus, type LineStatus, type TransitLine } from "../../api/lines";
-import { useView } from "../../arrival/view";
-import { cx, empty, errorText, lede, meta, notice, rowTitle, subheading } from "../../arrival/ui";
+import type { LineStatus, TransitLine } from "../../api/lines";
+import { cx, empty, errorText, heading, lede, meta, notice, rowTitle } from "../../arrival/ui";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
-import { useHouseTick } from "../../house/HouseContext";
-import { asError } from "../../lib/errors";
 import { formatHouseTime } from "../status/format";
 
+export type LineOverview = {
+  count: string;
+  summary: string;
+  urgent: string | null;
+};
+
+const GOOD = "good service";
+
+function disrupted(lines: TransitLine[]): TransitLine[] {
+  return lines.filter((line) => line.severity.trim().toLowerCase() !== GOOD);
+}
+
 /**
- * Line status on the Settings card. The TfL row above says whether the key
- * is set. This says what the last read actually returned. It does not say
- * the board is live, and it does not fetch until Settings is open.
+ * Compact row for the Home overview. The count is how many lines are disrupted.
+ * A stale or failed read stays on the row, so it is visible with another section open.
  */
-export function LineStatusPanel() {
-  const view = useView();
-  const tick = useHouseTick();
-  const [status, setStatus] = useState<LineStatus | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    if (view !== "settings") return undefined;
-    let cancelled = false;
-    getLineStatus()
-      .then((data) => {
-        if (!cancelled) {
-          setStatus(data);
-          setError(null);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(asError(err));
-      });
-    return () => {
-      cancelled = true;
+export function lineOverview(status: LineStatus | null, error: Error | null): LineOverview {
+  if (error) {
+    return { count: "—", summary: "Line status could not be read.", urgent: error.message };
+  }
+  if (!status) {
+    return { count: "…", summary: "Checking line status…", urgent: null };
+  }
+  if (status.state === "missing") {
+    return { count: "—", summary: status.detail ?? "TfL is not configured.", urgent: null };
+  }
+  if (status.state === "error") {
+    const detail = status.detail ?? "Line status is unavailable.";
+    return { count: "—", summary: "Line status is unavailable.", urgent: detail };
+  }
+  const problems = disrupted(status.lines);
+  const count = String(problems.length);
+  const summary =
+    problems.length === 0
+      ? status.detail || "Good service."
+      : problems.length === 1
+        ? "1 line disrupted."
+        : `${problems.length} lines disrupted.`;
+  const first = problems[0];
+  const attention = first ? `${first.name}: ${first.severity}` : null;
+  if (status.state === "stale") {
+    return {
+      count,
+      summary,
+      urgent: attention ? `A newer read failed. ${attention}` : "A newer read failed.",
     };
-  }, [view, tick]);
+  }
+  return { count, summary, urgent: attention };
+}
 
-  if (view !== "settings") return null;
-
+/**
+ * Per-line detail for the Home pane. Timestamps are the fetch and the source
+ * time. A stale read says the newer read failed. It does not say the board is live.
+ */
+export function LineStatusDetail({ status, error }: { status: LineStatus | null; error: Error | null }) {
   return (
-    <section className="mt-8" aria-labelledby="line-status-title" data-panel="lines" data-state={status?.state ?? "loading"}>
-      <h3 id="line-status-title" className={subheading}>
+    <section aria-labelledby="line-status-title" data-panel="lines" data-state={status?.state ?? (error ? "error" : "loading")}>
+      <h2 id="line-status-title" className={heading}>
         Line status
-      </h3>
+      </h2>
       {error && (
         <p className={errorText} role="alert">
           {error.message}
@@ -83,7 +103,7 @@ function readout(status: LineStatus): string {
 
 function tone(severity: string): string {
   const value = severity.toLowerCase();
-  if (value === "good service") return "text-success";
+  if (value === GOOD) return "text-success";
   if (value.includes("delay") || value.includes("closed") || value.includes("suspend")) return "text-[var(--danger)]";
   return "text-[var(--ink)]";
 }
@@ -92,7 +112,7 @@ function LineRow({ line }: { line: TransitLine }) {
   return (
     <li className="border-t border-[var(--line)] py-2" data-line={line.id}>
       <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h4 className={cx(rowTitle, "m-0 min-w-0")}>{line.name}</h4>
+        <h3 className={cx(rowTitle, "m-0 min-w-0")}>{line.name}</h3>
         <p className={cx(meta, "m-0 min-w-0")}>
           <span>{line.mode}</span>
           <span className="px-2" aria-hidden="true">

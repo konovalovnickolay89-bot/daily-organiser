@@ -1,6 +1,7 @@
 """Line status, read on its own.
 
-``GET /tfl/status`` uses the house ``TFL_APP_KEY``. It does not accept a key,
+``GET /tfl/status`` uses the house ``TFL_APP_KEY``. Home requests it while that
+screen is open. It does not accept a key,
 a place, or a shift from the client. A query string is ignored and is not
 forwarded. A missing key does not call TfL. This does not call Mistral.
 
