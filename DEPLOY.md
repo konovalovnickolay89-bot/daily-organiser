@@ -139,7 +139,7 @@ Add nothing secret to git. In the existing house file:
 | `SHOW_PLAYLIST` | Leave unset once a source is set (the line comes on). `false` hides it. The tap opens hearthis in a new tab. Nothing is streamed |
 | `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
 | `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows voice on Smart Add only. Stop and transcribe sends one clip to Mistral. Cancel recording does not upload. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
-| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on, with the existing `MISTRAL_API_KEY` |
+| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini-transcribe-3`. Used only when voice is on, with the existing `MISTRAL_API_KEY`. If this is set to `voxtral-mini`, that value is what is sent |
 
 Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, token, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.4.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
 
@@ -155,7 +155,7 @@ Do this after a backup. This repo does not install the unit, and it does not cha
 
 1. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0005_sprint6` is recorded. That adds `alert_dismissals`. Do not stamp over it. The process also creates the table on boot, so it starts before the version is moved.
 2. Rebuild the UI (`npm ci && npm run build` in `frontend/`) and restart the process. `/health` reports version `0.3.0`.
-3. Leave `VOICE_INPUT_ENABLED` unset until Nick wants the mic. When it is set, allow the existing outbound call to `api.mistral.ai`. No new secret. `MISTRAL_TRANSCRIBE_MODEL` defaults to `voxtral-mini`.
+3. Leave `VOICE_INPUT_ENABLED` unset until Nick wants the mic. When it is set, allow the existing outbound call to `api.mistral.ai`. No new secret. `MISTRAL_TRANSCRIBE_MODEL` defaults to `voxtral-mini-transcribe-3`. Leave it unset, or set that id. Do not set `voxtral-mini`.
 4. Run `python -m organiser.agent sync` if the agent instructions should mention that a personal hotel stay is household life and Hilton, a guest, a colleague, an employer, or a work system is not.
 5. Cloudflare Access should cover `/metrics`, `/system/status`, `/alerts`, and `/voice/transcribe`. `/metrics` is counts and timings. Alert cards stay in the app: nothing is emailed or sent. A Mistral failure (3 or more in 15 minutes), a quiet activity poll (over 2 hours, Monday to Friday, 06:00–21:59 London), and a database error each show one card that can be dismissed.
 
