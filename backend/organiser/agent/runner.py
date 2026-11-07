@@ -67,7 +67,7 @@ _OUTSIDE_HOME_RE = re.compile(
 )
 JOURNEY_NOTE = (
     "Journey: this is travel to work. Propose the trip if it is not already a task. "
-    "The morning brief reads the rota and TfL for a commute to Wembley Park. "
+    "The morning brief reads the rota and TfL for the journey out to Wembley Park before the shift and the return after it. "
     "Do not invent disruptions or a live lookup on the card."
 )
 

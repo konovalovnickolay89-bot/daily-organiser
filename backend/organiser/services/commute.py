@@ -9,7 +9,7 @@ A missing token or key leaves a short line on the brief and changes nothing else
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
@@ -21,7 +21,6 @@ from organiser.config import Settings, commute_point_for_label
 from organiser.models import CommuteShift
 from organiser.services.activity import record_line
 from organiser.services.outbound import request_json_any
-from organiser.services.weather import home_coordinates
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ WEMBLEY_STOP = "940GZZLUWYP"
 STORED_LABEL = "Wembley"
 _CACHE: dict[str, tuple[float, dict]] = {}
 _TTL_SECONDS = 10 * 60
+_CACHE_LIMIT = 32
 _TAG = re.compile(r"<[^>]+>")
 _GOOD = {"good service"}
 
@@ -45,6 +45,9 @@ class ShiftRejected(Exception):
 
 def clear_cache() -> None:
     _CACHE.clear()
+    from organiser.services.commute_plan import clear_advisory_cache
+
+    clear_advisory_cache()
 
 
 def _back(aware: datetime) -> datetime:
@@ -79,6 +82,16 @@ def tfl_clock(start: datetime) -> tuple[str, str]:
     """TfL date ``YYYYMMDD`` and time ``HHMM`` in the London wall clock."""
     local = start.astimezone(LONDON)
     return local.strftime("%Y%m%d"), local.strftime("%H%M")
+
+
+def move(moment: datetime, minutes: int) -> datetime:
+    """Move an aware instant by minutes.
+
+    The sum is done in UTC and then shown in London, so a clock change is not
+    applied twice and a gap is not invented by subtracting wall-clock minutes.
+    """
+    base = moment if moment.tzinfo is not None else to_london(moment)
+    return (base.astimezone(UTC) + timedelta(minutes=minutes)).astimezone(LONDON)
 
 
 def _hm(value: datetime) -> str:
@@ -183,6 +196,11 @@ def _read_journey(body: dict) -> dict | None:
     return {"leave": leave, "minutes": minutes, "lines": lines}
 
 
+def disruption_note(body: object, used: list[str]) -> str:
+    """Plain disruption line for the lines in one journey. No key and no place."""
+    return _disruptions(body, used)
+
+
 def _disruptions(body: object, used: list[str]) -> str:
     if not isinstance(body, list):
         return "Line disruptions unavailable."
@@ -209,31 +227,41 @@ def _disruptions(body: object, used: list[str]) -> str:
     return clip("; ".join(found), 180)
 
 
-def _section(summary: str, *, meta: str | None = None, detail: str | None = None) -> dict:
-    items = []
-    if meta or detail:
-        items.append({"title": "Wembley Park", "meta": meta, "detail": detail or summary})
-    return {
-        "key": "commute",
-        "title": "Commute",
-        "placeholder": False,
-        "summary": summary,
-        "items": items,
-    }
+def _segment(value: str) -> str:
+    return quote(value, safe=",-.")
 
 
-def _fetch(settings: Settings, lat: float, lon: float, start: datetime, used_key: str) -> dict:
-    cached = _CACHE.get(used_key)
+def _remember(key: str, value: dict) -> None:
+    _CACHE[key] = (time.monotonic(), value)
+    if len(_CACHE) <= _CACHE_LIMIT:
+        return
+    oldest = min(_CACHE, key=lambda item: _CACHE[item][0])
+    _CACHE.pop(oldest, None)
+
+
+def fetch_leg(
+    settings: Settings,
+    origin: str,
+    destination: str,
+    when: datetime,
+    time_is: str,
+    cache_key: str,
+) -> dict:
+    """One journey. The cache keeps the parsed times and line names, not the origin.
+
+    ``time_is`` is ``Arriving`` for the way out and ``Departing`` for the way back.
+    The origin and the key are not logged.
+    """
+    cached = _CACHE.get(cache_key)
     if cached and time.monotonic() - cached[0] < _TTL_SECONDS:
         return cached[1]
-    day, clock = tfl_clock(start)
-    origin = f"{lat:.5f},{lon:.5f}"
+    day, clock = tfl_clock(when)
     key = settings.tfl_app_key.get_secret_value().strip()
     journey_url = (
         "https://api.tfl.gov.uk/Journey/JourneyResults/"
-        + quote(origin, safe=",-.")
+        + _segment(origin)
         + "/to/"
-        + WEMBLEY_STOP
+        + _segment(destination)
     )
     try:
         journey_body = request_json_any(
@@ -243,7 +271,7 @@ def _fetch(settings: Settings, lat: float, lon: float, start: datetime, used_key
                 "app_key": key,
                 "date": day,
                 "time": clock,
-                "timeIs": "Arriving",
+                "timeIs": time_is,
                 "mode": "tube,overground,elizabeth-line,dlr,bus",
                 "journeyPreference": "leasttime",
             },
@@ -262,35 +290,22 @@ def _fetch(settings: Settings, lat: float, lon: float, start: datetime, used_key
             "https://api.tfl.gov.uk/Line/Mode/tube,overground,elizabeth-line,dlr/Status",
             params={"app_key": key},
         )
-        disruptions = _disruptions(status_body, journey["lines"])
+        disruptions = _disruptions(status_body, journey["lines"]).replace(key, "")
     except Exception:
         logger.info("commute disruptions failed")
         disruptions = "Line disruptions unavailable."
-    via = f" · {', '.join(journey['lines'])}" if journey["lines"] else ""
-    summary = f"Wembley Park · leave {journey['leave']} · {journey['minutes']} min{via}. {disruptions}"
-    fresh = {"summary": summary, "disruptions": disruptions}
-    _CACHE[used_key] = (time.monotonic(), fresh)
+    fresh = {
+        "leave": journey["leave"],
+        "minutes": journey["minutes"],
+        "lines": journey["lines"],
+        "disruptions": disruptions,
+    }
+    _remember(cache_key, fresh)
     return fresh
 
 
-def commute_section(session: Session, settings: Settings, today, now: datetime) -> dict:
-    rows = list(session.scalars(select(CommuteShift)))
-    shift = pick_shift(rows, today, now)
-    if shift is None:
-        if settings.banto_configured:
-            return _section("No commute on the rota today.")
-        return _section("Commute is not connected.")
+def commute_section(session: Session, settings: Settings, today, now: datetime, paused: bool = False) -> dict:
+    """The brief's commute block. The plan is shared with ``GET /commute/plan``."""
+    from organiser.services.commute_plan import section_for_brief
 
-    span = f"{_hm(shift.start_at)}–{_hm(shift.end_at)}"
-    if not settings.tfl_configured:
-        return _section(f"Wembley Park · {span}. Journey check is not connected.", meta=span)
-    if settings.home_location_kind is None:
-        return _section(f"Wembley Park · {span}. Home location is not set.", meta=span)
-    point = home_coordinates(settings)
-    if point is None:
-        return _section(f"Wembley Park · {span}. Journey check is unavailable.", meta=span)
-    try:
-        fresh = _fetch(settings, point[0], point[1], shift.start_at, str(shift.id))
-    except Exception:
-        return _section(f"Wembley Park · {span}. Journey check is unavailable.", meta=span)
-    return _section(fresh["summary"], meta=span, detail=fresh["summary"])
+    return section_for_brief(session, settings, today, now, paused)

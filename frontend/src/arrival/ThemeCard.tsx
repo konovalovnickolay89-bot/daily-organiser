@@ -170,6 +170,7 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
     ["Weather location", configuredLabel(facts?.weather_location)],
     ["TfL", configuredLabel(facts?.tfl)],
     ["Bantō", configuredLabel(facts?.banto)],
+    ["Disruption checks", facts ? (facts.disruption_checks === "active" ? "Active" : "Not active") : "…"],
   ];
 
   return (
@@ -241,8 +242,8 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
       <p className={cx(kickerMuted, "mb-2 mt-8")}>Diary</p>
       <CalendarEditor diary={facts?.diary} />
       <p className="mb-0 mt-2 text-base leading-normal text-[var(--muted)]">
-        The diary is read-only. A Wembley shift means Wembley Park, starting from home. Shopping is names and ticks only. The journey
-        source is not connected.
+        The diary is read-only. A Wembley shift means Wembley Park, starting from home, and the return is after the finish.
+        Shopping is names and ticks only. Pre-departure disruption checks stay off until the house turns them on.
       </p>
       <XSettings />
       <StatusPanel />
