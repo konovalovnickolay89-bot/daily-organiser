@@ -124,6 +124,23 @@ def assistant_on(monkeypatch):
 
 
 @pytest.fixture
+def reminder_ai(assistant_on):
+    """A scripted completion for reminder assessment. The real client is not used."""
+    from agent_fakes import ReminderAssessor
+
+    from organiser.main import app
+    from organiser.routes.agent import get_mistral
+
+    def install(answer) -> ReminderAssessor:
+        fake = ReminderAssessor(answer)
+        app.dependency_overrides[get_mistral] = lambda: fake
+        return fake
+
+    yield install
+    app.dependency_overrides.pop(get_mistral, None)
+
+
+@pytest.fixture
 def mistral(assistant_on):
     """Install a scripted Mistral for the API: ``fake = mistral([call(...)], [say(...)])``."""
     from organiser.routes.agent import get_mistral

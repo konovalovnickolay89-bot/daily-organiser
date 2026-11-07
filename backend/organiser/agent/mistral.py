@@ -103,15 +103,19 @@ class MistralClient:
             raise MistralUnavailable("Mistral sent no embedding.")
         return [float(item) for item in vector]
 
-    def complete(self, *, model: str, messages: list[dict], max_tokens: int = 80) -> str:
-        """One short completion. Used for catch-up wording, not for an agent run."""
-        body = observe_mistral(
-            lambda: self._call(
-                "POST",
-                "/v1/chat/completions",
-                {"model": model, "temperature": 0.2, "max_tokens": max_tokens, "messages": messages},
-            )
-        )
+    def complete(
+        self,
+        *,
+        model: str,
+        messages: list[dict],
+        max_tokens: int = 80,
+        response_format: dict | None = None,
+    ) -> str:
+        """One short completion. No tools. Catch-up wording and reminder assessment use it."""
+        payload: dict = {"model": model, "temperature": 0.2, "max_tokens": max_tokens, "messages": messages}
+        if response_format is not None:
+            payload["response_format"] = response_format
+        body = observe_mistral(lambda: self._call("POST", "/v1/chat/completions", payload))
         choices = body.get("choices")
         if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
             raise MistralUnavailable("Mistral sent no note.")

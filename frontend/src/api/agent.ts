@@ -40,8 +40,9 @@ export type ReminderPreview = {
 export type LocalReminderResult = {
   prepared: number;
   reason: string;
-  calls_assistant: false;
+  calls_assistant: boolean;
   summary?: string | null;
+  assessment?: "skipped" | "unavailable" | "unreachable" | "rejected" | "declined" | "assessed";
 };
 
 export function getReminderPreview() {

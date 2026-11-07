@@ -1,19 +1,22 @@
-"""Local reminder cards. No Mistral call and no effect until Apply.
+"""Reminder cards. Rules choose the candidate. One completion decides the card.
 
 The master switch defaults off, and so does each type. Master off prepares
 nothing even when a type is saved on. Quiet hours, the daily caps, a pending
-card, and a paused house all refuse. A disabled type does not gain a new card,
-and a card already waiting is left where it is.
+card, a paused house, and an assistant that is off all refuse before any
+provider call. A disabled type is not sent. A card already waiting is left
+where it is. Apply is still a separate tap, and it only adds the assessed note.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import summarise
+from organiser.agent.mistral import MistralUnavailable
+from organiser.agent.reminder_assess import AssessmentRejected, assess
 from organiser.agent.rules import (
     PROACTIVE_HOURS,
     in_hours,
@@ -25,7 +28,7 @@ from organiser.config import Settings
 from organiser.domain import DEFAULT_OWNER
 from organiser.models import AgentProposal, AgentRun, ReminderControl
 from organiser.services.events import record_event
-from organiser.services.system import ensure_system_state
+from organiser.services.system import assistant_effective, ensure_system_state
 
 TYPE_RULES = {
     "overdue": "overdue_lingering",
@@ -38,6 +41,11 @@ TYPE_LABELS = {
     "stalled": "Stalled items",
     "upcoming": "Upcoming commitments",
 }
+UNAVAILABLE = "The assistant is off. Nothing was assessed."
+UNREACHABLE = "The assistant could not be reached. Nothing was prepared."
+REJECTED = "The assessment could not be used. Nothing was prepared."
+DECLINED = "Assessed. Nothing here was worth flagging."
+ASSESSED = "Assessed. A card is waiting. Apply adds the note."
 
 
 class TypesUnavailable(Exception):
@@ -207,17 +215,67 @@ def waiting_type_note(session: Session, flags: ReminderFlags) -> str | None:
     )
 
 
-def prepare_local_reminder(session: Session, local_now: datetime, settings: Settings) -> dict:
-    """One pending note, or a reason and nothing written. Never calls a provider."""
+def _result(
+    prepared: int,
+    reason: str,
+    *,
+    called: bool = False,
+    summary: str | None = None,
+    assessment: str = "skipped",
+) -> dict:
+    return {
+        "prepared": prepared,
+        "reason": reason,
+        "calls_assistant": called,
+        "summary": summary,
+        "assessment": assessment,
+    }
+
+
+def _assistant_on(session: Session, settings: Settings) -> bool:
+    return assistant_effective(ensure_system_state(session), settings.assistant_enabled)
+
+
+def _skipped_reason(skipped: list[str]) -> str:
+    if len(skipped) == 1:
+        return f"{TYPE_LABELS[skipped[0]]} are off. Nothing new was prepared."
+    return "Those reminder types are off. Nothing new was prepared."
+
+
+def _remembered_verdict(session: Session, local_now: datetime) -> str | None:
+    """The last finished assessment, so a reload does not call the provider again."""
+    run = session.scalars(
+        select(AgentRun)
+        .where(
+            AgentRun.trigger.in_(tuple(TYPE_RULES.values())),
+            AgentRun.status == "done",
+            AgentRun.reply.is_not(None),
+            AgentRun.finished_at >= local_now - timedelta(hours=72),
+        )
+        .order_by(AgentRun.finished_at.desc())
+        .limit(1)
+    ).first()
+    if run is None or not run.reply:
+        return None
+    return run.reply
+
+
+def prepare_local_reminder(session: Session, local_now: datetime, settings: Settings, client=None) -> dict:
+    """One assessed note, a decline, or a reason. No call until the gates pass.
+
+    The caller keeps the Decisions review off while the master switch is on, so
+    this is the only reminder pipeline. A second call for the same item version
+    does not call the provider again.
+    """
     flags = reminder_flags(session)
     if not flags.master:
-        return {"prepared": 0, "reason": "off", "calls_assistant": False}
+        return _result(0, "off")
     held = _hold(session, local_now, settings)
     if held == "A reminder is already waiting.":
         note = waiting_type_note(session, flags)
-        return {"prepared": 0, "reason": note or held, "calls_assistant": False}
+        return _result(0, note or held)
     if held:
-        return {"prepared": 0, "reason": held, "calls_assistant": False}
+        return _result(0, held)
     chosen = None
     skipped: list[str] = []
     for candidate in stale_candidates(session, local_now):
@@ -234,51 +292,126 @@ def prepare_local_reminder(session: Session, local_now: datetime, settings: Sett
         break
     if chosen is None:
         if skipped:
-            if len(skipped) == 1:
-                reason = f"{TYPE_LABELS[skipped[0]]} are off. Nothing new was prepared."
-            else:
-                reason = "Those reminder types are off. Nothing new was prepared."
-            return {"prepared": 0, "reason": reason, "calls_assistant": False}
-        return {"prepared": 0, "reason": "nothing due", "calls_assistant": False}
-    note = chosen.reason
-    changes = {"note": note, "dated": local_now.date().isoformat()}
-    row_model = None
+            return _result(0, _skipped_reason(skipped))
+        remembered = _remembered_verdict(session, local_now)
+        if remembered:
+            assessment = "declined" if remembered == DECLINED else "rejected"
+            if remembered == ASSESSED:
+                assessment = "assessed"
+            return _result(0, remembered, assessment=assessment)
+        return _result(0, "nothing due")
+    if not _assistant_on(session, settings) or client is None:
+        return _result(0, UNAVAILABLE, assessment="unavailable")
     from organiser.models import Commitment, Task
 
     model = Task if chosen.ref_type == "task" else Commitment
     row_model = session.get(model, chosen.ref_id)
-    if row_model is None:
-        return {"prepared": 0, "reason": "nothing due", "calls_assistant": False}
+    if row_model is None or outside_home(row_model.title):
+        return _result(0, "nothing due")
+    stamp = row_model.updated_at
     run = AgentRun(
         trigger=chosen.rule,
         window_key=chosen.window_key,
-        status="done",
+        status="running",
         searched=False,
         started_at=local_now,
-        finished_at=local_now,
     )
     session.add(run)
     try:
-        session.flush()
+        session.commit()
     except IntegrityError:
         session.rollback()
-        return {"prepared": 0, "reason": "already prepared", "calls_assistant": False}
+        return _result(0, "already assessed")
+    run_id = run.id
+    try:
+        verdict = assess(client, settings, chosen, local_now.date())
+    except MistralUnavailable:
+        _drop_run(session, run_id)
+        return _result(0, UNREACHABLE, called=True, assessment="unreachable")
+    except AssessmentRejected:
+        _close_run(session, run_id, local_now, REJECTED)
+        return _result(0, REJECTED, called=True, assessment="rejected")
+    blocked = _recheck(session, local_now, settings, chosen, stamp)
+    if blocked:
+        _close_run(session, run_id, local_now, blocked)
+        return _result(0, blocked, called=True, assessment="rejected")
+    if not verdict.worth_flagging:
+        _close_run(session, run_id, local_now, DECLINED)
+        return _result(0, DECLINED, called=True, assessment="declined")
+    current = session.get(model, chosen.ref_id)
+    if current is None:
+        _close_run(session, run_id, local_now, "The item changed. Nothing was prepared.")
+        return _result(0, "The item changed. Nothing was prepared.", called=True, assessment="rejected")
+    changes = {"note": verdict.next_step, "dated": local_now.date().isoformat()}
     proposal = AgentProposal(
-        run_id=run.id,
+        run_id=run_id,
         origin="proactive",
         rule=chosen.rule,
-        label="Local reminder",
+        label="Assessed reminder",
         action="add_note",
         ref_type=chosen.ref_type,
         ref_id=chosen.ref_id,
         changes=changes,
-        summary=summarise("add_note", changes, row_model),
-        reason="Prepared locally. Nothing is sent until Apply.",
-        ref_updated_at=row_model.updated_at,
+        summary=summarise("add_note", changes, current),
+        reason=verdict.rationale,
+        ref_updated_at=current.updated_at,
         status="pending",
         created_at=local_now,
         memories_used=0,
     )
     session.add(proposal)
-    session.flush()
-    return {"prepared": 1, "reason": chosen.rule, "calls_assistant": False, "summary": proposal.summary}
+    _close_run(session, run_id, local_now, None)
+    return _result(1, chosen.rule, called=True, summary=proposal.summary, assessment="assessed")
+
+
+def _recheck(session: Session, local_now: datetime, settings: Settings, chosen, stamp) -> str | None:
+    """Read the house again after the provider returns. A stale answer is not stored.
+
+    The run cap is not applied again: this call already reserved its run.
+    """
+    session.expire_all()
+    flags = reminder_flags(session)
+    if not flags.master:
+        return "Local reminders are off. Nothing was prepared."
+    if not _assistant_on(session, settings):
+        return UNAVAILABLE
+    state = ensure_system_state(session)
+    if state.paused:
+        return "The house is paused."
+    if not in_hours(local_now, PROACTIVE_HOURS):
+        return "Quiet hours. Nothing is sent."
+    from organiser.agent.rules import build_snapshot
+
+    snapshot = build_snapshot(session, local_now, settings)
+    if snapshot.proactive_today >= settings.agent_proactive_per_day:
+        return "The daily reminder cap is spent."
+    if snapshot.proactive_pending:
+        return "A reminder is already waiting."
+    name = RULE_TYPES.get(chosen.rule)
+    if name is None or not flags.type_on(name):
+        return _skipped_reason([name] if name else [])
+    from organiser.models import Commitment, Task
+
+    model = Task if chosen.ref_type == "task" else Commitment
+    row = session.get(model, chosen.ref_id)
+    if row is None or row.updated_at != stamp or outside_home(row.title):
+        return "The item changed. Nothing was prepared."
+    return None
+
+
+def _close_run(session: Session, run_id, local_now: datetime, reply: str | None) -> None:
+    run = session.get(AgentRun, run_id)
+    if run is None:
+        return
+    run.status = "done"
+    run.finished_at = local_now
+    run.reply = reply
+    session.commit()
+
+
+def _drop_run(session: Session, run_id) -> None:
+    """A provider failure does not rest the item, and it does not leave a card."""
+    run = session.get(AgentRun, run_id)
+    if run is not None and run.status == "running":
+        session.delete(run)
+    session.commit()
