@@ -94,6 +94,35 @@ def in_hours(local: datetime, hours: tuple[int, int]) -> bool:
     return hours[0] <= local.hour < hours[1]
 
 
+QUIET_HOURS = "22:00–05:59 Europe/London"
+
+
+def hold_reason(
+    local_now: datetime,
+    snapshot: Snapshot,
+    *,
+    runs_per_day: int,
+    proactive_per_day: int,
+) -> str | None:
+    """Why a reminder must not run, or None when the existing rules would allow one.
+
+    This does not start a run.
+    """
+    if snapshot.paused:
+        return "The house is paused."
+    if not snapshot.enabled:
+        return "The assistant is off."
+    if not in_hours(local_now, PROACTIVE_HOURS):
+        return "Quiet hours. Nothing is sent."
+    if snapshot.runs_today >= runs_per_day:
+        return "The daily run cap is spent."
+    if snapshot.proactive_today >= proactive_per_day:
+        return "The daily reminder cap is spent."
+    if snapshot.proactive_pending:
+        return "A reminder is already waiting."
+    return None
+
+
 def proactive_due(
     local_now: datetime,
     snapshot: Snapshot,

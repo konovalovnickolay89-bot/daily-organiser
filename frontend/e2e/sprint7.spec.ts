@@ -107,7 +107,7 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   await expect(page.getByText("Council collection moved to Friday")).toBeVisible();
   await expect(page.getByText("This draft expired")).toHaveCount(0);
 
-  const apply = page.getByRole("button", { name: "Apply Put the bins out tonight" });
+  const apply = page.getByRole("button", { name: "Keep Put the bins out tonight" });
   const applyBox = await apply.boundingBox();
   expect(applyBox?.height).toBeGreaterThanOrEqual(44);
   await apply.click();

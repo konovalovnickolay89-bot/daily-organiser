@@ -8,6 +8,8 @@ import { useHouse } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
 import { MODE_LABELS } from "../../lib/labels";
 import { usedMemoriesLabel } from "../memory/copy";
+import { ReminderPreview } from "../reminders/ReminderPreview";
+import { XCards } from "../x/XCards";
 import { useAssistant } from "./AssistantContext";
 import { orderedSteps, STEP_LABEL, type StepName } from "./steps";
 
@@ -76,21 +78,25 @@ function Ticker({
 function DecisionButtons({
   busy,
   applyDisabled = false,
+  applyLabel = "Apply",
+  dismissLabel = "Not now",
   onApply,
   onDismiss,
 }: {
   busy: boolean;
   applyDisabled?: boolean;
+  applyLabel?: string;
+  dismissLabel?: string;
   onApply: () => void;
   onDismiss: () => void;
 }) {
   return (
     <div className={actions}>
       <button type="button" className={primary} disabled={busy || applyDisabled} onClick={onApply}>
-        Apply
+        {applyLabel}
       </button>
       <button type="button" className={cx(ghost, "font-medium text-[var(--muted)]")} disabled={busy} onClick={onDismiss}>
-        Not now
+        {dismissLabel}
       </button>
     </div>
   );
@@ -188,39 +194,58 @@ function DecisionList({ hideEmpty }: { hideEmpty: boolean }) {
   }
 
   const waiting = approvals ?? [];
-  if (approvals === null && !approvalError) return null;
-  if (proposals.length === 0 && waiting.length === 0) {
-    if (hideEmpty) return null;
-    return <p className={empty}>Nothing is waiting.</p>;
-  }
   return (
-    <>
-      {approvalError && (
-        <p className={errorText} role="alert">
-          {approvalError.message}
-        </p>
-      )}
-      <ul className="m-0 mt-2 grid list-none gap-4 p-0" data-surface="decisions">
-        {waiting.map((item) => (
-          <li key={`approval-${item.id}`} className={cx(inset, "proposal-card")} data-kind="approval">
-            <p className={cx(kickerAccent, "mb-2")}>{MODE_LABELS[item.mode] ?? item.mode}</p>
-            <h3 className={subheading}>{item.title}</h3>
-            {item.detail && <p className={cx(meta, "mt-2 [overflow-wrap:anywhere]")}>{item.detail}</p>}
-            {item.mode === "execute" && <p className={cx(meta, "mt-2")}>Applying records the decision only. Nothing is sent.</p>}
-            <DecisionButtons busy={busyId === item.id} onApply={() => void decideApproval(item, "apply")} onDismiss={() => void decideApproval(item, "not-now")} />
-          </li>
-        ))}
-        {proposals.map((proposal) => (
-          <ProposalCard
-            key={`proposal-${proposal.id}`}
-            proposal={proposal}
-            busy={pendingId === proposal.id}
-            onApply={(memoryIds) => void decide(proposal, "apply", memoryIds)}
-            onDismiss={() => void decide(proposal, "dismiss")}
-          />
-        ))}
-      </ul>
-    </>
+    <XCards
+      render={(x) => {
+        if (approvals === null && !approvalError) return null;
+        const nothing = proposals.length === 0 && waiting.length === 0 && x.empty && !x.loading;
+        if (nothing) {
+          if (hideEmpty) return null;
+          return <p className={empty}>Nothing is waiting.</p>;
+        }
+        return (
+          <>
+            {approvalError && (
+              <p className={errorText} role="alert">
+                {approvalError.message}
+              </p>
+            )}
+            {x.notice}
+            {x.error}
+            <ul className="m-0 mt-2 grid list-none gap-4 p-0" data-surface="decisions">
+              {waiting.map((item) => (
+                <li key={`approval-${item.id}`} className={cx(inset, "proposal-card")} data-kind="approval">
+                  <p className={cx(kickerAccent, "mb-2")}>{MODE_LABELS[item.mode] ?? item.mode}</p>
+                  <h3 className={subheading}>{item.title}</h3>
+                  {item.detail && <p className={cx(meta, "mt-2 [overflow-wrap:anywhere]")}>{item.detail}</p>}
+                  {item.mode === "execute" && (
+                    <p className={cx(meta, "mt-2")}>Approve records the decision only. Nothing is sent.</p>
+                  )}
+                  <DecisionButtons
+                    busy={busyId === item.id}
+                    applyLabel="Approve"
+                    dismissLabel="Not now"
+                    onApply={() => void decideApproval(item, "apply")}
+                    onDismiss={() => void decideApproval(item, "not-now")}
+                  />
+                </li>
+              ))}
+              {proposals.map((proposal) => (
+                <ProposalCard
+                  key={`proposal-${proposal.id}`}
+                  proposal={proposal}
+                  busy={pendingId === proposal.id}
+                  onApply={(memoryIds) => void decide(proposal, "apply", memoryIds)}
+                  onDismiss={() => void decide(proposal, "dismiss")}
+                />
+              ))}
+              {x.rows}
+            </ul>
+            {x.dialog}
+          </>
+        );
+      }}
+    />
   );
 }
 
@@ -253,10 +278,16 @@ export function AssistantResult({ heading: showHeading = true }: { heading?: boo
         </p>
       )}
       {showHeading ? (
-        <SectionHeader id="reasoning-proposals-title" title="Decisions" divided note="Apply or not now. Nothing is sent, bought, or booked." />
+        <SectionHeader
+          id="reasoning-proposals-title"
+          title="Decisions"
+          divided
+          note="One queue. Approve, Apply, Keep, or Post names the action. Nothing is sent unless you confirm a post."
+        />
       ) : (
         <div className="mt-2" />
       )}
+      <ReminderPreview />
       <div>
         {loading && <LoadingSkeleton label="Looking for decisions…" />}
         {reviewing && <p className={empty}>Looking over the log…</p>}

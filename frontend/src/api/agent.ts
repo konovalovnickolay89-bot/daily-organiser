@@ -7,6 +7,43 @@ export function getAgent() {
   return request<AgentState>("/agent");
 }
 
+export type ReminderCandidate = {
+  rule: string;
+  title: string;
+  reason: string;
+};
+
+export type ReminderPreview = {
+  calls_assistant: false;
+  label: string;
+  quiet: boolean;
+  quiet_hours: string;
+  runs_left_today: number;
+  proactive_left_today: number;
+  cap_runs: number;
+  cap_proactive: number;
+  due: AgentDue | null;
+  held_because: string | null;
+  candidates: ReminderCandidate[];
+  note: string;
+  local_reminders: "on" | "off";
+};
+
+export type LocalReminderResult = {
+  prepared: number;
+  reason: string;
+  calls_assistant: false;
+  summary?: string | null;
+};
+
+export function getReminderPreview() {
+  return request<ReminderPreview>("/agent/preview");
+}
+
+export function prepareLocalReminders() {
+  return request<LocalReminderResult>("/agent/reminders", { method: "POST" });
+}
+
 export type ActivityLine = {
   id: string;
   at: string;

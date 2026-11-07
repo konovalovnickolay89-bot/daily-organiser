@@ -344,6 +344,56 @@ def test_get_memory_does_not_embed(client, monkeypatch):
     assert client.get("/agent").status_code == 200
 
 
+def test_recall_keeps_the_stamped_line_among_similar_lines(db):
+    now = london(2026, 11, 6, 9, 0)
+    stamp = "8844223311"
+    for index in range(12):
+        db.add(
+            MemoryItem(
+                kind="fact",
+                text=f"the cupboard holds the spare kettle {index}",
+                source="manual",
+                created_at=now,
+            )
+        )
+    milk = f"the cupboard {stamp} holds the spare bowls"
+    tea = f"the cupboard {stamp} holds the tea towels"
+    db.add(MemoryItem(kind="fact", text=milk, source="remember", created_at=now))
+    db.flush()
+    slot = build_context(
+        db,
+        purpose="smart_add",
+        now=now,
+        query=f"remember the cupboard {stamp} holds the tea towels",
+    ).memory
+    assert [item.text for item in slot.items] == [milk]
+    db.add(MemoryItem(kind="fact", text=tea, source="remember", created_at=now))
+    db.flush()
+    from organiser.agent.memory import matching_to_forget
+
+    forgotten = matching_to_forget(db, f"cupboard {stamp}")
+    assert {row.text for row in forgotten} == {milk, tea}
+
+
+def test_keyword_search_ranks_shared_words_and_does_not_embed(client, monkeypatch):
+    assert client.post("/memory", json={"kind": "fact", "text": "The milk stays in the door"}).status_code == 201
+    assert client.post("/memory", json={"kind": "fact", "text": "Paint the door"}).status_code == 201
+
+    def boom(text):
+        raise AssertionError(text)
+
+    monkeypatch.setattr("organiser.routes.memory.embed_query", boom)
+    monkeypatch.setattr("organiser.agent.memory.embed_query", boom)
+    found = client.get("/memory", params={"q": "milk door"})
+    assert found.status_code == 200
+    body = found.json()
+    assert body["search"] == "keyword"
+    assert [item["text"] for item in body["items"]] == ["The milk stays in the door", "Paint the door"]
+    listed = client.get("/memory")
+    assert listed.json()["search"] == "list"
+    assert "embedding" not in found.text
+
+
 def test_embed_query_without_a_key_is_quiet(monkeypatch):
     monkeypatch.setenv("MISTRAL_API_KEY", "")
     get_settings.cache_clear()

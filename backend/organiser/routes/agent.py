@@ -25,6 +25,7 @@ from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.context import ContextEntry, build_context
+from organiser.agent.local_reminders import prepare_local_reminder, reminders_enabled
 from organiser.agent.memory import (
     MEMORY_TEXT_LIMIT,
     classify_kind,
@@ -37,11 +38,14 @@ from organiser.agent.runner import outside_home
 from organiser.agent.rules import (
     FEED_LABEL,
     FEED_PROPOSALS,
+    QUIET_HOURS,
     Due,
     build_snapshot,
+    hold_reason,
     house_day_bounds,
     proactive_due,
     runs_today,
+    stale_candidates,
 )
 from organiser.agent.runner import RunFailed, RunResult, feed_packet, iter_run, morning_packet, stale_packet
 from organiser.agent.service import (
@@ -68,9 +72,12 @@ from organiser.schemas import (
     DueRead,
     FeedRequest,
     LastReply,
+    LocalReminderResult,
     MemoryMatch,
     ProposalIngest,
     ProposalRead,
+    ReminderPreview,
+    PreviewCandidate,
     ReviewRequest,
 )
 from organiser.services.activity import list_activity, record_line
@@ -202,7 +209,59 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
         if last
         else None,
         proposals=proposals,
+        local_reminders="on" if reminders_enabled(session) else "off",
     )
+
+
+@router.get("/preview", response_model=ReminderPreview)
+def reminder_preview(session: Session = Depends(get_db)) -> ReminderPreview:
+    """What the existing rules would allow. Does not call Mistral or start a review."""
+    settings = get_settings()
+    local_now = _local_now()
+    ensure_system_state(session)
+    session.commit()
+    due, snapshot = _due(session, local_now)
+    held = hold_reason(
+        local_now,
+        snapshot,
+        runs_per_day=settings.agent_runs_per_day,
+        proactive_per_day=settings.agent_proactive_per_day,
+    )
+    candidates: list[PreviewCandidate] = []
+    for candidate in stale_candidates(session, local_now):
+        if outside_home(candidate.title):
+            continue
+        candidates.append(
+            PreviewCandidate(rule=candidate.rule, title=candidate.title, reason=candidate.reason)
+        )
+        if len(candidates) == 3:
+            break
+    quiet = held == "Quiet hours. Nothing is sent."
+    return ReminderPreview(
+        calls_assistant=False,
+        quiet=quiet,
+        quiet_hours=QUIET_HOURS,
+        runs_left_today=max(0, settings.agent_runs_per_day - snapshot.runs_today),
+        proactive_left_today=max(0, settings.agent_proactive_per_day - snapshot.proactive_today),
+        cap_runs=settings.agent_runs_per_day,
+        cap_proactive=settings.agent_proactive_per_day,
+        due=DueRead(trigger=due.trigger, window_key=due.window_key, label=due.label) if due else None,
+        held_because=held,
+        candidates=candidates,
+        note=(
+            "Preview. Nothing is sent, and this reading does not call the assistant. "
+            "Local cards are prepared only when the house switch is on."
+        ),
+        local_reminders="on" if reminders_enabled(session) else "off",
+    )
+
+
+@router.post("/reminders", response_model=LocalReminderResult)
+def prepare_reminders(session: Session = Depends(get_db)) -> LocalReminderResult:
+    """Prepare one local card when the switch is on. Does not call Mistral."""
+    result = prepare_local_reminder(session, _local_now(), get_settings())
+    session.commit()
+    return LocalReminderResult.model_validate(result)
 
 
 @router.get("/activity", response_model=ActivityList)

@@ -155,6 +155,22 @@ class SystemState(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class ReminderControl(Base):
+    """House switch for local reminder cards. Off until someone turns it on.
+
+    The row is not created by a boot patch. Alembic ``reminder_switch_off`` is
+    the reviewable migration and is not applied from this process. ``create_all``
+    on a fresh database creates the table with ``enabled`` false.
+    """
+
+    __tablename__ = "reminder_control"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_reminder_control_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class AgentRun(Base):
     """One run of the Mistral assistant. The house keeps what went in and what came back.
 

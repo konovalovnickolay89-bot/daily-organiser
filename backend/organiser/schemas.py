@@ -234,6 +234,8 @@ class HouseFacts(APIModel):
     voice_input: str
     # Pre-departure disruption checks. "not active" until the house flag is set.
     disruption_checks: str
+    # Local reminder cards. Off until a person saves the switch.
+    local_reminders: str = "off"
 
 
 class AssistantSwitch(BaseModel):
@@ -369,6 +371,9 @@ class MemoryRead(APIModel):
 
 
 class MemoryList(APIModel):
+    """``search`` is ``list`` or ``keyword``. Keyword does not call a model."""
+
+    search: str = "list"
     items: list[MemoryRead]
 
 
@@ -381,6 +386,41 @@ class DueRead(APIModel):
     trigger: AgentTrigger
     window_key: str
     label: str
+
+
+class PreviewCandidate(APIModel):
+    """One line the existing rules would consider. A title from the house log."""
+
+    rule: str
+    title: str
+    reason: str
+
+
+class ReminderPreview(APIModel):
+    """A reading of the reminder rules. ``calls_assistant`` stays false."""
+
+    calls_assistant: bool = False
+    label: str = "Preview"
+    quiet: bool
+    quiet_hours: str
+    runs_left_today: int
+    proactive_left_today: int
+    cap_runs: int
+    cap_proactive: int
+    due: DueRead | None = None
+    held_because: str | None = None
+    candidates: list[PreviewCandidate]
+    note: str
+    local_reminders: str = "off"
+
+
+class LocalReminderResult(APIModel):
+    """Result of one local prepare. ``calls_assistant`` stays false."""
+
+    prepared: int
+    reason: str
+    calls_assistant: bool = False
+    summary: str | None = None
 
 
 class LastReply(APIModel):
@@ -400,6 +440,7 @@ class AgentState(APIModel):
     proactive_left_today: int
     last_reply: LastReply | None
     proposals: list[ProposalRead]
+    local_reminders: str = "off"
 
 
 class AgentResult(APIModel):

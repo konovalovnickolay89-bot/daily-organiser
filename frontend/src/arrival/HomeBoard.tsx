@@ -15,7 +15,6 @@ import { MorningBrief } from "../modules/brief/MorningBrief";
 import { CommuteDetail, commuteOverview } from "../modules/commute/CommutePlan";
 import { LineStatusDetail, lineOverview } from "../modules/lines/LineStatusPanel";
 import { TodayList } from "../modules/tasks/TodayList";
-import { XCards } from "../modules/x/XCards";
 import { card, cx, heading, lede } from "./ui";
 
 const STORAGE = "organiser-home-open";
@@ -227,12 +226,7 @@ export function HomeBoard() {
         {open === "lines" && <LineStatusDetail status={lines} error={linesError} />}
         {open === "today" && <TodayList />}
         {open === "proposals" && <AssistantPane />}
-        {open === "decisions" && (
-          <div className="grid gap-6">
-            <ReasoningPane />
-            <XCards />
-          </div>
-        )}
+        {open === "decisions" && <ReasoningPane />}
       </section>
     </div>
   );

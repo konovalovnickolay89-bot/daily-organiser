@@ -93,6 +93,7 @@ export type AgentState = {
   proposals: Proposal[];
   due: AgentDue | null;
   last_reply: { text: string } | null;
+  local_reminders?: "on" | "off";
 };
 
 export type ApprovalItem = {
@@ -128,6 +129,7 @@ export type HouseFacts = {
   banto: "configured" | "not configured";
   voice_input?: "on" | "off";
   disruption_checks?: "active" | "not active";
+  local_reminders?: "on" | "off";
 };
 
 export type XMeter = {

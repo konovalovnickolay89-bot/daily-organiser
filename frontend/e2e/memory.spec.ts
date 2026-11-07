@@ -73,12 +73,33 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
 
   const kept = memory.locator("[data-memory]", { hasText: tea });
   await kept.getByRole("button", { name: "Forget" }).click();
-  await expect(memory.getByText("Forget this memory? It is removed from the house.")).toBeVisible();
+  await expect(kept.getByText(`Forget “${tea}”?`)).toBeVisible();
   await kept.getByRole("button", { name: "Keep" }).click();
   await expect(memory.getByText(tea)).toBeVisible();
   await kept.getByRole("button", { name: "Forget" }).click();
   await kept.getByRole("button", { name: "Forget" }).click();
   await expect(memory.getByText(tea)).toHaveCount(0);
+});
+
+test("a stamped line is the one recalled when similar lines already exist", async ({ page, request }) => {
+  const stamp = Date.now();
+  const milk = `the cupboard ${stamp} holds the spare bowls`;
+  const tea = `the cupboard ${stamp} holds the tea towels`;
+  expect((await request.post("/memory", { data: { kind: "fact", text: milk } })).ok()).toBeTruthy();
+  for (let index = 0; index < 12; index += 1) {
+    const created = await request.post("/memory", {
+      data: { kind: "fact", text: `the cupboard holds the spare pantry${stamp} ${index}` },
+    });
+    expect(created.ok()).toBeTruthy();
+  }
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
+  await page.getByLabel("Add to the log").fill(`remember ${tea}`);
+  await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
+  const second = page.locator("[data-kind='proposal']", { hasText: `Remember: ${tea}` });
+  await expect(second.getByText("Used 1 memory")).toBeVisible();
 });
 
 async function showTheBox(page: Page) {

@@ -47,9 +47,13 @@ describe("Memory screen", () => {
     await waitFor(() => expect(pinMemory).toHaveBeenCalledWith("m1", true));
     expect(screen.getByRole("button", { name: "Unpin" }).getAttribute("aria-pressed")).toBe("true");
 
+    fireEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    expect(screen.getByText("Source")).toBeTruthy();
+    expect(screen.getByText("remember")).toBeTruthy();
+
     fireEvent.click(screen.getByRole("button", { name: "Forget" }));
     expect(forgetMemory).not.toHaveBeenCalled();
-    expect(screen.getByText("Forget this memory? It is removed from the house.")).toBeTruthy();
+    expect(screen.getByText(/Forget “The milk stays in the door”/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Forget" }));
     await waitFor(() => expect(forgetMemory).toHaveBeenCalledWith("m1"));
     await waitFor(() => expect(screen.queryByText("The milk stays in the door")).toBeNull());

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { applyXItem, dismissXItem, listXItems, pollX, postXDraft, type XCard } from "../../api/x";
 import { actions, cx, dialog, empty, errorText, ghost, heading, inset, kickerAccent, lede, meta, primary, subheading } from "../../arrival/ui";
 import { useHouseTick } from "../../house/HouseContext";
@@ -55,11 +55,21 @@ function ConfirmPost({
   );
 }
 
+type XSlots = {
+  rows: ReactNode;
+  dialog: ReactNode;
+  notice: ReactNode;
+  error: ReactNode;
+  empty: boolean;
+  loading: boolean;
+};
+
 /**
- * Bookmark and watch cards take Apply or Not now. A draft takes Post, then a confirm.
- * Nothing is posted from this list on its own.
+ * Bookmark and watch cards take Keep or Not now. Keep writes the line into this log.
+ * A draft takes Post, then a confirm that shows the stored text. Nothing is posted
+ * from this list on its own. `render` places the rows in the one waiting list.
  */
-export function XCards() {
+export function XCards({ render }: { render?: (slots: XSlots) => ReactNode }) {
   const tick = useHouseTick();
   const [items, setItems] = useState<XCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,8 +103,7 @@ export function XCards() {
 
   const now = Date.now();
   const waiting = (items ?? []).filter((item) => stillWaiting(item, now));
-  if (items === null && !error) return null;
-  if (waiting.length === 0 && !error && !notice) return null;
+  const loading = items === null && !error;
 
   async function decide(item: XCard, action: "apply" | "dismiss") {
     setBusyId(item.id);
@@ -127,67 +136,80 @@ export function XCards() {
     }
   }
 
+  const rows = waiting.map((item) => (
+    <li key={item.id} className={inset} data-x-kind={item.kind} data-kind="x">
+      <p className={cx(kickerAccent, "mb-2")}>{LABEL[item.kind]}</p>
+      <h3 className={subheading}>{item.summary}</h3>
+      {item.detail && <p className={cx(meta, "mt-2 [overflow-wrap:anywhere]")}>{item.detail}</p>}
+      <div className={actions}>
+        {item.kind === "draft" ? (
+          <button
+            type="button"
+            className={primary}
+            disabled={busyId === item.id}
+            aria-label={`Post ${item.summary}`}
+            onClick={() => setPosting(item)}
+          >
+            Post
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={primary}
+            disabled={busyId === item.id}
+            aria-label={`Keep ${item.summary}`}
+            onClick={() => void decide(item, "apply")}
+          >
+            Keep
+          </button>
+        )}
+        <button
+          type="button"
+          className={cx(ghost, "font-medium text-[var(--muted)]")}
+          disabled={busyId === item.id}
+          aria-label={`Not now ${item.summary}`}
+          onClick={() => void decide(item, "dismiss")}
+        >
+          Not now
+        </button>
+      </div>
+    </li>
+  ));
+  const dialog = posting ? (
+    <ConfirmPost
+      summary={posting.summary}
+      busy={busyId === posting.id}
+      error={postError}
+      onPost={() => void confirmPost()}
+      onClose={() => {
+        setPosting(null);
+        setPostError(null);
+      }}
+    />
+  ) : null;
+  const noticeNode = notice ? <p className={cx(empty, "mb-4")}>{notice}</p> : null;
+  const errorNode = error ? (
+    <p className={errorText} role="alert">
+      {error}
+    </p>
+  ) : null;
+  const slots: XSlots = {
+    rows,
+    dialog,
+    notice: noticeNode,
+    error: errorNode,
+    empty: !loading && waiting.length === 0 && !error && !notice,
+    loading,
+  };
+  if (render) return render(slots);
+  if (loading) return null;
+  if (slots.empty) return null;
   return (
     <section className="mt-8" aria-label="From X" data-module="x-cards">
-      {notice && <p className={cx(empty, "mb-4")}>{notice}</p>}
-      {error && (
-        <p className={errorText} role="alert">
-          {error}
-        </p>
-      )}
-      <ul className="m-0 grid list-none gap-4 p-0">
-        {waiting.map((item) => (
-          <li key={item.id} className={inset} data-x-kind={item.kind}>
-            <p className={cx(kickerAccent, "mb-2")}>{LABEL[item.kind]}</p>
-            <h3 className={subheading}>{item.summary}</h3>
-            {item.detail && <p className={cx(meta, "mt-2 [overflow-wrap:anywhere]")}>{item.detail}</p>}
-            <div className={actions}>
-              {item.kind === "draft" ? (
-                <button
-                  type="button"
-                  className={primary}
-                  disabled={busyId === item.id}
-                  aria-label={`Post ${item.summary}`}
-                  onClick={() => setPosting(item)}
-                >
-                  Post
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={primary}
-                  disabled={busyId === item.id}
-                  aria-label={`Apply ${item.summary}`}
-                  onClick={() => void decide(item, "apply")}
-                >
-                  Apply
-                </button>
-              )}
-              <button
-                type="button"
-                className={cx(ghost, "font-medium text-[var(--muted)]")}
-                disabled={busyId === item.id}
-                aria-label={`Not now ${item.summary}`}
-                onClick={() => void decide(item, "dismiss")}
-              >
-                Not now
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {posting && (
-        <ConfirmPost
-          summary={posting.summary}
-          busy={busyId === posting.id}
-          error={postError}
-          onPost={() => void confirmPost()}
-          onClose={() => {
-            setPosting(null);
-            setPostError(null);
-          }}
-        />
-      )}
+      {noticeNode}
+      {errorNode}
+      <ul className="m-0 grid list-none gap-4 p-0">{rows}</ul>
+      {dialog}
     </section>
   );
 }
