@@ -1,6 +1,8 @@
 # Evidence for the public drafts
 
-Reviewed on 7 November 2026 from `origin/main` at `d306b57`. No Google call was made. The live refresh token, the live database, Cloudflare logs, and disk encryption were not inspected. Where the source is silent, the public pages say so.
+Reviewed again on 7 November 2026 after merging `origin/main` at `e5ce5d1` (PR 27, transcription model default). No Google, TfL, or Mistral call was made. The live refresh token, the live database, Cloudflare logs, and disk encryption were not inspected. Where the source is silent, the public pages say so.
+
+PR 27 changes the default of `mistral_transcribe_model` from `voxtral-mini` to `voxtral-mini-transcribe-3`, and Compose sends that default when the variable is unset. A set value is still what is sent. Diary code, `morning_packet`, and the Mistral packet shape are not in that diff. The privacy page now names the new default. It does not change the calendar claims.
 
 ## What the calendar code does
 

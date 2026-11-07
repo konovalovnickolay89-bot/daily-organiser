@@ -16,7 +16,7 @@ Use a new hostname, on the domain already owned, whose only origin is the three 
 
 `apidiscoverysolution.uk` is the top private domain to register as a Google authorized domain, if it is not already. This draft did not open Search Console or the Cloud console, so that registration is unknown.
 
-The files in this directory are the drafts. The app does not serve `docs/`. `backend/organiser/main.py` mounts the built UI at `/` only when `frontend/dist` exists. These HTML files are not part of that build.
+The three HTML files are the publication text, including the approved support email. They are in git only. The app does not serve `docs/`. `backend/organiser/main.py` mounts the built UI at `/` only when `frontend/dist` exists. These HTML files are not part of that build. The hostname is still PROPOSED: it does not resolve because of this work.
 
 ### Why a separate hostname
 
@@ -28,7 +28,7 @@ A dedicated hostname can have no route to `127.0.0.1:8080`, no database, and no 
 
 ### What the public origin must contain
 
-Only the approved HTML. After approval, the published copy drops the draft banner. Until that yes, the banner stays in git.
+Only the three publication HTML files: `index.html`, `privacy.html`, and `terms.html`. Do not upload this markdown, the evidence notes, or the rest of the repository. The HTML no longer carries a draft banner. The support email on those pages is `mykolakonovalov@gmail.com`, which is approved for that public contact and for the consent-screen user-support field. That approval does not create this host.
 
 The origin must not contain:
 
@@ -50,30 +50,41 @@ Suggested response headers, only on this static host:
 
 A request for `/favicon.ico`, `/health`, `/brief/morning`, `/docs`, or `/assets/` should be a 404 from this origin, not a forward to the app.
 
-## Two ways to host it, both waiting on a yes
+## One host, and it is not set up
 
-Both keep the app host unchanged. Neither is set up here.
+Cloudflare Pages, with a project that contains only those three HTML files, on the hostname `organiser-info.apidiscoverysolution.uk`.
 
-**Static host with no path to the app (preferred).** Put only the HTML on a static host (for example Cloudflare Pages or an equivalent bucket) and attach the proposed hostname. The app tunnel and the Access application are not edited. A wrong setting on the info host cannot reach port 8080, because that host has no such route. The HTML is public by design and contains no calendar data and no secrets. This does store the public HTML with that static host.
+That is the lowest-exposure option because the pages have no tunnel, no process, and no route that can be pointed at `127.0.0.1:8080`. discovery-system already operates Cloudflare for `apidiscoverysolution.uk`. This plan does not add a second DNS provider, a house port, or an Access bypass. It does not state a price. Whether the existing Cloudflare account can hold a static project is for discovery-system to know. No paid add-on is requested.
 
-**Separate process on the house, own tunnel route.** Serve only this directory from a process bound to `127.0.0.1` on a port that is not 8080 and not 5432. Add a tunnel public hostname whose only service is that port. Do not attach Access. The failure mode is an ingress rule pointed at 8080 by mistake, which is why the static host above is the smaller exposure. Compose must still not publish Postgres.
+A house process behind a new tunnel route can be aimed at the API by a bad ingress rule. A public path on `organiser.apidiscoverysolution.uk` needs an Access bypass. Neither is the recommendation.
 
-A public path on the existing app hostname is the option not recommended. It is not safer than either of the two above.
+### Resources discovery-system would create, after a separate yes
 
-## Future changes that need a separate yes
+None of this is created here.
 
-None of these are done in this branch.
+| Resource | What it is |
+| --- | --- |
+| Pages project | A new static project. Suggested name `organiser-info`. Contents are only `index.html`, `privacy.html`, and `terms.html`. Not the git repository. |
+| DNS record | `organiser-info.apidiscoverysolution.uk` pointed at that Pages project. Leave the `organiser` record alone. Leave `organiser.grok.me` alone. |
+| TLS | The certificate Cloudflare already issues for names in this zone. No separate certificate product is requested. |
+| Access | No Access application on `organiser-info`. The Access application on `organiser.apidiscoverysolution.uk` stays, including `/health` and `/brief/morning`. |
+| Headers | The static-host headers listed above. No cookies. |
 
-1. Approve the words, including whether the terms page is published at all. Choose the support address. Remove the draft banner only in the copy that will be published.
-2. DNS for `organiser-info` under `apidiscoverysolution.uk`. This is a Cloudflare DNS change. Do not change `organiser`, and do not change `organiser.grok.me`.
-3. Stand up the static origin in one of the two ways above. Do not point it at the API.
-4. Confirm there is **no** Cloudflare Access application on `organiser-info`. Confirm the existing Access application on `organiser.apidiscoverysolution.uk` is still in place, including `/health` and `/brief/morning`.
-5. In Google Search Console, verify the domain with an account that is an Owner or Editor of the Cloud project. Unknown whether this is already done.
-6. In the Google Auth Platform, add the authorized domain `apidiscoverysolution.uk` before saving homepage, privacy, or terms URLs. Unknown whether this is already done.
-7. After the URLs return the real pages with no login, paste them into the App domain fields. The privacy URL on the homepage and the privacy URL in the console must match, including `https`, the host, and `.html`.
-8. The console still needs a user-support email that Google will show on the consent screen. It has to be the logged-in user or a Google Group they manage. Do not invent one. Do not put it on the page until the same address is approved for publication.
-9. Branding verification is a console action (Verify branding, then Publish branding within 7 days if it passes). Data-access verification for the scopes is a second step and can ask for more material, including a demo video. This draft does not start either step.
-10. An in-app link to the published privacy policy is still missing. Google’s branding page asks for a privacy notice in the product. That would be a later change to the household UI, behind Access, and it is out of scope here.
+### Approval gate for discovery-system
+
+The support-email approval does not authorize discovery-system to do this. A later yes has to name this Pages project, this hostname, and the three files, and it has to say the app tunnel and the Access application are untouched. Until that yes, do not create the project or the DNS record.
+
+## Other yeses, separate from the email
+
+The email `mykolakonovalov@gmail.com` is approved as the public support contact and as the value for the consent-screen user-support field. It is not approval for the rows below.
+
+1. discovery-system creates the Pages project and the DNS record, as above.
+2. Run the access tests in the next section. They are not run here.
+3. In Google Search Console, verify `apidiscoverysolution.uk` with an account that is an Owner or Editor of the Cloud project. Unknown whether this is already done.
+4. In the Google Auth Platform, add the authorized domain `apidiscoverysolution.uk` before saving the homepage, privacy, or terms URLs. Unknown whether this is already done.
+5. After the tests pass, paste the three URLs into the App domain fields. The privacy URL on the homepage and the privacy URL in the console must match, including `https`, the host, and `.html`. Pasting and clicking Verify branding or Publish branding is a Google authorization. It is not given here.
+6. Branding verification can then be started in the console (Verify branding, then Publish branding within 7 days if it passes). Data-access verification for the scopes is a second step and can ask for more, including a demo. Neither is started here.
+7. The in-app privacy link in `IN_APP_NOTICE.md` waits until the privacy URL returns 200 with no Access login. It is not in the app.
 
 ## Access tests, after a host exists
 
@@ -119,7 +130,7 @@ Fetched 7 November 2026. These drafts do not claim the app will pass.
 | [Manage OAuth App Branding](https://support.google.com/cloud/answer/15549049?hl=en) | External production apps need a homepage, a privacy policy, and a terms link. Homepage on a verified domain you own, describes the app, is not only a login, and links to the same privacy URL as the consent screen. | Pages are written. Domain is not verified here. URLs are PROPOSED and not live. |
 | Same page | Privacy policy on the homepage’s domain, discloses how Google user data is accessed, used, stored, and shared, and matches Limited Use. In-product notice. Kept up to date. | Privacy page discloses the reviewed behaviour. In-product notice is not in the app. No certification of Limited Use. |
 | Same page | Branding verification is separate from data-access verification. Published branding is required before scope verification. A pass must be published within 7 days. | Not started. |
-| [OAuth 2.0 Policies](https://developers.google.com/identity/protocols/oauth2/policies) (modified 5 August 2026) | Production homepage must be public and must link to terms and a privacy policy, on a verified domain. | Same gap: not hosted yet. Terms page is a draft, not counsel. |
+| [OAuth 2.0 Policies](https://developers.google.com/identity/protocols/oauth2/policies) (modified 5 August 2026) | Production homepage must be public and must link to terms and a privacy policy, on a verified domain. | Pages link to each other. Not hosted yet. Terms set no court, liability cap, or warranty. |
 | Same policy | Store tokens encrypted at rest. Revoke them when no longer needed, then delete them. Do not send tokens in plaintext. | The app refreshes over an HTTPS URL. It does **not** encrypt the Google refresh token at rest and it has no revoke-and-delete flow. Disclosed as a gap. Not fixed here. |
 | Same policy | Personal use (not shared, or under 100 people the operator knows) is not their definition of a production app. Sensitive scopes in a production app need verification. | Nick chose External and is blocked on the branding links. This plan does not rely on a personal-use exception. Whether Google will treat the project as production was not confirmed in the console. |
 | [Sensitive scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification) | Reading Calendar events is given as an example of a sensitive scope. Brand verification comes first. The console may ask for more, including a demo. | Scope badges inside the project were not opened. No demo was made. |
@@ -128,12 +139,8 @@ Fetched 7 November 2026. These drafts do not claim the app will pass.
 
 Publishing the pages does not submit the app, and a public page does not mean Google will verify the brand or the scopes.
 
-## Approvals still open
+## Approvals
 
-- The exact sentences, including the terms page.
-- A support address that may be published, and the console user-support email (they should be the same once chosen).
-- Whether the consent-screen name stays “Daily Organiser bot”. The pages use that name and say it is not a chat. A misleading name can fail branding review. Renaming it in Google is a console change, not done here.
-- Which host (static site, or a house process) and the DNS yes.
-- Search Console verification and the authorized domain, if they are not already done.
-- Whether to add an in-app privacy link later.
-- Whether to encrypt and add a real Google revoke-and-delete path later. That would be a code change, and it is not this branch.
+Approved: `mykolakonovalov@gmail.com` as the public support email for Daily Organiser bot, on these pages and as the consent-screen user-support value. The consent-screen name stays Daily Organiser bot.
+
+Not approved by that email: the Pages project, the DNS record, Access changes, pasting URLs into Google, Verify branding, Publish branding, scope verification, token minting, or the in-app link. Encrypting the Google refresh token and adding a revoke-and-delete path would be a later code change. It is not this branch.
