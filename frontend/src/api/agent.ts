@@ -26,10 +26,22 @@ export type ReminderPreview = {
   held_because: string | null;
   candidates: ReminderCandidate[];
   note: string;
+  local_reminders: "on" | "off";
+};
+
+export type LocalReminderResult = {
+  prepared: number;
+  reason: string;
+  calls_assistant: false;
+  summary?: string | null;
 };
 
 export function getReminderPreview() {
   return request<ReminderPreview>("/agent/preview");
+}
+
+export function prepareLocalReminders() {
+  return request<LocalReminderResult>("/agent/reminders", { method: "POST" });
 }
 
 export type ActivityLine = {

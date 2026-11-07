@@ -49,6 +49,12 @@ def _configured(flag: bool) -> str:
     return "configured" if flag else "not configured"
 
 
+def _local_reminders(session: Session) -> bool:
+    from organiser.agent.local_reminders import reminders_enabled
+
+    return reminders_enabled(session)
+
+
 @router.get("", response_model=SystemRead)
 def get_system(session: Session = Depends(get_db)) -> SystemRead:
     return _read(session)
@@ -77,6 +83,7 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
         banto=_configured(settings.banto_configured),
         voice_input="on" if settings.voice_input_enabled else "off",
         disruption_checks="active" if settings.commute_disruption_checks else "not active",
+        local_reminders="on" if _local_reminders(session) else "off",
     )
 
 
@@ -106,6 +113,16 @@ def status(session: Session = Depends(get_db)) -> StatusRead:
         database_bytes=size,
         x=meter_view(session, enabled=get_settings().x_enabled, now=now),
     )
+
+
+@router.post("/local-reminders", response_model=HouseFacts)
+def set_local_reminders(payload: AssistantSwitch, session: Session = Depends(get_db)) -> HouseFacts:
+    """Save the local reminder switch. Off prepares nothing and calls no provider."""
+    from organiser.agent.local_reminders import set_reminders_enabled
+
+    set_reminders_enabled(session, payload.enabled, house_clock.current_time())
+    session.commit()
+    return house_facts(session)
 
 
 @router.post("/assistant", response_model=HouseFacts)

@@ -210,6 +210,28 @@ def rank_keywords(rows: list[MemoryItem], query: str) -> list[MemoryItem]:
     return matched
 
 
+def keep_best_overlap(query: str, rows: list[MemoryItem]) -> list[MemoryItem]:
+    """Keep lines that contain the rarest query word.
+
+    A word in one stored line is sharper than a word in many. Several lines
+    may share that rarest word; they stay together. If no word distinguishes
+    the set, the list is unchanged, so a vector match is not dropped.
+    """
+    words = list(tokens(query))
+    if len(rows) <= 1 or not words:
+        return rows
+    counts = {word: sum(1 for row in rows if word in tokens(row.text)) for word in words}
+    present = {word: count for word, count in counts.items() if count > 0}
+    if not present:
+        return rows
+    rare = min(present.values())
+    if rare >= len(rows):
+        return rows
+    sharp = {word for word, count in present.items() if count == rare}
+    chosen = [row for row in rows if any(word in tokens(row.text) for word in sharp)]
+    return chosen or rows
+
+
 def keyword_similarity(query: str, text: str) -> float:
     wanted = tokens(query)
     if not wanted:
@@ -250,7 +272,8 @@ def matching_to_forget(session: Session, query: str, *, limit: int = 10) -> list
             continue
         ranked.append((score, _stamp(row), row))
     ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return [row for _, _, row in ranked[:limit]]
+    ordered = keep_best_overlap(query, [row for _, _, row in ranked])
+    return ordered[:limit]
 
 
 def retrieve_memories(session: Session, query: str, now: datetime, *, limit: int = 10) -> list[MemoryItem]:
@@ -283,7 +306,8 @@ def retrieve_memories(session: Session, query: str, now: datetime, *, limit: int
                 continue
         scored.append((_blend(similarity, row, now), row.pinned, _stamp(row), row))
     scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
-    return [row for _, _, _, row in scored[:limit]]
+    ordered = keep_best_overlap(query, [row for _, _, _, row in scored])
+    return ordered[:limit]
 
 
 def _rows(session: Session) -> list[MemoryItem]:

@@ -234,6 +234,8 @@ class HouseFacts(APIModel):
     voice_input: str
     # Pre-departure disruption checks. "not active" until the house flag is set.
     disruption_checks: str
+    # Local reminder cards. Off until a person saves the switch.
+    local_reminders: str = "off"
 
 
 class AssistantSwitch(BaseModel):
@@ -409,6 +411,16 @@ class ReminderPreview(APIModel):
     held_because: str | None = None
     candidates: list[PreviewCandidate]
     note: str
+    local_reminders: str = "off"
+
+
+class LocalReminderResult(APIModel):
+    """Result of one local prepare. ``calls_assistant`` stays false."""
+
+    prepared: int
+    reason: str
+    calls_assistant: bool = False
+    summary: str | None = None
 
 
 class LastReply(APIModel):
@@ -428,6 +440,7 @@ class AgentState(APIModel):
     proactive_left_today: int
     last_reply: LastReply | None
     proposals: list[ProposalRead]
+    local_reminders: str = "off"
 
 
 class AgentResult(APIModel):

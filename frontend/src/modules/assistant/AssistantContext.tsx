@@ -81,6 +81,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const due = state?.due;
+    if (state?.local_reminders === "on") return;
     if (!due || !state.enabled || state.paused || sorting) return;
     if (reviewed.current.has(due.window_key)) return;
     reviewed.current.add(due.window_key);

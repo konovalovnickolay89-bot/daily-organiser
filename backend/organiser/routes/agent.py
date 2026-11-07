@@ -25,6 +25,7 @@ from organiser.agent.functions import RunContext
 from organiser.agent.ingest import IngestRefused, ingest_proposal
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.context import ContextEntry, build_context
+from organiser.agent.local_reminders import prepare_local_reminder, reminders_enabled
 from organiser.agent.memory import (
     MEMORY_TEXT_LIMIT,
     classify_kind,
@@ -71,6 +72,7 @@ from organiser.schemas import (
     DueRead,
     FeedRequest,
     LastReply,
+    LocalReminderResult,
     MemoryMatch,
     ProposalIngest,
     ProposalRead,
@@ -207,6 +209,7 @@ def get_agent(session: Session = Depends(get_db)) -> AgentState:
         if last
         else None,
         proposals=proposals,
+        local_reminders="on" if reminders_enabled(session) else "off",
     )
 
 
@@ -246,10 +249,19 @@ def reminder_preview(session: Session = Depends(get_db)) -> ReminderPreview:
         held_because=held,
         candidates=candidates,
         note=(
-            "Preview. Proposed. Nothing is sent, and this reading does not call the assistant. "
-            "A review still starts only from the existing screen rule."
+            "Preview. Nothing is sent, and this reading does not call the assistant. "
+            "Local cards are prepared only when the house switch is on."
         ),
+        local_reminders="on" if reminders_enabled(session) else "off",
     )
+
+
+@router.post("/reminders", response_model=LocalReminderResult)
+def prepare_reminders(session: Session = Depends(get_db)) -> LocalReminderResult:
+    """Prepare one local card when the switch is on. Does not call Mistral."""
+    result = prepare_local_reminder(session, _local_now(), get_settings())
+    session.commit()
+    return LocalReminderResult.model_validate(result)
 
 
 @router.get("/activity", response_model=ActivityList)

@@ -1,29 +1,37 @@
 import { useEffect, useState } from "react";
-import { getReminderPreview, type ReminderPreview as Preview } from "../../api/agent";
+import { getReminderPreview, prepareLocalReminders, type ReminderPreview as Preview } from "../../api/agent";
+import { setLocalReminders } from "../../api/system";
 import { cx, empty, errorText, kickerAccent, meta } from "../../arrival/ui";
-import { useHouseTick } from "../../house/HouseContext";
+import { useHouse } from "../../house/HouseContext";
 import { asError } from "../../lib/errors";
-import { previewShown, setPreviewShown } from "./previewStore";
 
 /**
- * A reading of the reminder rules. It does not call the assistant.
- * The show/hide choice is proposed and stays on this browser.
+ * Reads the reminder rules and, only when the house switch is on, asks for
+ * one local card. The prepare call does not reach a provider.
  */
 export function ReminderPreview() {
-  const tick = useHouseTick();
-  const [shown, setShown] = useState(previewShown);
+  const { tick, refresh } = useHouse();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const enabled = preview?.local_reminders === "on";
 
   useEffect(() => {
-    if (!shown) return;
     let cancelled = false;
     getReminderPreview()
-      .then((data) => {
-        if (!cancelled) {
-          setPreview(data);
-          setError(null);
+      .then(async (data) => {
+        if (cancelled) return;
+        setPreview(data);
+        setError(null);
+        if (data.local_reminders !== "on") return;
+        const prepared = await prepareLocalReminders();
+        if (cancelled) return;
+        if (prepared.calls_assistant) {
+          setError(new Error("Local reminders must not call the assistant."));
+          return;
         }
+        if (prepared.prepared > 0) refresh();
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(asError(err));
@@ -31,12 +39,21 @@ export function ReminderPreview() {
     return () => {
       cancelled = true;
     };
-  }, [tick, shown]);
+  }, [tick, refresh]);
 
-  function toggle() {
-    const next = !shown;
-    setShown(next);
-    setPreviewShown(next);
+  async function toggle() {
+    if (!preview || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const facts = await setLocalReminders(!enabled);
+      setPreview((current) => (current ? { ...current, local_reminders: facts.local_reminders === "on" ? "on" : "off" } : current));
+      refresh();
+    } catch (err: unknown) {
+      setError(asError(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -49,22 +66,26 @@ export function ReminderPreview() {
           <input
             className="h-5 w-5 accent-accent"
             type="checkbox"
-            checked={shown}
-            onChange={toggle}
+            role="switch"
+            aria-label="Local reminders"
+            checked={enabled}
+            disabled={!preview || saving}
+            onChange={() => void toggle()}
           />
-          Show preview
+          Local reminders
         </label>
       </div>
       <p className={cx(meta, "mt-2")}>
-        Proposed. Saved on this browser only. Hiding this does not start or stop the assistant.
+        {enabled
+          ? "On. Saved for the house. One card may be prepared from the rules. Nothing is sent until Apply."
+          : "Off. Saved for the house. Nothing is prepared, and this switch does not call the assistant."}
       </p>
-      {!shown && <p className={cx(empty, "mt-2")}>Preview hidden. Nothing was sent.</p>}
-      {shown && error && (
+      {error && (
         <p className={errorText} role="alert">
           {error.message}
         </p>
       )}
-      {shown && preview && (
+      {preview && (
         <div className="mt-2 grid gap-2">
           <p className="m-0 text-base text-[var(--ink)]">{preview.note}</p>
           <p className={cx(meta, "m-0")}>
@@ -82,11 +103,6 @@ export function ReminderPreview() {
                 </li>
               ))}
             </ul>
-          )}
-          {preview.calls_assistant !== false && (
-            <p className={errorText} role="alert">
-              This preview must not call the assistant.
-            </p>
           )}
         </div>
       )}
