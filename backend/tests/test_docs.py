@@ -22,6 +22,7 @@ PATHS = (
     "/system/assistant",
     "/system/calendars",
     "/commute/shift",
+    "/tfl/status",
     "/hooks/{source}",
     "/metrics",
     "/system/status",

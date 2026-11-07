@@ -33,7 +33,8 @@ test("settings show the commute is not connected and can hold a theme", async ({
   await page.goto("/");
   await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Settings" }).click();
   await expect(page.locator(".fact-row", { hasText: "TfL" }).locator("dd")).toHaveText("Not configured");
-  await expect(page.getByText("The journey source is not connected.")).toBeVisible();
+  await expect(page.getByText("TfL is not configured.")).toBeVisible();
+  await expect(page.getByText("The journey source is not connected.")).toHaveCount(0);
 
   await page.getByRole("radio", { name: "Morning" }).check();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "morning");
