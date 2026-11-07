@@ -48,6 +48,10 @@ describe("8px spacing", () => {
     expect(css).toContain("--tube-mid: #d39a4e");
     expect(css).toContain("--tube-deep: #6b3f14");
     expect(css).toContain("--rail: 76px");
+    expect(css).toContain("padding: 40px 32px 72px");
+    expect(css).toContain("padding: 48px 48px 72px");
+    expect(css).toContain("max(24px, env(safe-area-inset-left))");
+    expect(css).toContain("max(24px, env(safe-area-inset-right))");
     const tailwind = readFileSync(resolve(process.cwd(), "tailwind.config.js"), "utf8");
     expect(tailwind).toContain('mono: ["var(--mono)"]');
     expect(tailwind).toContain('house: "var(--radius)"');

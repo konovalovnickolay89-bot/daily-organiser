@@ -48,7 +48,7 @@ export function AlertCards() {
   if (items.length === 0 && !error) return null;
 
   return (
-    <div className="mt-8 grid gap-4" data-module="alerts">
+    <div className="mt-8 grid gap-6" data-module="alerts">
       {error && (
         <p className={errorText} role="alert">
           {error.message}

@@ -18,7 +18,7 @@ export const pill =
 
 /** Cream card. Brass tube rim, with room between the type and that rim. */
 export const card =
-  "paper card tube min-w-0 rounded-house p-12 text-[var(--ink)] max-[720px]:p-8";
+  "paper card tube min-w-0 break-words rounded-house p-12 text-[var(--ink)] max-[720px]:p-8";
 
 /** Inner panel. A quieter tube, and padding so the type clears the rim. */
 export const inset = "tube-inset w-full min-w-0 rounded-inset p-6";
