@@ -113,7 +113,7 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
       };
     });
 
-  const advice = page.locator("[data-panel='reasoning'] .proposal-card").first();
+  const advice = page.locator("#home-detail .proposal-card").first();
   await expect(advice).toBeVisible();
   const expected = await frame(advice);
   expect(expected.radius).toBe("24px");
@@ -124,13 +124,6 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
   const activity = page.getByRole("list", { name: "Recent activity" });
   expect(await frame(decisions)).toEqual(expected);
   expect(await frame(activity)).toEqual(expected);
-  await page.getByRole("button", { name: "Proposed changes" }).click();
-  const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
-  expect(await frame(proposed)).toEqual(expected);
-  const headerBox = await proposed.boundingBox();
-  const inputBox = await page.getByLabel("Add to the log").boundingBox();
-  expect(headerBox && inputBox && inputBox.y - (headerBox.y + headerBox.height)).toBeGreaterThanOrEqual(24);
-
   const log = await activity.evaluate((el) => {
     const style = getComputedStyle(el);
     const line = el.querySelector("li");
@@ -143,6 +136,13 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
     };
   });
   const adviceFill = await advice.evaluate((el) => getComputedStyle(el).backgroundColor);
+  await page.getByRole("button", { name: "Proposed changes" }).click();
+  const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
+  expect(await frame(proposed)).toEqual(expected);
+  const headerBox = await proposed.boundingBox();
+  const inputBox = await page.getByLabel("Add to the log").boundingBox();
+  expect(headerBox && inputBox && inputBox.y - (headerBox.y + headerBox.height)).toBeGreaterThanOrEqual(24);
+
   expect(log.fill).toBe("rgb(44, 34, 27)");
   expect(log.fill).not.toBe(adviceFill);
   expect(log.color).toBe("rgb(196, 178, 154)");

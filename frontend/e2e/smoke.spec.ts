@@ -85,6 +85,7 @@ test("a past date keeps Apply and Not now", async ({ page, request }) => {
   });
   expect(created.ok()).toBeTruthy();
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   const card = page.locator(".proposal-card", { hasText: "This date has passed." });
   await expect(card).toBeVisible();
   await expect(card.getByRole("button", { name: "Apply" })).toBeVisible();

@@ -422,7 +422,7 @@ def test_voxtral_strips_codecs_and_names_the_part(caplog):
     assert b'filename="line.mp4"' in seen["body"]
     assert b"audio/mp4" in seen["body"]
     assert b"codecs" not in seen["body"].lower()
-    assert b"provider body" not in caplog.text
+    assert "provider body" not in caplog.text
     assert MARKER.decode() not in caplog.text
 
 

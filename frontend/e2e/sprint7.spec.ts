@@ -102,6 +102,7 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   await connect.click();
   await page.waitForURL("**/?x=connected");
 
+  await page.getByRole("button", { name: "Decisions" }).click();
   await expect(page.getByText("Put the bins out tonight")).toBeVisible();
   await expect(page.getByText("Council collection moved to Friday")).toBeVisible();
   await expect(page.getByText("This draft expired")).toHaveCount(0);
