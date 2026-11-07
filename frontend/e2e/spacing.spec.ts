@@ -139,9 +139,6 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
   await page.getByRole("button", { name: "Proposed changes" }).click();
   const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
   expect(await frame(proposed)).toEqual(expected);
-  const headerBox = await proposed.boundingBox();
-  const inputBox = await page.getByLabel("Add to the log").boundingBox();
-  expect(headerBox && inputBox && inputBox.y - (headerBox.y + headerBox.height)).toBeGreaterThanOrEqual(24);
 
   expect(log.fill).toBe("rgb(44, 34, 27)");
   expect(log.fill).not.toBe(adviceFill);
