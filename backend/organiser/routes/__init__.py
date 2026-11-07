@@ -12,6 +12,7 @@ from organiser.routes import (
     events,
     health,
     hooks,
+    lines,
     memory,
     metrics,
     playlist,
@@ -40,6 +41,7 @@ def register(app: FastAPI) -> None:
     app.include_router(agent.router)
     app.include_router(catchup.router)
     app.include_router(commute.router)
+    app.include_router(lines.router)
     app.include_router(hooks.router)
     app.include_router(xfeed.router)
     app.include_router(playlist.router)

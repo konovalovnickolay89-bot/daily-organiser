@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -534,6 +534,35 @@ class XDecisionRead(APIModel):
     id: UUID
     status: str
     tweet_id: str | None = None
+
+
+class LineRead(APIModel):
+    """One TfL line. Text is already plain. No key and no location."""
+
+    id: str
+    name: str
+    mode: str
+    severity: str
+    reason: str | None = None
+
+
+class ServiceStatusRead(APIModel):
+    """Diagnostic read of TfL line status.
+
+    ``configured`` is only whether the house key is set. ``state`` is the read:
+    ``missing``, ``fresh``, ``stale``, or ``error``. ``fetched_at`` is when this
+    process last parsed a body. ``source_at`` is a timestamp TfL sent, or null.
+    Neither time means the board is live.
+    """
+
+    configured: bool
+    state: Literal["missing", "fresh", "stale", "error"]
+    stale: bool
+    fetched_at: datetime | None = None
+    source_at: datetime | None = None
+    failure: Literal["refused", "limited", "timeout", "malformed", "upstream"] | None = None
+    detail: str | None = None
+    lines: list[LineRead] = Field(default_factory=list)
 
 
 class PlaylistRead(APIModel):

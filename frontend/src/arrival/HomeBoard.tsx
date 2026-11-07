@@ -2,20 +2,23 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { getAgent } from "../api/agent";
 import { listApprovals } from "../api/approvals";
 import { getMorningBrief, type MorningBrief as Brief } from "../api/brief";
+import { getLineStatus, type LineStatus } from "../api/lines";
 import { listTasks } from "../api/tasks";
 import type { Proposal } from "../api/types";
 import { listXItems } from "../api/x";
 import { useHouse } from "../house/HouseContext";
+import { asError } from "../lib/errors";
 import { AssistantPane } from "../modules/assistant/AssistantPane";
 import { ReasoningPane } from "../modules/assistant/ReasoningPane";
 import { MorningBrief } from "../modules/brief/MorningBrief";
+import { LineStatusDetail, lineOverview } from "../modules/lines/LineStatusPanel";
 import { TodayList } from "../modules/tasks/TodayList";
 import { XCards } from "../modules/x/XCards";
 import { card, cx, heading, lede } from "./ui";
 
 const STORAGE = "organiser-home-open";
 
-const SECTIONS = ["brief", "today", "proposals", "decisions"] as const;
+const SECTIONS = ["brief", "lines", "today", "proposals", "decisions"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 type Row = {
@@ -28,6 +31,7 @@ type Row = {
 
 const EMPTY: Record<SectionId, Row> = {
   brief: { id: "brief", title: "Brief", count: "…", summary: "Checking the brief…", urgent: null },
+  lines: { id: "lines", title: "Lines", count: "…", summary: "Checking line status…", urgent: null },
   today: { id: "today", title: "Today", count: "…", summary: "Checking today…", urgent: null },
   proposals: { id: "proposals", title: "Proposed changes", count: "…", summary: "Checking the line…", urgent: null },
   decisions: { id: "decisions", title: "Decisions", count: "…", summary: "Checking decisions…", urgent: null },
@@ -71,21 +75,30 @@ export function HomeBoard() {
   const { tick } = useHouse();
   const [open, setOpen] = useState<SectionId>(readOpen);
   const [rows, setRows] = useState<Record<SectionId, Row>>(EMPTY);
+  const [lines, setLines] = useState<LineStatus | null>(null);
+  const [linesError, setLinesError] = useState<Error | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [brief, tasks, agent, approvals, x] = await Promise.all([
+      const [brief, tasks, agent, approvals, x, lineResult] = await Promise.all([
         getMorningBrief().catch(() => null),
         listTasks({ scope: "today", limit: 200 }).catch(() => null),
         getAgent().catch(() => null),
         listApprovals("pending").catch(() => null),
         listXItems().catch(() => null),
+        getLineStatus()
+          .then((status) => ({ status, error: null as Error | null }))
+          .catch((err: unknown) => ({ status: null as LineStatus | null, error: asError(err) })),
       ]);
       if (cancelled) return;
+      setLines(lineResult.status);
+      setLinesError(lineResult.error);
       const next = { ...EMPTY };
       if (brief) next.brief = briefRow(brief);
       else next.brief = { ...EMPTY.brief, count: "—", summary: "The brief could not be read." };
+      const overview = lineOverview(lineResult.status, lineResult.error);
+      next.lines = { id: "lines", title: "Lines", ...overview };
       if (tasks) {
         const first = tasks.items[0];
         next.today = {
@@ -198,6 +211,7 @@ export function HomeBoard() {
       </section>
       <section id="home-detail" className={card}>
         {open === "brief" && <MorningBrief />}
+        {open === "lines" && <LineStatusDetail status={lines} error={linesError} />}
         {open === "today" && <TodayList />}
         {open === "proposals" && <AssistantPane />}
         {open === "decisions" && (
