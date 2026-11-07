@@ -47,7 +47,7 @@ services:
       MISTRAL_AGENT_ID: ${MISTRAL_AGENT_ID:-}
       # Mic on Smart Add. Off unless the shell sets it. Audio is not stored.
       VOICE_INPUT_ENABLED: ${VOICE_INPUT_ENABLED:-false}
-      MISTRAL_TRANSCRIBE_MODEL: ${MISTRAL_TRANSCRIBE_MODEL:-voxtral-mini}
+      MISTRAL_TRANSCRIBE_MODEL: ${MISTRAL_TRANSCRIBE_MODEL:-voxtral-mini-transcribe-3}
       # Docs stay off unless both are true. Access has to cover them before either is set.
       ENABLE_DOCS: ${ENABLE_DOCS:-false}
       DOCS_BEHIND_ACCESS: ${DOCS_BEHIND_ACCESS:-false}
