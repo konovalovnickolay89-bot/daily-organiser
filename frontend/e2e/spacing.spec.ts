@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
+  // These checks name the evening brass. Auto follows the London hour.
+  await page.addInitScript(() => localStorage.setItem("organiser-theme", "evening"));
 });
 
 test("the rail stays 76px and home uses the width for two panes", async ({ page }) => {
