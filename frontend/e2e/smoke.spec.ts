@@ -11,6 +11,7 @@ test("skip link moves to the brief", async ({ page }) => {
 
 test("decisions use Apply and Not now", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   await expect(page.getByRole("heading", { name: "Decisions" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Apply" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Not now" }).first()).toBeVisible();
@@ -19,7 +20,7 @@ test("decisions use Apply and Not now", async ({ page }) => {
 test("shopping add and tick stays on the brief", async ({ page }) => {
   const name = `Oat milk ${Date.now()}`;
   await page.goto("/");
-  await page.getByRole("button", { name: "Brief" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Brief" }).click();
   await page.getByLabel("Add a shop item").fill(name);
   await page.getByRole("button", { name: "Add", exact: true }).click();
   const line = page.getByRole("checkbox", { name });
@@ -30,7 +31,7 @@ test("shopping add and tick stays on the brief", async ({ page }) => {
 
 test("assistant switch persists and writes an activity line", async ({ page, request }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Settings" }).click();
   const toggle = page.getByRole("switch", { name: "Assistant" });
   await expect(toggle).toBeVisible();
   const startedOn = await toggle.isChecked();
@@ -38,7 +39,7 @@ test("assistant switch persists and writes an activity line", async ({ page, req
   await expect(toggle).toBeChecked({ checked: !startedOn });
 
   await page.reload();
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Settings" }).click();
   await expect(page.getByRole("switch", { name: "Assistant" })).toBeChecked({ checked: !startedOn });
 
   const activity = await request.get("/agent/activity?limit=20");
@@ -53,6 +54,7 @@ test("assistant switch persists and writes an activity line", async ({ page, req
 
 test("recent activity sits above the working steps", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   const activity = page.getByRole("list", { name: "Recent activity" });
   await expect(activity).toBeVisible();
   const count = await activity.locator("li").count();
@@ -73,7 +75,7 @@ test("smart add stays hidden while the assistant is off", async ({ page }) => {
 
 test("the brief says when the commute is not connected", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Brief" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Brief" }).click();
   await expect(page.getByText("Commute is not connected.").first()).toBeVisible();
 });
 

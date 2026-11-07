@@ -5,6 +5,7 @@ A transcript is a task, a shopping item, or remember / forget. Anything else
 is refused. Nothing is written here: no file, no row, no log of the words.
 """
 
+import logging
 import re
 from typing import Literal, Protocol
 
@@ -12,6 +13,8 @@ from organiser.agent.memory import outside_memory, parse_memory_intent
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.runner import outside_home
 from organiser.metrics import observe_mistral
+
+logger = logging.getLogger(__name__)
 
 MAX_SECONDS = 30
 # Speech for that half minute fits well under this. The request is refused
@@ -159,13 +162,36 @@ class VoxtralTranscriber:
             self._client.close()
 
 
+def transcribe_failure(exc: MistralUnavailable) -> str:
+    """What the house may say. The provider body is not included.
+
+    A fast HTTP refusal and a timeout are different categories. The status, when
+    Mistral sent one, is the only upstream fact kept.
+    """
+    status = exc.upstream_status
+    if exc.category == "timeout":
+        return "This recording was sent. Mistral did not answer in time. Nothing was saved."
+    if exc.category == "network":
+        return "This recording was sent. Mistral could not be reached. Nothing was saved."
+    if exc.category == "http" and isinstance(status, int):
+        return f"This recording was sent. Mistral refused it (HTTP {status}). Nothing was saved."
+    return "This recording was sent. Mistral did not return words. Nothing was saved."
+
+
 def transcribe_with(transcriber: Transcriber, audio: bytes, media_type: str) -> str:
     if not isinstance(audio, bytes):
         raise VoiceRefused("Nothing was recorded.", 422)
     try:
         text = observe_mistral(lambda: transcriber.transcribe(audio, media_type))
-    except MistralUnavailable:
-        raise VoiceRefused("Voice could not be transcribed. Nothing was saved.", 503) from None
+    except MistralUnavailable as exc:
+        logger.info(
+            "voice transcribe failed category=%s upstream_status=%s bytes=%s",
+            exc.category,
+            exc.upstream_status if exc.upstream_status is not None else "none",
+            len(audio),
+        )
+        raise VoiceRefused(transcribe_failure(exc), 503) from None
     if not isinstance(text, str):
-        raise VoiceRefused("Voice could not be transcribed. Nothing was saved.", 503)
+        logger.info("voice transcribe failed category=empty upstream_status=none bytes=%s", len(audio))
+        raise VoiceRefused("This recording was sent. Mistral did not return words. Nothing was saved.", 503)
     return accept_transcript(text)

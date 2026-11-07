@@ -10,10 +10,27 @@ function messageFrom(payload: ErrorPayload, status: number): string {
   return "The house log could not be reached.";
 }
 
+const FILE_EXT: Record<string, string> = {
+  "audio/webm": "webm",
+  "audio/mp4": "mp4",
+  "audio/mpeg": "mp3",
+  "audio/ogg": "ogg",
+  "audio/wav": "wav",
+  "audio/wave": "wav",
+  "audio/x-m4a": "m4a",
+  "video/webm": "webm",
+};
+
+/** The part name follows the recording's base type. A codecs parameter is not a filename. */
+export function recordingName(audio: Blob): string {
+  const base = (audio.type || "").split(";", 1)[0].trim().toLowerCase();
+  return `line.${FILE_EXT[base] ?? "bin"}`;
+}
+
 /** One recording, in memory, exchanged for text. The browser does not keep the clip. */
 export async function transcribeAudio(audio: Blob): Promise<{ text: string }> {
   const body = new FormData();
-  body.append("file", audio, "line.webm");
+  body.append("file", audio, recordingName(audio));
   let response: Response;
   try {
     response = await fetch(`${base}/voice/transcribe`, {

@@ -51,6 +51,7 @@ test("voice fills the box with a fake transcription and does not add until asked
   });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   const line = page.getByLabel("Add to the log");
   const voice = page.locator("[data-voice='mic']");
   const add = page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true });
@@ -72,7 +73,11 @@ test("voice fills the box with a fake transcription and does not add until asked
   await expect(cancel).toBeVisible();
   await expect(voice).toHaveAttribute("data-voice-phase", "recording");
   await expect(voice.getByText("Recording", { exact: true })).toBeVisible();
+  const inputBox = await line.boundingBox();
+  const voiceBox = await voice.boundingBox();
+  expect(inputBox && voiceBox && voiceBox.y - (inputBox.y + inputBox.height)).toBeGreaterThanOrEqual(24);
   await expect(voice.locator("#voice-help")).toContainText("Stop and transcribe sends this clip to Mistral.");
+  await expect(voice.locator("#voice-help")).toContainText("At 30 seconds it is sent on its own.");
   await expect(voice.locator("#voice-help")).toContainText("Cancel recording does not upload.");
   await expect(add).toBeDisabled();
   await page.keyboard.press("Escape");
@@ -97,6 +102,7 @@ test("voice controls stay labelled on a phone width", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   const mic = page.getByRole("button", { name: "Start recording" });
   await expect(mic).toBeVisible();
   await mic.click();

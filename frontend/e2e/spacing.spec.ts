@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
 });
 
-test("the rail stays 76px and home keeps three columns on an 8px gap", async ({ page }) => {
+test("the rail stays 76px and home uses the width for two panes", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
@@ -26,15 +26,16 @@ test("the rail stays 76px and home keeps three columns on an 8px gap", async ({ 
   const railBox = await rail.boundingBox();
   expect(railBox?.width).toBe(76);
 
-  const grid = await page.locator(".cards").evaluate((el) => {
-    const style = getComputedStyle(el);
-    return {
-      columns: style.gridTemplateColumns.split(" ").filter(Boolean).length,
-      gap: style.columnGap,
-    };
-  });
-  expect(grid.columns).toBe(3);
-  expect(grid.gap).toBe("24px");
+  await page.setViewportSize({ width: 1800, height: 1000 });
+  const board = page.locator("[data-home-board]");
+  await expect(board).toBeVisible();
+  const boardBox = await board.boundingBox();
+  expect(boardBox && boardBox.width).toBeGreaterThan(1400);
+  const columns = await board.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length);
+  const gap = await board.evaluate((el) => getComputedStyle(el).columnGap);
+  expect(columns).toBe(2);
+  expect(gap).toBe("24px");
+  await page.setViewportSize({ width: 1440, height: 960 });
 
   const card = await page.locator(".card").first().evaluate((el) => {
     const style = getComputedStyle(el);
@@ -100,6 +101,7 @@ test("keyboard focus stays visible outside the tube", async ({ page }) => {
 
 test("Proposed changes, Decisions, and recent activity use the Advice frame", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   const frame = async (locator: ReturnType<typeof page.locator>) =>
     locator.evaluate((el) => {
       const style = getComputedStyle(el);
@@ -118,12 +120,16 @@ test("Proposed changes, Decisions, and recent activity use the Advice frame", as
   expect(expected.border).toBe("2px");
   expect(expected.pad).toBe("24px");
 
-  const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
   const decisions = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Decisions" }) });
   const activity = page.getByRole("list", { name: "Recent activity" });
-  expect(await frame(proposed)).toEqual(expected);
   expect(await frame(decisions)).toEqual(expected);
   expect(await frame(activity)).toEqual(expected);
+  await page.getByRole("button", { name: "Proposed changes" }).click();
+  const proposed = page.locator("[data-section-header='divided']").filter({ has: page.getByRole("heading", { name: "Proposed changes" }) });
+  expect(await frame(proposed)).toEqual(expected);
+  const headerBox = await proposed.boundingBox();
+  const inputBox = await page.getByLabel("Add to the log").boundingBox();
+  expect(headerBox && inputBox && inputBox.y - (headerBox.y + headerBox.height)).toBeGreaterThanOrEqual(24);
 
   const log = await activity.evaluate((el) => {
     const style = getComputedStyle(el);
@@ -181,11 +187,6 @@ test("inner panels, inputs, and pills use their own radii", async ({ page }) => 
 
 test("Proposed changes and Decisions share one header style", async ({ page }) => {
   await page.goto("/");
-  const proposed = page.getByRole("heading", { name: "Proposed changes" });
-  const decisions = page.getByRole("heading", { name: "Decisions" });
-  await expect(proposed).toBeVisible();
-  await expect(decisions).toBeVisible();
-
   const metrics = async (heading: ReturnType<typeof page.getByRole>) =>
     heading.evaluate((el) => {
       const style = getComputedStyle(el);
@@ -201,7 +202,14 @@ test("Proposed changes and Decisions share one header style", async ({ page }) =
       };
     });
 
-  expect(await metrics(proposed)).toEqual(await metrics(decisions));
+  await page.getByRole("button", { name: "Proposed changes" }).click();
+  const proposed = page.getByRole("heading", { name: "Proposed changes" });
+  await expect(proposed).toBeVisible();
+  const proposedMetrics = await metrics(proposed);
+  await page.getByRole("button", { name: "Decisions" }).click();
+  const decisions = page.getByRole("heading", { name: "Decisions" });
+  await expect(decisions).toBeVisible();
+  expect(proposedMetrics).toEqual(await metrics(decisions));
 });
 
 test("the house date uses the mono token", async ({ page }) => {

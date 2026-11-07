@@ -24,14 +24,14 @@ test("pause and unpause stay on the house", async ({ page }) => {
 
 test("brief sections say when diary and weather are not set", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Brief" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Brief" }).click();
   await expect(page.getByText("Diary not connected — reconnect in Settings.").first()).toBeVisible();
   await expect(page.getByText("Weather location is not set.").first()).toBeVisible();
 });
 
 test("settings show the commute is not connected and can hold a theme", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Settings" }).click();
   await expect(page.locator(".fact-row", { hasText: "TfL" }).locator("dd")).toHaveText("Not configured");
   await expect(page.getByText("The journey source is not connected.")).toBeVisible();
 
@@ -49,6 +49,7 @@ test("an approval in Decisions can be applied", async ({ page, request }) => {
   expect(created.ok()).toBeTruthy();
   const title = (await created.json()).title as string;
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   const card = page.locator("[data-kind='approval']", { hasText: title });
   await expect(card).toBeVisible();
   await card.getByRole("button", { name: "Apply" }).click();
@@ -61,6 +62,7 @@ test("Not now dismisses an approval", async ({ page, request }) => {
   });
   const title = (await created.json()).title as string;
   await page.goto("/");
+  await page.getByRole("button", { name: "Decisions" }).click();
   const card = page.locator("[data-kind='approval']", { hasText: title });
   await card.getByRole("button", { name: "Not now" }).click();
   await expect(card).toHaveCount(0);
@@ -72,7 +74,7 @@ test("marking a task done can be undone", async ({ page, request }) => {
   const created = await request.post("/tasks", { data: { title, due_on: today } });
   expect(created.ok()).toBeTruthy();
   await page.goto("/");
-  await page.getByRole("button", { name: "Tasks" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Tasks" }).click();
   await page.getByRole("button", { name: new RegExp(`Open ${title}`) }).click();
   await page.getByRole("button", { name: "Mark done" }).click();
   await expect(page.getByText("Marked done.")).toBeVisible();
@@ -85,7 +87,7 @@ test("deleting a task can be undone", async ({ page, request }) => {
   const today = (await (await request.get("/system")).json()).house_date as string;
   expect((await request.post("/tasks", { data: { title, due_on: today } })).ok()).toBeTruthy();
   await page.goto("/");
-  await page.getByRole("button", { name: "Tasks" }).click();
+  await page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Tasks" }).click();
   await page.getByRole("button", { name: new RegExp(`Open ${title}`) }).click();
   await page.getByRole("button", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete" }).click();
@@ -99,8 +101,10 @@ test("smart add proposes and Apply uses a fake assistant", async ({ page }) => {
   const card = proposal("Buy oat milk");
   await installAssistant(page, card);
   await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   await page.getByLabel("Add to the log").fill("Buy oat milk");
   await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
   await expect(page.getByRole("heading", { name: "New task: Buy oat milk" })).toBeVisible();
   await expect(page.locator("[data-kind='proposal']").getByText("Journey source is not connected.")).toBeVisible();
   await page.locator("[data-kind='proposal']").getByRole("button", { name: "Apply" }).click();
@@ -112,8 +116,10 @@ test("Not now dismisses a proposal", async ({ page }) => {
   const card = proposal("Note the filter size");
   await installAssistant(page, card);
   await page.goto("/");
+  await page.getByRole("button", { name: "Proposed changes" }).click();
   await page.getByLabel("Add to the log").fill("Note the filter size");
   await page.locator("[data-module='assistant']").getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("button", { name: "Decisions" }).click();
   await expect(page.getByRole("heading", { name: "New task: Note the filter size" })).toBeVisible();
   await page.locator("[data-kind='proposal']").getByRole("button", { name: "Not now" }).click();
   await expect(page.getByText("Dismissed. Nothing changed.")).toBeVisible();
@@ -127,7 +133,7 @@ test("targets stay 44px and the page does not overflow at a 200% viewport", asyn
   const box = await pause.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
-  const rail = page.getByRole("button", { name: "Home" });
+  const rail = page.getByRole("navigation", { name: "House" }).getByRole("button", { name: "Home" });
   const railBox = await rail.boundingBox();
   expect(railBox?.width).toBeGreaterThanOrEqual(44);
   expect(railBox?.height).toBeGreaterThanOrEqual(44);

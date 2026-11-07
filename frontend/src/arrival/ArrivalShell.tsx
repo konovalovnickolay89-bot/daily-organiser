@@ -7,6 +7,7 @@ import { PresenceBar } from "../modules/presence/PresenceBar";
 import { UndoProvider } from "../modules/tasks/UndoToast";
 import { Rail } from "./Rail";
 import { ThemeCard } from "./ThemeCard";
+import { HomeBoard } from "./HomeBoard";
 import { arrivalModules } from "./modules";
 import { card } from "./ui";
 import { useHouseTheme } from "./theme";
@@ -59,10 +60,12 @@ export function ArrivalShell() {
             </a>
             <Rail view={view} onView={setView} />
             <main id="main" className="stage min-w-0 flex-1 outline-none" tabIndex={-1}>
-              <div className="mx-auto w-full max-w-[1280px]">
+              <div className="w-full min-w-0">
                 <PresenceBar />
                 <CatchUpStrip />
                 <AlertCards />
+                {view === "home" && <HomeBoard />}
+                {view !== "home" && (
                 <div className="cards mt-10 grid items-start gap-6 [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(256px,0.92fr)] max-[980px]:grid-cols-1">
                   {PANELS.map((panel) => (
                     <div key={panel.id} className={`${card} ${panel.place}`} data-panel={panel.id}>
@@ -72,6 +75,7 @@ export function ArrivalShell() {
                     </div>
                   ))}
                 </div>
+                )}
                 {modulesIn("corner").map((mod) => (
                   <mod.Component key={mod.id} />
                 ))}

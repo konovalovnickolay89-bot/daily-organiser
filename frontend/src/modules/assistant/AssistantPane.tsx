@@ -38,17 +38,17 @@ export function AssistantPane() {
             ? restingEmpty
               ? "Write a line for the log. Cards appear here."
               : "Apply makes that one change in the house log. Nothing is sent, bought, or booked."
-            : "Write a line for the log. Cards appear on the right."
+            : "Write a line for the log. Cards open under Decisions."
         }
       />
       {state === null && !error && <LoadingSkeleton label="Checking the assistant…" />}
       {state && !enabled && <p className={empty}>The assistant is off.</p>}
       {state && enabled && !reachable && <p className={empty}>The assistant is down.</p>}
       {showForm && (
-        <form className="mb-4 flex min-w-0 max-w-full flex-col gap-4" onSubmit={(event) => void submit(event)}>
+        <form className="mb-4 mt-6 flex min-w-0 max-w-full flex-col gap-6" onSubmit={(event) => void submit(event)}>
           <div
             className={cx(
-              "flex min-w-0 max-w-full gap-2",
+              "flex min-w-0 max-w-full gap-4",
               proposals.length > 0 &&
                 "max-[720px]:sticky max-[720px]:top-16 max-[720px]:z-[2] max-[720px]:-mx-2 max-[720px]:bg-card max-[720px]:p-2",
             )}
