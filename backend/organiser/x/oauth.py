@@ -169,18 +169,21 @@ def disconnect(session: Session, settings: Settings) -> None:
     session.flush()
 
 
-def status_view(session: Session, settings: Settings) -> dict:
+def status_view(session: Session, settings: Settings, now: datetime) -> dict:
     row = session.get(XConnection, 1) if settings.x_enabled else None
-    from organiser.x.store import watches
+    from organiser.x.store import reading_view, watches
 
     listed = watches(session) if settings.x_enabled else []
-    return {
+    body = {
         "enabled": settings.x_enabled,
         "configured": setup_ok(settings),
         "connected": row is not None,
         "username": row.username if row is not None else None,
         "watches": [{"id": item.id, "kind": item.kind, "value": item.value} for item in listed],
+        "poll_interval_minutes": settings.poll_interval_minutes if settings.x_enabled else None,
     }
+    body.update(reading_view(session, enabled=settings.x_enabled, now=now))
+    return body
 
 
 def exchange_and_store(session: Session, settings: Settings, code: str, verifier: str, now: datetime) -> XConnection:

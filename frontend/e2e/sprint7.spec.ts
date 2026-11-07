@@ -91,8 +91,9 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   });
 
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
-  const connect = page.getByRole("button", { name: "Connect" });
+  const panel = page.locator("[data-panel='x']");
+  await expect(panel.getByRole("heading", { name: "X" })).toBeVisible();
+  const connect = panel.getByRole("button", { name: "Connect" });
   await expect(connect).toBeVisible();
   const connectBox = await connect.boundingBox();
   expect(connectBox?.height).toBeGreaterThanOrEqual(44);
@@ -100,6 +101,10 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   const duration = await connect.evaluate((node) => getComputedStyle(node).transitionDuration);
   expect(duration === "0s" || duration.startsWith("0s")).toBe(true);
   await connect.click();
+  const connectDialog = page.getByRole("dialog");
+  await expect(connectDialog.getByRole("heading", { name: "Open X to connect?" })).toBeVisible();
+  await expect(connectDialog.getByText("Nothing is posted.")).toBeVisible();
+  await connectDialog.getByRole("button", { name: "Connect" }).click();
   await page.waitForURL("**/?x=connected");
 
   await expect(page.getByText("Put the bins out tonight")).toBeVisible();
@@ -130,8 +135,15 @@ test("X connect, cards, a confirmed post, expiry, and the playlist line", async 
   const home = await new AxeBuilder({ page }).analyze();
   expect(home.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Settings" }).click();
   await expect(page.getByText("Connected as @nickhome")).toBeVisible();
+  const decisions = page.locator("[data-panel='reasoning']");
+  await expect(decisions.getByRole("heading", { name: "Decisions" })).toBeVisible();
+  await expect(decisions.getByRole("list", { name: "Recent activity" })).toBeVisible();
+  await expect(page.locator("[data-panel='today']").getByRole("heading", { name: "Proposed changes" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByText("X is on the home screen, in its own card.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
   const settings = await new AxeBuilder({ page }).analyze();
   expect(settings.violations).toEqual([]);
 });

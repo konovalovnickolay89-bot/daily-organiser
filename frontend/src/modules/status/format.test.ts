@@ -25,6 +25,16 @@ describe("status format", () => {
       formatXLine({ enabled: true, connected: true, credits_remaining: 120, rate_remaining: 45, backing_off: false }),
     ).toBe("120 credits · 45 left");
     expect(
+      formatXLine({
+        enabled: true,
+        connected: true,
+        credits_remaining: 120,
+        rate_remaining: 45,
+        backing_off: false,
+        poll_paused: true,
+      }),
+    ).toBe("Reading paused");
+    expect(
       formatXLine({ enabled: true, connected: true, credits_remaining: 120, rate_remaining: 45, backing_off: true }),
     ).toBe("Backing off");
     expect(

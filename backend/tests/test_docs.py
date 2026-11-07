@@ -36,6 +36,8 @@ PATHS = (
     "/x/watches/{watch_id}",
     "/x/items",
     "/x/poll",
+    "/x/poll/pause",
+    "/x/poll/resume",
     "/x/items/{item_id}/apply",
     "/x/items/{item_id}/dismiss",
     "/x/items/{item_id}/post",

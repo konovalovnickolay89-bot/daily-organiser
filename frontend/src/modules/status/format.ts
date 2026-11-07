@@ -11,6 +11,7 @@ export function formatXLine(meter: XMeter | null | undefined): string {
   if (!meter?.enabled) return "Off";
   if (meter.attention === "auth") return "Reconnect";
   if (!meter.connected) return "Not connected";
+  if (meter.poll_paused) return "Reading paused";
   if (meter.backing_off && meter.credits_remaining === 0) return "Credits spent";
   if (meter.backing_off) return "Backing off";
   const credits = meter.credits_remaining;

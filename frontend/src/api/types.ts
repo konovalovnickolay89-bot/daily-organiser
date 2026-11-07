@@ -136,6 +136,7 @@ export type XMeter = {
   rate_remaining: number | null;
   backing_off: boolean;
   attention?: string | null;
+  poll_paused?: boolean;
 };
 
 export type HouseStatus = {

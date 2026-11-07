@@ -4,7 +4,6 @@ import type { HouseFacts } from "../api/types";
 import { useHouse } from "../house/HouseContext";
 import { MemoryScreen } from "../modules/memory/MemoryScreen";
 import { StatusPanel } from "../modules/status/StatusPanel";
-import { XSettings } from "../modules/x/XSettings";
 import { asError } from "../lib/errors";
 import { SectionHeader } from "./SectionHeader";
 import { cx, card, errorText, fieldInput, ghost, kickerMuted, lede, pill } from "./ui";
@@ -244,7 +243,7 @@ export function ThemeCard({ choice, onChoose }: { choice: string; onChoose: (val
         The diary is read-only. A Wembley shift means Wembley Park, starting from home. Shopping is names and ticks only. The journey
         source is not connected.
       </p>
-      <XSettings />
+      <p className={lede}>X is on the home screen, in its own card.</p>
       <StatusPanel />
       <MemoryScreen />
     </section>

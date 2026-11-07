@@ -73,6 +73,8 @@ def poll(session: Session, settings: Settings, now: datetime) -> dict:
     if connection is None:
         return {"ran": False, "reason": "disconnected"}
     meter = ensure_meter(session, now)
+    if meter.poll_paused:
+        return {"ran": False, "reason": "poll_paused"}
     if meter.backoff_until and meter.backoff_until > now:
         return {"ran": False, "reason": "backoff"}
     if meter.rate_remaining == 0 and meter.rate_reset_at and meter.rate_reset_at > now:

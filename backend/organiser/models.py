@@ -505,6 +505,8 @@ class XMeter(Base):
     backoff_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Stops bookmark and watch reads. It does not post, and it is not the house pause.
+    poll_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

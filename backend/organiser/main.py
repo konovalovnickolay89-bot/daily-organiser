@@ -16,6 +16,7 @@ from organiser.db import (
     ensure_alerts,
     ensure_memory,
     ensure_sprint7,
+    ensure_x_poll_pause,
     ensure_sprint2,
     ensure_sprint3,
     ensure_vector_extension,
@@ -55,6 +56,7 @@ async def lifespan(app: FastAPI):
     ensure_memory()
     ensure_alerts()
     ensure_sprint7()
+    ensure_x_poll_pause()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)

@@ -461,7 +461,10 @@ class CatchUpRead(APIModel):
 
 
 class XMeterRead(APIModel):
-    """Credits and rate for the status line. No token and no tweet text."""
+    """Credits and rate for the status line. No token and no tweet text.
+
+    The numbers are the last headers X sent. This house does not set a spend cap.
+    """
 
     enabled: bool = False
     connected: bool = False
@@ -469,6 +472,7 @@ class XMeterRead(APIModel):
     rate_remaining: int | None = None
     backing_off: bool = False
     attention: str | None = None
+    poll_paused: bool = False
 
 
 class StatusRead(APIModel):
@@ -494,6 +498,16 @@ class XStatusRead(APIModel):
     connected: bool
     username: str | None = None
     watches: list[XWatchRead] = []
+    poll_paused: bool = False
+    poll_interval_minutes: int | None = None
+    last_poll_at: datetime | None = None
+    last_error_class: str | None = None
+    backing_off: bool = False
+    backoff_until: datetime | None = None
+    credits_remaining: int | None = None
+    rate_remaining: int | None = None
+    rate_reset_at: datetime | None = None
+    watch_limit: int = 20
 
 
 class XWatchWrite(BaseModel):
