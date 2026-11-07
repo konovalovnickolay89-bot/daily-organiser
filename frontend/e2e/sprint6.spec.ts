@@ -45,25 +45,64 @@ test("an alert card can be dismissed and stays accessible", async ({ page }) => 
 });
 
 test("voice fills the box with a fake transcription and does not add until asked", async ({ page }) => {
-  await installVoice(page);
+  let uploads = 0;
+  await installVoice(page, () => {
+    uploads += 1;
+  });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  const mic = page.getByRole("button", { name: "Record a line" });
+  const line = page.getByLabel("Add to the log");
+  await line.fill("oats typed");
+  const mic = page.getByRole("button", { name: "Start recording" });
   await expect(mic).toBeVisible();
+  await expect(page.getByText(/Nothing is sent until you stop and transcribe/)).toBeVisible();
   const box = await mic.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(44);
   expect(box?.height).toBeGreaterThanOrEqual(44);
-  await mic.click();
-  const stop = page.getByRole("button", { name: "Stop recording" });
+
+  await mic.focus();
+  await page.keyboard.press("Enter");
+  const stop = page.getByRole("button", { name: "Stop and transcribe" });
+  const cancel = page.getByRole("button", { name: "Cancel recording" });
   await expect(stop).toBeVisible();
-  await stop.click();
-  await expect(page.getByLabel("Add to the log")).toHaveValue("buy oat milk");
+  await expect(cancel).toBeVisible();
+  await expect(page.getByText("Recording")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(page.getByText(/Nothing was uploaded/)).toBeVisible();
+  await expect(line).toHaveValue("oats typed");
+  expect(uploads).toBe(0);
+
+  await page.getByRole("button", { name: "Start recording" }).click();
+  await page.getByRole("button", { name: "Stop and transcribe" }).click();
+  await expect(line).toHaveValue("buy oat milk");
+  await expect(page.getByText(/Edit them, then press Add/)).toBeVisible();
   await expect(page.locator("[data-kind='proposal']")).toHaveCount(0);
+  expect(uploads).toBe(1);
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
 });
 
-async function installVoice(page: Page) {
+test("voice controls stay labelled on a phone width", async ({ page }) => {
+  await installVoice(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const mic = page.getByRole("button", { name: "Start recording" });
+  await expect(mic).toBeVisible();
+  await mic.click();
+  const stop = page.getByRole("button", { name: "Stop and transcribe" });
+  await expect(stop).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel recording" })).toBeVisible();
+  const stopBox = await stop.boundingBox();
+  expect(stopBox?.height).toBeGreaterThanOrEqual(44);
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+  expect(wide).toBe(false);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations).toEqual([]);
+});
+
+async function installVoice(page: Page, onUpload?: () => void) {
   await page.addInitScript(() => {
     class FakeRecorder {
       state = "inactive";
@@ -105,6 +144,7 @@ async function installVoice(page: Page) {
     await route.fulfill({ json });
   });
   await page.route("**/voice/transcribe", async (route) => {
+    onUpload?.();
     await route.fulfill({ json: { text: "buy oat milk" } });
   });
   await page.route("**/agent/feed", async (route) => {

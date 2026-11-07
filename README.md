@@ -216,7 +216,7 @@ discovery-system keeps secrets in the house environment file this app already us
 | Name | What it is for |
 | --- | --- |
 | `MISTRAL_API_KEY`, `MISTRAL_AGENT_ID` | Assistant. Empty keeps it off |
-| `VOICE_INPUT_ENABLED` | Mic on Smart Add. Default off. Audio is not stored. Text waits in the box until Add |
+| `VOICE_INPUT_ENABLED` | Mic on Smart Add. Default off. Start recording, then Stop and transcribe (sends that clip to Mistral) or Cancel recording (does not upload). Audio is not stored. Text waits in the box until Add |
 | `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on |
 | `ENABLE_DOCS`, `DOCS_BEHIND_ACCESS` | Both false on the house. Docs are served only when both are true, and only behind Cloudflare Access |
 | `HOUSE_LAT`, `HOUSE_LON` or `HOUSE_POSTCODE` | Weather and the commute origin. Coordinates win when both are set; otherwise the postcode is resolved and not logged or stored |
