@@ -125,8 +125,13 @@ Add nothing secret to git. In the existing house file:
 | `HOUSE_LAT` and `HOUSE_LON`, or `HOUSE_POSTCODE` | Weather. Do not commit or log the value. Coordinates win when both are set. A postcode is resolved through postcodes.io and not stored |
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` | Read-only diary. Scopes: `calendar.events.readonly` and `calendar.calendarlist.readonly`. No write scope |
 | `GOOGLE_CALENDAR_IDS` | Optional. Blank means `primary` until Settings stores names |
-| `TFL_APP_KEY` | Journey check. Empty leaves the brief line “Journey check is not connected.” Do not commit or log the key |
+| `TFL_APP_KEY` | Journey check for the outward and return, and `GET /tfl/status` for line status on Home with no shift. Empty leaves the brief line “Journey check is not connected.” and the Home line row “TfL is not configured.” Settings only records whether the key is set. Do not commit or log the key. No new variable |
 | `BANTO_COMMUTE_TOKEN` | Bearer for `POST /commute/shift`. Empty leaves the push unwired. The body is only `start`, `end`, and `location_label`, and the only label stored is `Wembley` |
+| `COMMUTE_ARRIVAL_BUFFER_MINUTES` | Optional. Default 10. Arrive this many minutes before the shift. 0–180 |
+| `COMMUTE_RETURN_BUFFER_MINUTES` | Optional. Default 0. The return departs this many minutes after the finish. 0–180 |
+| `COMMUTE_PREDEPARTURE_MINUTES` | Optional. Default 90. Window before leaving. 15–240. Idle until disruption checks are on |
+| `COMMUTE_DISRUPTION_CHECKS` | Optional. Default false. The only admin gate for the in-app pre-departure note. Leave false until that note is wanted. It does not start a service, send, or book |
+| `COMMUTE_DESTINATION_LABEL`, `COMMUTE_DESTINATION_STOP` | Optional pair. Leave both empty to keep Wembley Park. Do not put a home address, postcode, or workplace name in git |
 | `WEBHOOK_SECRET_BANTO` | HMAC secret for `POST /hooks/banto`. Leave empty to keep the webhook closed (503). The signature is hex HMAC-SHA256 of `{unix timestamp}.{raw body}`, headers `X-Organiser-Timestamp` and `X-Organiser-Signature`. The timestamp must be within five minutes, and each signature is accepted once in that window. The only event is `commute`, and it uses the same shift check. A rejected body is not stored |
 | `WEBHOOK_SECRET_BANTO_X` | HMAC secret for `POST /hooks/banto_x`. Leave empty to keep that door closed (503). Events: `x.bookmark`, `x.watch_match`, `x.draft`. Same signature rules as Bantō. Refused while `X_ENABLED` is off. A body outside the house is not stored |
 | `X_ENABLED` | Leave unset or `false` until Nick wants X. `true` turns on connect, the poll, cards, and confirmed posts |
@@ -137,7 +142,7 @@ Add nothing secret to git. In the existing house file:
 | `PLAYLIST_SOURCE` | `hearthis` for the Chlorophil line. Empty hides it |
 | `HEARTHIS_PROFILE` | Optional. Default `chlorophil` |
 | `SHOW_PLAYLIST` | Leave unset once a source is set (the line comes on). `false` hides it. The tap opens hearthis in a new tab. Nothing is streamed |
-| `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
+| `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR`, `RATE_COMMUTE_DISRUPTION_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, 12 an hour for the shift push, and 6 an hour for the pre-departure check. Each limit is for this process and resets on restart |
 | `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows voice on Smart Add only. Stop and transcribe sends one clip to Mistral. Cancel recording does not upload. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
 | `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini-transcribe-3`, in the app and in Compose when the variable is unset. Used only when voice is on, with the existing `MISTRAL_API_KEY`. A set value, including `voxtral-mini`, is what is sent |
 

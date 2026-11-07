@@ -28,6 +28,7 @@ FACT_KEYS = {
     "tfl",
     "banto",
     "voice_input",
+    "disruption_checks",
 }
 
 
@@ -71,6 +72,7 @@ def test_house_facts_when_nothing_is_configured(client, reload_settings):
     assert body["tfl"] == "not configured"
     assert body["banto"] == "not configured"
     assert body["voice_input"] == "off"
+    assert body["disruption_checks"] == "not active"
 
 
 def test_house_facts_do_not_echo_or_log_secrets(client, reload_settings, caplog):

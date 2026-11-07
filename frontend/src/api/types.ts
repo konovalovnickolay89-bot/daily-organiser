@@ -127,6 +127,7 @@ export type HouseFacts = {
   tfl: "configured" | "not configured";
   banto: "configured" | "not configured";
   voice_input?: "on" | "off";
+  disruption_checks?: "active" | "not active";
 };
 
 export type XMeter = {

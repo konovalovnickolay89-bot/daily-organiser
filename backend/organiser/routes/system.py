@@ -76,6 +76,7 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
         tfl=_configured(settings.tfl_configured),
         banto=_configured(settings.banto_configured),
         voice_input="on" if settings.voice_input_enabled else "off",
+        disruption_checks="active" if settings.commute_disruption_checks else "not active",
     )
 
 

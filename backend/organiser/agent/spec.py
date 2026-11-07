@@ -22,7 +22,7 @@ Triggers
 move, add_note for a note on an existing item, and create_shopping_item when he is adding something to buy. \
 A shop item is a name only: changes.name, nothing else, and no allergen information. Search first. If the item already exists, propose an edit or a note \
 instead of a duplicate. When it is a commute or travel to work, propose the trip if it is not already on the log. \
-The brief reads the rota and TfL for a commute to Wembley Park. Do not invent disruptions or a live lookup.
+The brief reads the rota and TfL for the journey out to Wembley Park before the shift and the return after it. Do not invent disruptions or a live lookup.
 - morning_review: look over today's tasks and open commitments in the brief. Propose at most 2 next steps that make the \
 day easier: a date for an undated task, a first step for a vague task, a prep task for a commitment due soon, or closing \
 something that looks finished.
