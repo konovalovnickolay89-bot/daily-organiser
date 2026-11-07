@@ -141,7 +141,7 @@ Add nothing secret to git. In the existing house file:
 | `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows voice on Smart Add only. Stop and transcribe sends one clip to Mistral. Cancel recording does not upload. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
 | `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini`. Used only when voice is on, with the existing `MISTRAL_API_KEY` |
 
-Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, token, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.4.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
+Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, token, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.5.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
 
 Rebuild the UI (`npm ci && npm run build` in `frontend/`) before restarting the process. The app boots without the migration because of the boot patch, once pgvector is installed. Still run `alembic upgrade head` after a backup so `0005_sprint6` is recorded. Do not stamp over it. Cloudflare Access is still the only login for people. The webhook is a separate signed door and does not add an account.
 
@@ -194,6 +194,16 @@ Do this after a backup. This repo does not install the unit, and it does not cha
 5. Cloudflare Access should cover `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`, and `/playlist`.
 
 Rollback of the tables, after a backup: `alembic downgrade 0005_sprint6`. That drops the X rows, including sealed tokens and the post audit. A post that already went to X stays on X. Set `X_ENABLED` empty before the downgrade so a restart does not call X. The playlist line hides when `PLAYLIST_SOURCE` is empty.
+
+## Settings and memory search
+
+Do this after a backup. This repo does not install the unit, and it does not change Cloudflare, tunnels, or DNS.
+
+1. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0007_settings_search` is recorded. That adds `house_settings` and a trigger-maintained `search_vector` on `memory_items`, with a GIN index. Do not stamp over it. The process also applies the same statements on boot.
+2. Rebuild the UI (`npm ci && npm run build` in `frontend/`) and restart the process. `/health` reports version `0.5.0`.
+3. Cloudflare Access already covers the house API. `GET /memory/search` is one of those routes. It may send one redacted query to `api.mistral.ai` for an embedding when `MISTRAL_API_KEY` is set, and it uses full text when the key is missing. A postcode or a coordinate is not sent. Leave `X_ENABLED` unset. Settings can store the X limits without turning X on.
+
+Rollback of this revision, after a backup: `alembic downgrade 0006_sprint7`. That drops `house_settings` and `search_vector`. The memories stay. Saved limits are gone and the house returns to the environment defaults. `X_ENABLED` is unchanged because it was never stored.
 
 ## Mistral assistant, later
 

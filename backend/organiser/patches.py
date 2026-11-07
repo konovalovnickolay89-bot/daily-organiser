@@ -267,3 +267,73 @@ SPRINT7_DOWNGRADE: tuple[str, ...] = (
     "DROP TABLE IF EXISTS x_oauth_pending",
     "DROP TABLE IF EXISTS x_connection",
 )
+
+
+# Settings row and the memory full-text column. Alembic 0007 runs these
+# statements. The process also applies them on boot. ``to_tsvector`` is stable,
+# so the column is filled by a trigger rather than a generated expression.
+# The trigger body has no house text. Downgrade drops the column and the
+# settings row. It does not restore a previous limits choice.
+SEARCH_TRIGGER: tuple[str, ...] = (
+    """
+    CREATE OR REPLACE FUNCTION memory_items_search_vector() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+    BEGIN
+      NEW.search_vector := to_tsvector('english', coalesce(NEW.text, ''));
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_memory_items_search ON memory_items",
+    """
+    CREATE TRIGGER trg_memory_items_search
+    BEFORE INSERT OR UPDATE OF text ON memory_items
+    FOR EACH ROW
+    EXECUTE FUNCTION memory_items_search_vector()
+    """,
+)
+
+SETTINGS_UPGRADE: tuple[str, ...] = (
+    """
+    CREATE TABLE IF NOT EXISTS house_settings (
+        id INTEGER PRIMARY KEY,
+        playlist_enabled BOOLEAN,
+        alerts_enabled BOOLEAN NOT NULL DEFAULT true,
+        webhooks_enabled BOOLEAN NOT NULL DEFAULT true,
+        voice_enabled BOOLEAN,
+        x_sync_minutes INTEGER NOT NULL DEFAULT 30,
+        x_daily_cap INTEGER NOT NULL DEFAULT 40,
+        x_from_max INTEGER NOT NULL DEFAULT 10,
+        x_draft_expiry_days INTEGER NOT NULL DEFAULT 7,
+        context_token_budget INTEGER NOT NULL DEFAULT 2000,
+        context_memory_limit INTEGER NOT NULL DEFAULT 10,
+        context_smart_add_days INTEGER NOT NULL DEFAULT 3,
+        context_catch_up_days INTEGER NOT NULL DEFAULT 7,
+        updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        CONSTRAINT ck_house_settings_singleton CHECK (id = 1),
+        CONSTRAINT ck_house_settings_sync CHECK (x_sync_minutes between 5 and 1440),
+        CONSTRAINT ck_house_settings_daily CHECK (x_daily_cap between 1 and 100),
+        CONSTRAINT ck_house_settings_from CHECK (x_from_max between 1 and 20),
+        CONSTRAINT ck_house_settings_expiry CHECK (x_draft_expiry_days between 1 and 30),
+        CONSTRAINT ck_house_settings_tokens CHECK (context_token_budget between 500 and 8000),
+        CONSTRAINT ck_house_settings_memory CHECK (context_memory_limit between 1 and 10),
+        CONSTRAINT ck_house_settings_smart CHECK (context_smart_add_days between 1 and 14),
+        CONSTRAINT ck_house_settings_catch CHECK (context_catch_up_days between 1 and 14)
+    )
+    """,
+    "ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS search_vector tsvector",
+    *SEARCH_TRIGGER,
+    "UPDATE memory_items SET text = text WHERE search_vector IS NULL",
+    """
+    CREATE INDEX IF NOT EXISTS ix_memory_items_search
+    ON memory_items USING gin (search_vector)
+    """,
+)
+
+SETTINGS_DOWNGRADE: tuple[str, ...] = (
+    "DROP INDEX IF EXISTS ix_memory_items_search",
+    "DROP TRIGGER IF EXISTS trg_memory_items_search ON memory_items",
+    "DROP FUNCTION IF EXISTS memory_items_search_vector()",
+    "ALTER TABLE memory_items DROP COLUMN IF EXISTS search_vector",
+    "DROP TABLE IF EXISTS house_settings",
+)

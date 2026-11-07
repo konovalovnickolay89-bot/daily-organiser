@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryScreen } from "./MemoryScreen";
 
 const listMemory = vi.fn();
+const searchMemory = vi.fn();
 const pinMemory = vi.fn();
 const forgetMemory = vi.fn();
 const exportMemory = vi.fn();
 
 vi.mock("../../api/memory", () => ({
   listMemory: (...args: unknown[]) => listMemory(...args),
+  searchMemory: (...args: unknown[]) => searchMemory(...args),
   pinMemory: (...args: unknown[]) => pinMemory(...args),
   forgetMemory: (...args: unknown[]) => forgetMemory(...args),
   exportMemory: (...args: unknown[]) => exportMemory(...args),
@@ -28,10 +30,12 @@ describe("Memory screen", () => {
   beforeEach(() => {
     cleanup();
     listMemory.mockReset();
+    searchMemory.mockReset();
     pinMemory.mockReset();
     forgetMemory.mockReset();
     exportMemory.mockReset();
     listMemory.mockResolvedValue({ items: [milk] });
+    searchMemory.mockResolvedValue({ mode: "fts", items: [milk] });
   });
 
   it("lists, searches, pins, and forgets only after confirm", async () => {
@@ -41,7 +45,8 @@ describe("Memory screen", () => {
     expect(await screen.findByText("The milk stays in the door")).toBeTruthy();
 
     fireEvent.change(screen.getByRole("searchbox", { name: "Search memory" }), { target: { value: "milk" } });
-    await waitFor(() => expect(listMemory).toHaveBeenCalledWith("milk"));
+    await waitFor(() => expect(searchMemory).toHaveBeenCalledWith("milk"));
+    expect(await screen.findByText("Matched on words.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Pin" }));
     await waitFor(() => expect(pinMemory).toHaveBeenCalledWith("m1", true));
@@ -75,5 +80,12 @@ describe("Memory screen", () => {
     await waitFor(() => expect(exportMemory).toHaveBeenCalled());
     await waitFor(() => expect(click).toHaveBeenCalled());
     expect(JSON.stringify(exportMemory.mock.calls)).not.toContain("embedding");
+  });
+
+  it("shows an empty state when nothing matches", async () => {
+    searchMemory.mockResolvedValue({ mode: "fts", items: [] });
+    render(<MemoryScreen />);
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search memory" }), { target: { value: "no-such-memory" } });
+    expect(await screen.findByText("Nothing matches.")).toBeTruthy();
   });
 });

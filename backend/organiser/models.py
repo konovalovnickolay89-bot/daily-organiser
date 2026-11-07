@@ -13,10 +13,12 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    event,
     func,
+    text,
 )
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 _AGENT_TRIGGERS = "('feed', 'morning_review', 'doing_stalled', 'overdue_lingering', 'commitment_due_soon')"
@@ -365,6 +367,7 @@ class MemoryItem(Base):
             postgresql_using="hnsw",
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        Index("ix_memory_items_search", "search_vector", postgresql_using="gin"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -375,6 +378,8 @@ class MemoryItem(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     embedding: Mapped[list[float] | None] = mapped_column(Vector(MEMORY_EMBEDDING_DIM), nullable=True)
+    # Filled by trg_memory_items_search. Retrieval reads it. The API does not.
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
 
 
 class AlertDismissal(Base):
@@ -523,3 +528,50 @@ class XPostAudit(Base):
     tweet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     error_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class HouseSettings(Base):
+    """One row of house choices. Secrets stay in the environment.
+
+    A null playlist or voice flag follows the environment. The X flag is not
+    stored here: ``X_ENABLED`` stays unset until the house file sets it.
+    """
+
+    __tablename__ = "house_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_house_settings_singleton"),
+        CheckConstraint("x_sync_minutes between 5 and 1440", name="ck_house_settings_sync"),
+        CheckConstraint("x_daily_cap between 1 and 100", name="ck_house_settings_daily"),
+        CheckConstraint("x_from_max between 1 and 20", name="ck_house_settings_from"),
+        CheckConstraint("x_draft_expiry_days between 1 and 30", name="ck_house_settings_expiry"),
+        CheckConstraint("context_token_budget between 500 and 8000", name="ck_house_settings_tokens"),
+        CheckConstraint("context_memory_limit between 1 and 10", name="ck_house_settings_memory"),
+        CheckConstraint("context_smart_add_days between 1 and 14", name="ck_house_settings_smart"),
+        CheckConstraint("context_catch_up_days between 1 and 14", name="ck_house_settings_catch"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    playlist_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    alerts_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    webhooks_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    voice_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    x_sync_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=30, server_default="30")
+    x_daily_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=40, server_default="40")
+    x_from_max: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default="10")
+    x_draft_expiry_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7, server_default="7")
+    context_token_budget: Mapped[int] = mapped_column(Integer, nullable=False, default=2000, server_default="2000")
+    context_memory_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=10, server_default="10")
+    context_smart_add_days: Mapped[int] = mapped_column(Integer, nullable=False, default=3, server_default="3")
+    context_catch_up_days: Mapped[int] = mapped_column(Integer, nullable=False, default=7, server_default="7")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+def _install_memory_search_trigger(target, connection, **_kwargs) -> None:
+    """Keep the trigger on databases built with ``create_all``."""
+    from organiser.patches import SEARCH_TRIGGER
+
+    for statement in SEARCH_TRIGGER:
+        connection.execute(text(statement))
+
+
+event.listen(MemoryItem.__table__, "after_create", _install_memory_search_trigger)

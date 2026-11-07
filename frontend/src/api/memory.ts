@@ -17,10 +17,19 @@ export type MemoryExport = {
   items: MemoryItem[];
 };
 
+export type MemorySearch = {
+  mode: "hybrid" | "fts" | string;
+  items: MemoryItem[];
+};
+
 export function listMemory(query = "") {
   const q = query.trim();
   const path = q ? `/memory?q=${encodeURIComponent(q)}` : "/memory";
   return request<{ items: MemoryItem[] }>(path);
+}
+
+export function searchMemory(query: string) {
+  return request<MemorySearch>(`/memory/search?q=${encodeURIComponent(query)}`);
 }
 
 export function pinMemory(id: string, pinned: boolean) {

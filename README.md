@@ -153,6 +153,8 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/approvals/{id}/skip` | Status becomes skipped |
 | GET | `/system` | Pause flag, activity, status line, and the presence-bar greeting |
 | GET | `/system/facts` | Timezone, assistant on or off, the assistant switch, runs left today, and whether diary, weather location, TfL, and Bantō are configured. No secret, coordinate, postcode, or calendar id. Never calls Mistral |
+| GET, PATCH | `/system/settings` | Playlist, alerts, webhooks, voice, X limits, agent context, and docs status. Each change is one log line. `X_ENABLED` is not accepted. No secret is returned |
+| GET | `/system/status` | Health, version, last Mistral success, last activity poll, database size, X credits, and Mistral, Voxtral, Google, TfL, X, and hearthis health. No house text. Never calls out |
 | POST | `/system/assistant` | Persist the assistant switch. Body: `{"enabled": true}` or false. One activity line when it changes. Keys are not removed |
 | GET, POST | `/shopping` | Shopping names. Create body is `{"name": "..."}` only. An extra field is rejected |
 | POST | `/shopping/{id}/tick` and `/untick` | Mark a line got, or put it back. Nothing is ordered |
@@ -162,7 +164,7 @@ TEST_DATABASE_URL=postgresql+psycopg://organiser:organiser@<host>/<db> pytest
 | POST | `/system/unpause` | Resume |
 | POST | `/system/arrive` | Record an arrival. “Welcome home” lasts one hour from the first signal. A repeat inside that hour does not extend it or write a second log line. Nothing is sent or booked |
 | GET | `/agent` | Assistant state: on or off, paused, the review that is due, runs left today, last reply, waiting cards. Never calls Mistral |
-| GET | `/agent/activity` | Recent house-log lines for a curator: `id`, `at` (Europe/London, ISO-8601), `text`, `type`. Query: `limit` (default 40, max 100), `since` (lines strictly after that time). Newest first. Never calls Mistral. Types include `add`, `apply`, `catchup`, `pause`, `resume`, `arrival`, `approval`, `proposal`, `note`, `assistant` |
+| GET | `/agent/activity` | Recent house-log lines for a curator: `id`, `at` (Europe/London, ISO-8601), `text`, `type`. Query: `limit` (default 40, max 100), `since` (lines strictly after that time). Newest first. Never calls Mistral. Types include `add`, `apply`, `catchup`, `pause`, `resume`, `arrival`, `approval`, `proposal`, `note`, `assistant`, `settings` |
 | POST | `/agent/proposals` | One pending task card. Body: `title` (required), optional `due_on` (`YYYY-MM-DD`), `reason`, `source`. Does not create a task or call Mistral. 422 empty title, a bad date, or anything outside the house. A past date is kept, and the card says “This date has passed.” 409 paused, duplicate of an open task or commitment or a waiting card, or 10 cards already waiting. 429 when this process has taken 30 proposals in a minute. Apply and Not now are the routes below |
 | POST | `/agent/feed` | One entry from the box. The assistant may propose up to 3 cards, including one shopping line (a name only; Apply adds it). 409 paused, 503 off, 429 runs used or more than 6 lines in a minute from this process, 424 the assistant did not finish. `Accept: text/event-stream` sends the working steps, then the cards or one error. A failure is not a 502. While Mistral is down the box is hidden |
 | POST | `/agent/review` | Run the review `GET /agent` says is due. Each window runs once |

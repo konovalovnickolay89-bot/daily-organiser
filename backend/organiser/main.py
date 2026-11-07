@@ -15,6 +15,7 @@ from organiser.db import (
     ensure_last_looked_at_column,
     ensure_alerts,
     ensure_memory,
+    ensure_settings,
     ensure_sprint7,
     ensure_sprint2,
     ensure_sprint3,
@@ -55,9 +56,13 @@ async def lifespan(app: FastAPI):
     ensure_memory()
     ensure_alerts()
     ensure_sprint7()
+    ensure_settings()
     session = get_sessionmaker()()
     try:
         ensure_system_state(session)
+        from organiser.services.settings import ensure_house_settings
+
+        ensure_house_settings(session)
         if settings.seed_on_start:
             seed_if_empty(session)
         session.commit()

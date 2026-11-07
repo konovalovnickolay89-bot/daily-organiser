@@ -33,6 +33,22 @@ export function StatusPanel() {
   }, [tick]);
 
   const health = status?.health === "ok" ? "Ok" : status?.health === "degraded" ? "Degraded" : "…";
+  const serviceLabel: Record<string, string> = {
+    mistral: "Mistral",
+    voxtral: "Voxtral",
+    google: "Google",
+    tfl: "TfL",
+    x: "X",
+    hearthis: "hearthis",
+  };
+  const serviceValue = (state: string) => {
+    if (state === "ok" || state === "ready") return "Ok";
+    if (state === "attention") return "Attention";
+    if (state === "off") return "Off";
+    if (state === "not configured") return "Not configured";
+    if (state === "unavailable") return "Unavailable";
+    return "Not yet";
+  };
   const rows: Array<[string, string, string]> = [
     ["Health", health, "health"],
     ["Version", status?.version ?? "…", "version"],
@@ -40,6 +56,13 @@ export function StatusPanel() {
     ["Last activity poll", status ? formatHouseTime(status.last_activity_poll) : "…", "poll"],
     ["Database", status ? formatBytes(status.database_bytes) : "…", "database"],
     ["X credits / rate", status ? formatXLine(status.x) : "…", "x"],
+    ...(status?.services ?? []).map(
+      (service): [string, string, string] => [
+        serviceLabel[service.name] ?? service.name,
+        serviceValue(service.state),
+        `service-${service.name}`,
+      ],
+    ),
   ];
 
   return (
@@ -62,7 +85,7 @@ export function StatusPanel() {
             <dd
               className={cx(
                 "m-0 text-base font-semibold",
-                value === "Ok" ? "text-success" : value === "Degraded" ? "text-[var(--danger)]" : "text-[var(--ink)]",
+                value === "Ok" ? "text-success" : value === "Degraded" || value === "Attention" || value === "Unavailable" ? "text-[var(--danger)]" : "text-[var(--ink)]",
                 key !== "health" && "font-mono tabular-nums",
               )}
               data-status={key}

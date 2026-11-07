@@ -375,6 +375,89 @@ class MemoryExport(APIModel):
     items: list[MemoryRead]
 
 
+class MemorySearch(APIModel):
+    """Ranked memories. ``mode`` is ``hybrid`` when an embedding was used, else ``fts``."""
+
+    mode: str
+    items: list[MemoryRead]
+
+
+class PlaylistSetting(APIModel):
+    enabled: bool
+    available: bool
+    source: str
+    profile: str
+    detail: str
+
+
+class AlertsSetting(APIModel):
+    enabled: bool
+
+
+class WebhooksSetting(APIModel):
+    enabled: bool
+    banto: str
+    banto_x: str
+
+
+class VoiceSetting(APIModel):
+    mic: str
+    env_enabled: bool
+    voxtral: str
+    detail: str
+
+
+class XLimitsSetting(APIModel):
+    enabled: bool
+    sync_minutes: int
+    daily_cap: int
+    from_max: int
+    draft_expiry_days: int
+    detail: str
+
+
+class AgentContextSetting(APIModel):
+    token_budget: int
+    memory_limit: int
+    smart_add_days: int
+    catch_up_days: int
+
+
+class DocsStatus(APIModel):
+    state: str
+    detail: str
+
+
+class FeatureSettings(APIModel):
+    """Every house choice on Settings. No secret, postcode, coordinate, or token."""
+
+    playlist: PlaylistSetting
+    alerts: AlertsSetting
+    webhooks: WebhooksSetting
+    voice: VoiceSetting
+    x: XLimitsSetting
+    agent_context: AgentContextSetting
+    docs: DocsStatus
+
+
+class FeatureSettingsPatch(BaseModel):
+    """A partial save. Extra fields, including ``x_enabled``, are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+    playlist_enabled: bool | None = None
+    alerts_enabled: bool | None = None
+    webhooks_enabled: bool | None = None
+    voice_enabled: bool | None = None
+    x_sync_minutes: int | None = Field(default=None, ge=5, le=1440)
+    x_daily_cap: int | None = Field(default=None, ge=1, le=100)
+    x_from_max: int | None = Field(default=None, ge=1, le=20)
+    x_draft_expiry_days: int | None = Field(default=None, ge=1, le=30)
+    context_token_budget: int | None = Field(default=None, ge=500, le=8000)
+    context_memory_limit: int | None = Field(default=None, ge=1, le=10)
+    context_smart_add_days: int | None = Field(default=None, ge=1, le=14)
+    context_catch_up_days: int | None = Field(default=None, ge=1, le=14)
+
+
 class DueRead(APIModel):
     trigger: AgentTrigger
     window_key: str
@@ -471,6 +554,14 @@ class XMeterRead(APIModel):
     attention: str | None = None
 
 
+class ServiceHealth(APIModel):
+    """One connection, by name. The detail is a class or a short line, never a secret."""
+
+    name: str
+    state: str
+    detail: str
+
+
 class StatusRead(APIModel):
     """Settings status. Times are instants. The database size is bytes. No house text."""
 
@@ -480,6 +571,7 @@ class StatusRead(APIModel):
     last_activity_poll: datetime | None = None
     database_bytes: int | None = None
     x: XMeterRead = XMeterRead()
+    services: list[ServiceHealth] = Field(default_factory=list)
 
 
 class XWatchRead(APIModel):

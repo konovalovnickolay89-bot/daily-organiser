@@ -32,6 +32,7 @@ WEMBLEY_STOP = "940GZZLUWYP"
 STORED_LABEL = "Wembley"
 _CACHE: dict[str, tuple[float, dict]] = {}
 _TTL_SECONDS = 10 * 60
+_tfl_outcome = "unknown"
 _TAG = re.compile(r"<[^>]+>")
 _GOOD = {"good service"}
 
@@ -44,7 +45,19 @@ class ShiftRejected(Exception):
 
 
 def clear_cache() -> None:
+    global _tfl_outcome
     _CACHE.clear()
+    _tfl_outcome = "unknown"
+
+
+def tfl_outcome() -> str:
+    """``ok``, ``attention``, or ``unknown``. No origin, postcode, or key."""
+    return _tfl_outcome
+
+
+def _note_tfl(state: str) -> None:
+    global _tfl_outcome
+    _tfl_outcome = state
 
 
 def _back(aware: datetime) -> datetime:
@@ -270,6 +283,7 @@ def _fetch(settings: Settings, lat: float, lon: float, start: datetime, used_key
     summary = f"Wembley Park · leave {journey['leave']} · {journey['minutes']} min{via}. {disruptions}"
     fresh = {"summary": summary, "disruptions": disruptions}
     _CACHE[used_key] = (time.monotonic(), fresh)
+    _note_tfl("ok")
     return fresh
 
 
@@ -292,5 +306,6 @@ def commute_section(session: Session, settings: Settings, today, now: datetime) 
     try:
         fresh = _fetch(settings, point[0], point[1], shift.start_at, str(shift.id))
     except Exception:
+        _note_tfl("attention")
         return _section(f"Wembley Park · {span}. Journey check is unavailable.", meta=span)
     return _section(fresh["summary"], meta=span, detail=fresh["summary"])

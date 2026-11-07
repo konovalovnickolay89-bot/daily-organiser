@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 
 from organiser.agent.voice import (
     MAX_BODY,
@@ -13,15 +14,17 @@ from organiser.agent.voice import (
     transcribe_with,
 )
 from organiser.config import get_settings
+from organiser.db import get_db
+from organiser.services.settings import voice_mic_on
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
 
-def get_transcriber() -> Transcriber:
+def get_transcriber(session: Session = Depends(get_db)) -> Transcriber:
     settings = get_settings()
-    if not settings.voice_input_enabled:
+    if not settings.voice_input_enabled or not voice_mic_on(session):
         raise HTTPException(status_code=404, detail="Not found.")
     key = settings.mistral_api_key.get_secret_value().strip()
     if not key:
@@ -35,9 +38,13 @@ def get_transcriber() -> Transcriber:
 
 
 @router.post("/transcribe")
-async def transcribe(request: Request, transcriber: Transcriber = Depends(get_transcriber)) -> dict:
+async def transcribe(
+    request: Request,
+    session: Session = Depends(get_db),
+    transcriber: Transcriber = Depends(get_transcriber),
+) -> dict:
     """Audio in memory, text back. The recording is not written, stored, or logged."""
-    if not get_settings().voice_input_enabled:
+    if not get_settings().voice_input_enabled or not voice_mic_on(session):
         raise HTTPException(status_code=404, detail="Not found.")
     length = request.headers.get("content-length")
     if length:

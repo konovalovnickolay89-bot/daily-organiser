@@ -238,7 +238,7 @@ def test_metrics_are_counts_without_house_text(client, house_clock, mistral):
     assert "organiser_proposal_queue 0" in body
     status = client.get("/system/status").json()
     assert status["health"] == "ok"
-    assert status["version"] == __version__ == "0.4.0"
+    assert status["version"] == __version__ == "0.5.0"
     assert status["last_mistral_success"] is not None
     assert status["last_activity_poll"] is not None
     assert status["database_bytes"] > 0

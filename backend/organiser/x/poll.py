@@ -79,7 +79,9 @@ def poll(session: Session, settings: Settings, now: datetime) -> dict:
         meter.backoff_until = meter.rate_reset_at
         meter.updated_at = now
         return {"ran": False, "reason": "backoff"}
-    interval = timedelta(minutes=settings.poll_interval_minutes)
+    from organiser.services.settings import sync_minutes
+
+    interval = timedelta(minutes=sync_minutes(session))
     if meter.last_poll_at and now - meter.last_poll_at < interval:
         return {"ran": False, "reason": "cached"}
 
