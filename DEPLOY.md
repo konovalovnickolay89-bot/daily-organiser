@@ -139,7 +139,7 @@ Add nothing secret to git. In the existing house file:
 | `SHOW_PLAYLIST` | Leave unset once a source is set (the line comes on). `false` hides it. The tap opens hearthis in a new tab. Nothing is streamed |
 | `RATE_FEED_PER_MINUTE`, `RATE_INGEST_PER_MINUTE`, `RATE_COMMUTE_PER_HOUR` | Optional. Defaults are 6 a minute, 30 a minute, and 12 an hour. Each limit is for this process and resets on restart |
 | `VOICE_INPUT_ENABLED` | Leave unset or `false`. `true` shows voice on Smart Add only. Stop and transcribe sends one clip to Mistral. Cancel recording does not upload. Recordings are not written to disk, the database, or the logs. Text waits in the box until Add |
-| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini-transcribe-3`. Used only when voice is on, with the existing `MISTRAL_API_KEY`. If this is set to `voxtral-mini`, that value is what is sent |
+| `MISTRAL_TRANSCRIBE_MODEL` | Optional. Default `voxtral-mini-transcribe-3`, in the app and in Compose when the variable is unset. Used only when voice is on, with the existing `MISTRAL_API_KEY`. A set value, including `voxtral-mini`, is what is sent |
 
 Logs are one JSON object per line on stdout: time, level, logger, message, and for requests the method, path, status, and duration. No body, query string, postcode, coordinate, token, or secret. A context line is the schema version and the counts per section, never the titles. `/health` adds `version` (currently `0.4.0`) beside `status` and `database`. `/metrics` is Prometheus text for the same process.
 
