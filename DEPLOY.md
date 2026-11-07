@@ -108,7 +108,7 @@ Please confirm Cloudflare Access covers `organiser.apidiscoverysolution.uk` for 
 - `/commute/shift`
 - `/metrics`, `/system/status`, `/alerts`
 - `/voice/transcribe` when voice is on. It is 404 while `VOICE_INPUT_ENABLED` is unset
-- `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`
+- `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`, `/x/poll/pause`, `/x/poll/resume`
 - `/playlist`
 
 Do not change Cloudflare, tunnels, or DNS from this repo. Access is the only login.
@@ -176,8 +176,10 @@ This uses Nick's own app on the X developer portal. The house does not share an 
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-7. Set `X_ENABLED=true` and restart. In Settings, tap Connect. X asks Nick to allow those scopes. Disconnect revokes the refresh token and deletes the sealed copy.
-8. The watch list is accounts or keywords, edited in Settings. Bookmarks and that list are read about every 30 minutes (`X_POLL_MINUTES`). A card is Apply or Not now. Apply keeps the line in the log. It does not post.
+7. Set `X_ENABLED=true` and restart. On the home screen, open the X card and tap Connect, then confirm. X asks Nick to allow those scopes. Disconnect revokes the refresh token and deletes the sealed copy. Reconnect does that, then starts connect again, and only after a confirm.
+8. The watch list is accounts or keywords, edited on that card. Bookmarks and that list are read about every 30 minutes (`X_POLL_MINUTES`). Pause reading on the card stores a flag and stops those reads. It does not post, and it does not change the house pause. The interval stays in the house file. A card is Apply or Not now. Apply keeps the line in the log. It does not post.
+
+The X card uses the same authorize URL this app already builds: `https://twitter.com/i/oauth2/authorize`, S256, and the scopes above. It does not collect a client id, a secret, a token, or a code. If X’s allow page fails before the browser is sent to `/x/callback`, `POST /x/connect` can still have returned 200 and this house never sees a callback. The cause of that allow-page error is not decided here. Do not change the authorize host, the challenge, the scopes, or the callback to chase it, and do not bypass Cloudflare Access.
 9. A draft is posted only when Nick taps Post and then confirms. Drafts expire after 7 days. Each attempt is an audit row. Hilton, a guest, a colleague, an employer, or a work system is refused and not stored.
 10. A relay can still post `x.bookmark`, `x.watch_match`, or `x.draft` to `POST /hooks/banto_x` with `WEBHOOK_SECRET_BANTO_X`. The same pipeline, the same refusal. Leave the secret empty until that relay exists.
 
@@ -188,10 +190,10 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 Do this after a backup. This repo does not install the unit, and it does not change Cloudflare, tunnels, or DNS.
 
 1. Allow outbound HTTPS to `api.x.com` if X will be on, and to `api-v2.hearthis.at` if the playlist line will be on. The browser also needs `img.hearthis.at` for the thumb. Do not open a new public port.
-2. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0006_sprint7` is recorded. That adds `x_connection`, `x_oauth_pending`, `x_watches`, `x_items`, `x_cursors`, `x_meter`, and `x_post_audit`. Tokens in `x_connection` are ciphertext. Do not stamp over it. The process also creates the tables on boot.
+2. `cd /opt/daily-organiser/backend && PYTHONPATH=. alembic upgrade head` so `0007_x_poll_pause` is recorded. `0006_sprint7` adds `x_connection`, `x_oauth_pending`, `x_watches`, `x_items`, `x_cursors`, `x_meter`, and `x_post_audit`. `0007_x_poll_pause` adds `x_meter.poll_paused`. Tokens in `x_connection` are ciphertext. Do not stamp over it. The process also creates the tables on boot and adds the pause column if it is missing.
 3. Put the X and playlist names in the existing house file. Leave `X_ENABLED` unset until the app setup above is done. `PLAYLIST_SOURCE=hearthis` and `HEARTHIS_PROFILE=chlorophil` show the line. `SHOW_PLAYLIST=false` hides it. `SHOW_PLAYLIST_STUB` is no longer read.
 4. Rebuild the UI (`npm ci && npm run build` in `frontend/`) and restart the process. `/health` reports version `0.4.0`. Reinstall `backend/requirements.txt` so `cryptography` is present.
-5. Cloudflare Access should cover `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`, and `/playlist`.
+5. Cloudflare Access should cover `/x/status`, `/x/connect`, `/x/callback`, `/x/disconnect`, `/x/watches`, `/x/items`, `/x/poll`, `/x/poll/pause`, `/x/poll/resume`, and `/playlist`. This repo does not change Access.
 
 Rollback of the tables, after a backup: `alembic downgrade 0005_sprint6`. That drops the X rows, including sealed tokens and the post audit. A post that already went to X stays on X. Set `X_ENABLED` empty before the downgrade so a restart does not call X. The playlist line hides when `PLAYLIST_SOURCE` is empty.
 

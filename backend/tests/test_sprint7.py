@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 from agent_fakes import london
 from organiser.agent.functions import RunContext, dispatch
 from organiser.config import get_settings
-from organiser.models import AgentRun, Event, XConnection, XCursor, XItem, XOauthPending, XPostAudit
+from organiser.models import AgentRun, Event, XConnection, XCursor, XItem, XMeter, XOauthPending, XPostAudit
 from organiser.routes.hooks import clear_replay_cache
 from organiser.services.playlist import set_transport as set_playlist_transport
 from organiser.x.client import set_transport
@@ -141,6 +141,8 @@ def test_x_is_off_until_the_flag_is_set(client, monkeypatch):
     assert client.get("/x/status").json()["enabled"] is False
     assert client.post("/x/connect").status_code == 404
     assert client.post("/x/poll").json()["reason"] == "off"
+    assert client.post("/x/poll/pause").status_code == 404
+    assert client.post("/x/poll/resume").status_code == 404
     assert client.get("/system/status").json()["x"]["enabled"] is False
     monkeypatch.setenv("X_CLIENT_SECRET", "x-secret-not-real")
     monkeypatch.setenv("X_TOKEN_KEY", TOKEN_KEY)
@@ -573,5 +575,70 @@ def test_hearthis_is_cached_for_an_hour_and_quiet_when_offline(client, house_clo
         get_settings.cache_clear()
         hidden = client.get("/playlist").json()
         assert hidden["shown"] is False
+    finally:
+        get_settings.cache_clear()
+
+
+def test_poll_pause_blocks_reads_and_status_stays_free_of_secrets(client, db, house_clock, monkeypatch):
+    house_clock["now"] = london(2026, 11, 2, 8, 0)
+    _enable(monkeypatch)
+    api = XApi()
+    api.bookmarks = [{"id": "100", "text": "Put the bins out tonight", "author_id": "7"}]
+    _install(api)
+    try:
+        _connect(client, db)
+        calls = len(api.calls)
+        paused = client.post("/x/poll/pause")
+        assert paused.status_code == 200, paused.text
+        body = paused.json()
+        assert body["poll_paused"] is True
+        assert body["connected"] is True
+        assert body["username"] == "nickhome"
+        assert body["poll_interval_minutes"] == 30
+        assert body["watch_limit"] == 20
+        assert "x-secret-not-real" not in paused.text
+        assert REFRESH not in paused.text
+        assert ACCESS not in paused.text
+        assert TOKEN_KEY not in paused.text
+        held = client.post("/x/poll")
+        assert held.json() == {"ran": False, "reason": "poll_paused"}
+        assert len(api.calls) == calls
+
+        again = client.post("/x/poll/pause")
+        assert again.json()["poll_paused"] is True
+
+        resumed = client.post("/x/poll/resume")
+        assert resumed.status_code == 200
+        assert resumed.json()["poll_paused"] is False
+        ran = client.post("/x/poll")
+        assert ran.json()["reason"] == "polled"
+        assert len(api.calls) > calls
+        status = client.get("/x/status").json()
+        assert status["last_poll_at"] is not None
+        assert status["credits_remaining"] == 120
+        assert status["rate_remaining"] == 45
+        assert status["last_error_class"] is None
+        assert status["backing_off"] is False
+        assert REFRESH not in json.dumps(status)
+
+        api.fail = 429
+        house_clock["now"] = london(2026, 11, 2, 8, 31)
+        limited = client.post("/x/poll")
+        assert limited.json()["reason"] == "limited"
+        after = client.get("/x/status").json()
+        assert after["last_error_class"] == "rate"
+        assert after["backing_off"] is True
+        assert after["backoff_until"] is not None
+        line = client.get("/system/status").json()["x"]
+        assert line["poll_paused"] is False
+        assert line["attention"] == "rate"
+
+        db.expire_all()
+        meter = db.get(XMeter, 1)
+        meter.last_error_class = "refresh-token-value"
+        db.commit()
+        hidden = client.get("/x/status").json()
+        assert hidden["last_error_class"] is None
+        assert REFRESH not in json.dumps(hidden)
     finally:
         get_settings.cache_clear()

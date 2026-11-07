@@ -26,6 +26,7 @@ export default defineConfig({
       "/hooks": api,
       "/commute": api,
       "/memory": api,
+      "/x": api,
     },
   },
 });

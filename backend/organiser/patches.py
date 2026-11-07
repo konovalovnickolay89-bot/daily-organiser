@@ -258,6 +258,13 @@ SPRINT7_UPGRADE: tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS ix_x_post_audit_item ON x_post_audit (item_id)",
 )
 
+# Alembic 0007. The table from 0006 has no pause flag. Boot runs this too.
+X_POLL_PAUSE_UPGRADE: tuple[str, ...] = (
+    "ALTER TABLE x_meter ADD COLUMN IF NOT EXISTS poll_paused BOOLEAN NOT NULL DEFAULT false",
+)
+
+X_POLL_PAUSE_DOWNGRADE: tuple[str, ...] = ("ALTER TABLE x_meter DROP COLUMN IF EXISTS poll_paused",)
+
 SPRINT7_DOWNGRADE: tuple[str, ...] = (
     "DROP TABLE IF EXISTS x_post_audit",
     "DROP TABLE IF EXISTS x_meter",

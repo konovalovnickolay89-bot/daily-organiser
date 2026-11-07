@@ -5,6 +5,7 @@ import { AlertCards } from "../modules/alerts/AlertCards";
 import { CatchUpStrip } from "../modules/catchup/CatchUpStrip";
 import { PresenceBar } from "../modules/presence/PresenceBar";
 import { UndoProvider } from "../modules/tasks/UndoToast";
+import { XPanel } from "../modules/x/XPanel";
 import { Rail } from "./Rail";
 import { ThemeCard } from "./ThemeCard";
 import { arrivalModules } from "./modules";
@@ -24,7 +25,7 @@ const MODULE_ORDER: Record<string, string[]> = {
   brief: ["morning-brief"],
   approvals: ["approvals"],
   today: ["today", "assistant"],
-  reasoning: ["reasoning", "x-cards"],
+  reasoning: ["reasoning"],
   corner: ["quiet-media"],
 };
 
@@ -63,18 +64,25 @@ export function ArrivalShell() {
               className="stage min-w-0 flex-1 pb-18 pl-8 pr-10 pt-10 outline-none min-[1100px]:pb-24 min-[1100px]:pl-12 min-[1100px]:pr-18 min-[1100px]:pt-14 max-[720px]:px-4 max-[720px]:pb-12 max-[720px]:pt-6"
               tabIndex={-1}
             >
-              <div className="max-w-[1280px]">
+              <div className="max-w-[1680px]">
                 <PresenceBar />
                 <CatchUpStrip />
                 <AlertCards />
-                <div className="cards mt-10 grid items-start gap-6 [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(256px,0.92fr)] max-[980px]:grid-cols-1">
-                  {PANELS.map((panel) => (
-                    <div key={panel.id} className={`${card} ${panel.place}`} data-panel={panel.id}>
-                      {modulesIn(panel.id).map((mod) => (
-                        <mod.Component key={mod.id} />
-                      ))}
+                <div className="arrival-board mt-10 grid items-start gap-6 min-[1280px]:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="cards grid min-w-0 items-start gap-6 [grid-template-columns:minmax(0,1.14fr)_minmax(0,1fr)_minmax(256px,0.92fr)] max-[980px]:grid-cols-1">
+                    {PANELS.map((panel) => (
+                      <div key={panel.id} className={`${card} ${panel.place}`} data-panel={panel.id}>
+                        {modulesIn(panel.id).map((mod) => (
+                          <mod.Component key={mod.id} />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  {view === "home" && (
+                    <div className={`${card} min-w-0`} data-panel="x">
+                      <XPanel />
                     </div>
-                  ))}
+                  )}
                 </div>
                 {modulesIn("corner").map((mod) => (
                   <mod.Component key={mod.id} />

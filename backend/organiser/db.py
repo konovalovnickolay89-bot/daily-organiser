@@ -180,6 +180,15 @@ def ensure_sprint7() -> None:
             connection.execute(text(statement))
 
 
+def ensure_x_poll_pause() -> None:
+    """``poll_paused`` on ``x_meter``. Matches Alembic ``0007_x_poll_pause`` and can run twice."""
+    from organiser.patches import X_POLL_PAUSE_UPGRADE
+
+    with get_engine().begin() as connection:
+        for statement in X_POLL_PAUSE_UPGRADE:
+            connection.execute(text(statement))
+
+
 def ensure_memory() -> None:
     """The memory table, the usage count, and the wider proposal check.
 

@@ -62,7 +62,7 @@ test("a narrow screen keeps the tube, the lighter padding, and no sideways scrol
 
 test("keyboard focus stays visible outside the tube", async ({ page }) => {
   await page.goto("/");
-  const pause = page.getByRole("button", { name: "Pause" });
+  const pause = page.getByRole("button", { name: "Pause the house", exact: true });
   for (let step = 0; step < 12; step += 1) {
     if (await pause.evaluate((el) => el === document.activeElement)) break;
     await page.keyboard.press("Tab");

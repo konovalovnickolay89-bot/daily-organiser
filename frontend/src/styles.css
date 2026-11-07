@@ -248,6 +248,11 @@ textarea {
   grid-column: 1 / -1;
 }
 
+/* The side card is the narrow one. Same tube, the padding narrow cards already use. */
+.arrival-board > [data-panel="x"] {
+  padding: 32px;
+}
+
 .theme-card {
   display: none;
 }

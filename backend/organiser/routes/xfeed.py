@@ -27,7 +27,16 @@ from organiser.x.oauth import (
     take_verifier,
 )
 from organiser.x.poll import poll, post_draft
-from organiser.x.store import XRejected, add_watch, apply_item, card_body, cards, dismiss_item, remove_watch
+from organiser.x.store import (
+    XRejected,
+    add_watch,
+    apply_item,
+    card_body,
+    cards,
+    dismiss_item,
+    remove_watch,
+    set_poll_paused,
+)
 
 router = APIRouter(prefix="/x", tags=["x"])
 
@@ -45,10 +54,15 @@ def _guard_enabled() -> None:
         raise HTTPException(status_code=404, detail="X is off.")
 
 
+def _status(session: Session) -> XStatusRead:
+    settings = get_settings()
+    return XStatusRead.model_validate(status_view(session, settings, _now()))
+
+
 @router.get("/status", response_model=XStatusRead)
 def x_status(session: Session = Depends(get_db)) -> XStatusRead:
     """Whether X is on, and the handle when it is connected. No token."""
-    return XStatusRead.model_validate(status_view(session, get_settings()))
+    return _status(session)
 
 
 @router.post("/connect", response_model=XConnectRead)
@@ -102,7 +116,7 @@ def x_disconnect(session: Session = Depends(get_db)) -> XStatusRead:
     except XRejected as exc:
         raise _rejected(exc) from None
     session.commit()
-    return XStatusRead.model_validate(status_view(session, settings))
+    return _status(session)
 
 
 @router.post("/watches", response_model=XWatchRead)
@@ -119,13 +133,30 @@ def x_add_watch(payload: XWatchWrite, session: Session = Depends(get_db)) -> XWa
 @router.delete("/watches/{watch_id}", response_model=XStatusRead)
 def x_remove_watch(watch_id: UUID, session: Session = Depends(get_db)) -> XStatusRead:
     _guard_enabled()
-    settings = get_settings()
     try:
         remove_watch(session, watch_id)
     except XRejected as exc:
         raise _rejected(exc) from None
     session.commit()
-    return XStatusRead.model_validate(status_view(session, settings))
+    return _status(session)
+
+
+@router.post("/poll/pause", response_model=XStatusRead)
+def x_pause_poll(session: Session = Depends(get_db)) -> XStatusRead:
+    """Stop bookmark and watch reads. Nothing is posted and X is not called."""
+    _guard_enabled()
+    set_poll_paused(session, True, _now())
+    session.commit()
+    return _status(session)
+
+
+@router.post("/poll/resume", response_model=XStatusRead)
+def x_resume_poll(session: Session = Depends(get_db)) -> XStatusRead:
+    """Allow the next read when the interval and backoff say so. Nothing is posted."""
+    _guard_enabled()
+    set_poll_paused(session, False, _now())
+    session.commit()
+    return _status(session)
 
 
 @router.get("/items", response_model=XCardList)

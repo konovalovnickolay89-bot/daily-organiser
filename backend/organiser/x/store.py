@@ -22,6 +22,7 @@ HANDLE = re.compile(r"^[A-Za-z0-9_]{1,15}$")
 KEYWORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9 _-]{0,79}")
 _X_HOSTS = {"x.com", "www.x.com", "twitter.com", "www.twitter.com"}
 LABELS = {"bookmark": "Bookmark", "watch_match": "Watch", "draft": "Draft"}
+ERROR_CLASSES = frozenset({"auth", "credits", "rate", "unreachable", "http"})
 
 
 class XRejected(Exception):
@@ -145,6 +146,21 @@ def note_limits(
     return row
 
 
+def public_error(value: str | None) -> str | None:
+    """A class name we wrote. Anything else stays off the screen."""
+    if value in ERROR_CLASSES:
+        return value
+    return None
+
+
+def set_poll_paused(session: Session, paused: bool, now: datetime) -> XMeter:
+    """Remember whether reading is paused. This does not call X."""
+    row = ensure_meter(session, now)
+    row.poll_paused = paused
+    row.updated_at = now
+    return row
+
+
 def meter_view(session: Session, *, enabled: bool, now: datetime) -> dict:
     row = session.get(XMeter, 1)
     connected = session.get(XConnection, 1) is not None and enabled
@@ -155,7 +171,25 @@ def meter_view(session: Session, *, enabled: bool, now: datetime) -> dict:
         "credits_remaining": None if row is None or not enabled else row.credits_remaining,
         "rate_remaining": None if row is None or not enabled else row.rate_remaining,
         "backing_off": backing,
-        "attention": None if row is None or not enabled else row.last_error_class,
+        "attention": None if row is None or not enabled else public_error(row.last_error_class),
+        "poll_paused": bool(row and row.poll_paused) if enabled else False,
+    }
+
+
+def reading_view(session: Session, *, enabled: bool, now: datetime) -> dict:
+    """Last headers and the pause flag. No token, no tweet, no spend cap."""
+    row = session.get(XMeter, 1) if enabled else None
+    backing = bool(row and row.backoff_until and row.backoff_until > now)
+    return {
+        "poll_paused": bool(row.poll_paused) if row is not None else False,
+        "last_poll_at": row.last_poll_at if row is not None else None,
+        "last_error_class": public_error(row.last_error_class) if row is not None else None,
+        "backing_off": backing,
+        "backoff_until": row.backoff_until if backing and row is not None else None,
+        "credits_remaining": None if row is None else row.credits_remaining,
+        "rate_remaining": None if row is None else row.rate_remaining,
+        "rate_reset_at": row.rate_reset_at if row is not None else None,
+        "watch_limit": WATCH_LIMIT,
     }
 
 

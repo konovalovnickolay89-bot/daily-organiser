@@ -3,7 +3,6 @@ import { AssistantPane } from "../modules/assistant/AssistantPane";
 import { ReasoningPane } from "../modules/assistant/ReasoningPane";
 import { MorningBrief } from "../modules/brief/MorningBrief";
 import { QuietSuggestion } from "../modules/media/QuietSuggestion";
-import { XCards } from "../modules/x/XCards";
 import { TodayList } from "../modules/tasks/TodayList";
 
 /**
@@ -13,6 +12,7 @@ import { TodayList } from "../modules/tasks/TodayList";
  *   "brief"      — brief card
  *   "today"      — today card (tasks, then the add line)
  *   "reasoning"  — working strip and proposal cards
+ * X is not a module here. ArrivalShell gives it a card of its own.
  *   "corner"     — quiet line under the cards, when the playlist flag is on
  */
 export const arrivalModules: Array<{ id: string; panel: string; Component: ComponentType }> = [
@@ -20,6 +20,5 @@ export const arrivalModules: Array<{ id: string; panel: string; Component: Compo
   { id: "today", panel: "today", Component: TodayList },
   { id: "assistant", panel: "today", Component: AssistantPane },
   { id: "reasoning", panel: "reasoning", Component: ReasoningPane },
-  { id: "x-cards", panel: "reasoning", Component: XCards },
   { id: "quiet-media", panel: "corner", Component: QuietSuggestion },
 ];
