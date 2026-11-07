@@ -130,6 +130,10 @@ export type HouseFacts = {
   voice_input?: "on" | "off";
   disruption_checks?: "active" | "not active";
   local_reminders?: "on" | "off";
+  reminder_overdue?: "on" | "off";
+  reminder_stalled?: "on" | "off";
+  reminder_upcoming?: "on" | "off";
+  reminder_types_ready?: boolean;
 };
 
 export type XMeter = {

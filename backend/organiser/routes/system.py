@@ -17,6 +17,7 @@ from organiser.schemas import (
     CalendarListRead,
     CalendarName,
     HouseFacts,
+    LocalReminderWrite,
     StatusRead,
     SystemRead,
 )
@@ -49,10 +50,10 @@ def _configured(flag: bool) -> str:
     return "configured" if flag else "not configured"
 
 
-def _local_reminders(session: Session) -> bool:
-    from organiser.agent.local_reminders import reminders_enabled
+def _reminder_words(session: Session) -> dict:
+    from organiser.agent.local_reminders import reminder_flags
 
-    return reminders_enabled(session)
+    return reminder_flags(session).as_words()
 
 
 @router.get("", response_model=SystemRead)
@@ -83,7 +84,7 @@ def house_facts(session: Session = Depends(get_db)) -> HouseFacts:
         banto=_configured(settings.banto_configured),
         voice_input="on" if settings.voice_input_enabled else "off",
         disruption_checks="active" if settings.commute_disruption_checks else "not active",
-        local_reminders="on" if _local_reminders(session) else "off",
+        **_reminder_words(session),
     )
 
 
@@ -116,11 +117,31 @@ def status(session: Session = Depends(get_db)) -> StatusRead:
 
 
 @router.post("/local-reminders", response_model=HouseFacts)
-def set_local_reminders(payload: AssistantSwitch, session: Session = Depends(get_db)) -> HouseFacts:
-    """Save the local reminder switch. Off prepares nothing and calls no provider."""
-    from organiser.agent.local_reminders import set_reminders_enabled
+def set_local_reminders(payload: LocalReminderWrite, session: Session = Depends(get_db)) -> HouseFacts:
+    """Save the master switch and any type switches that were sent.
 
-    set_reminders_enabled(session, payload.enabled, house_clock.current_time())
+    Master off prepares nothing. A type that is omitted is not changed, so an
+    older client cannot turn a type on by saving the master switch.
+    """
+    from organiser.agent.local_reminders import TypesUnavailable, set_reminder_flags
+
+    if not payload.any_set():
+        raise HTTPException(status_code=422, detail="Name a switch. Nothing was saved.")
+    try:
+        set_reminder_flags(
+            session,
+            house_clock.current_time(),
+            enabled=payload.enabled,
+            overdue=payload.overdue,
+            stalled=payload.stalled,
+            upcoming=payload.upcoming,
+        )
+    except TypesUnavailable:
+        session.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="The reminder types are not in this database yet. Nothing was turned on.",
+        ) from None
     session.commit()
     return house_facts(session)
 

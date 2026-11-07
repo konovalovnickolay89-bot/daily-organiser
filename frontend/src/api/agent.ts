@@ -11,7 +11,10 @@ export type ReminderCandidate = {
   rule: string;
   title: string;
   reason: string;
+  type_on?: boolean;
 };
+
+export type ReminderSwitchName = "overdue" | "stalled" | "upcoming";
 
 export type ReminderPreview = {
   calls_assistant: false;
@@ -27,6 +30,11 @@ export type ReminderPreview = {
   candidates: ReminderCandidate[];
   note: string;
   local_reminders: "on" | "off";
+  reminder_overdue?: "on" | "off";
+  reminder_stalled?: "on" | "off";
+  reminder_upcoming?: "on" | "off";
+  reminder_types_ready?: boolean;
+  waiting_note?: string | null;
 };
 
 export type LocalReminderResult = {

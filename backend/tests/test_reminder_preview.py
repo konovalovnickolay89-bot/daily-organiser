@@ -41,6 +41,11 @@ def test_preview_is_quiet_and_lists_a_bounded_line(client, db, house_clock, assi
     assert titles == ["Water the plants"]
     assert len(body["candidates"]) <= 3
     assert body["local_reminders"] == "off"
+    assert body["reminder_overdue"] == "off"
+    assert body["reminder_stalled"] == "off"
+    assert body["reminder_upcoming"] == "off"
+    assert body["waiting_note"] is None
+    assert body["candidates"][0]["type_on"] is False
     refused = client.post("/agent/reminders")
     assert refused.status_code == 200
     assert refused.json() == {"prepared": 0, "reason": "off", "calls_assistant": False, "summary": None}
@@ -54,7 +59,14 @@ def test_local_reminders_stay_off_until_saved_and_respect_quiet_hours(client, db
     monkeypatch.setattr(MistralClient, "__init__", boom)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
-    assert client.post("/system/local-reminders", json={"enabled": True}).json()["local_reminders"] == "on"
+    saved = client.post("/system/local-reminders", json={"enabled": True}).json()
+    assert saved["local_reminders"] == "on"
+    assert saved["reminder_overdue"] == "off"
+    assert saved["reminder_stalled"] == "off"
+    assert saved["reminder_upcoming"] == "off"
+    turned = client.post("/system/local-reminders", json={"overdue": True}).json()
+    assert turned["local_reminders"] == "on"
+    assert turned["reminder_overdue"] == "on"
     house_clock["now"] = london(2026, 11, 2, 23, 0)
     quiet = client.post("/agent/reminders")
     assert quiet.json()["prepared"] == 0
@@ -88,7 +100,10 @@ def test_local_reminders_stay_off_until_saved_and_respect_quiet_hours(client, db
     assert len(proposals) == 1
     assert proposals[0]["label"] == "Local reminder"
     assert client.post("/system/local-reminders", json={"enabled": False}).json()["local_reminders"] == "off"
-    assert client.post("/system/local-reminders", json={"enabled": True}).json()["local_reminders"] == "on"
+    restored = client.post("/system/local-reminders", json={"enabled": True}).json()
+    assert restored["local_reminders"] == "on"
+    assert restored["reminder_overdue"] == "on"
+    assert restored["reminder_stalled"] == "off"
     assert client.post("/system/pause").status_code == 200
     paused = client.post("/agent/reminders")
     assert paused.json()["prepared"] == 0

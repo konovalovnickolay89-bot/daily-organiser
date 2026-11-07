@@ -27,8 +27,16 @@ export function setAssistantSwitch(enabled: boolean) {
   return request<HouseFacts>("/system/assistant", { method: "POST", body: { enabled } });
 }
 
-export function setLocalReminders(enabled: boolean) {
-  return request<HouseFacts>("/system/local-reminders", { method: "POST", body: { enabled } });
+export type ReminderWrite = {
+  enabled?: boolean;
+  overdue?: boolean;
+  stalled?: boolean;
+  upcoming?: boolean;
+};
+
+export function setLocalReminders(body: boolean | ReminderWrite) {
+  const payload = typeof body === "boolean" ? { enabled: body } : body;
+  return request<HouseFacts>("/system/local-reminders", { method: "POST", body: payload });
 }
 
 export type CalendarEntry = {
