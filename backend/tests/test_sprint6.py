@@ -26,7 +26,7 @@ from organiser.agent.context import (
 from organiser.agent.mistral import MistralClient, MistralUnavailable
 from organiser.agent.runner import outside_home
 from organiser.agent.voice import voice_kind
-from organiser.config import get_settings
+from organiser.config import Settings, get_settings
 from organiser.main import app
 from organiser.metrics import METRICS
 from organiser.models import AgentProposal, Commitment, Event, MemoryItem, Task
@@ -399,6 +399,31 @@ def test_voxtral_posts_audio_from_memory(caplog):
     assert b"audio/webm" in seen["body"]
     assert b"test-key" not in seen["body"]
     assert MARKER.decode() not in caplog.text
+
+
+def test_default_model_is_the_documented_transcription_id():
+    """POST /v1/audio/transcriptions requires voxtral-mini-transcribe-3.
+
+    The short name voxtral-mini is not that id. An explicit model argument is
+    still sent unchanged, so a set MISTRAL_TRANSCRIBE_MODEL replaces the default.
+    """
+    default = Settings.model_fields["mistral_transcribe_model"].default
+    assert default == "voxtral-mini-transcribe-3"
+    seen: dict[str, bytes] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = request.content
+        return httpx.Response(200, json={"text": "put the bins out"})
+
+    client = MistralClient("test-key", "https://api.mistral.ai", transport=httpx.MockTransport(handler))
+    text = client.transcribe(b"abc", model=default, media_type="audio/webm")
+    client.close()
+    assert text == "put the bins out"
+    body = seen["body"]
+    assert b'name="model"' in body
+    assert b"voxtral-mini-transcribe-3" in body
+    assert b"\r\nvoxtral-mini\r\n" not in body
+    assert b'filename="line.webm"' in body
 
 
 def test_voxtral_strips_codecs_and_names_the_part(caplog):

@@ -60,7 +60,11 @@ class Settings(BaseSettings):
     mistral_embed_model: str = "mistral-embed"
     # Voice on Smart Add. Off until the house sets this. The model is Voxtral.
     voice_input_enabled: bool = False
-    mistral_transcribe_model: str = "voxtral-mini"
+    # File transcription model for POST /v1/audio/transcriptions.
+    # The guide requires voxtral-mini-transcribe-3 (alias of
+    # voxtral-mini-transcribe-3-0). voxtral-mini is not that id.
+    # MISTRAL_TRANSCRIBE_MODEL replaces this when it is set.
+    mistral_transcribe_model: str = "voxtral-mini-transcribe-3"
     mistral_base_url: str = "https://api.mistral.ai"
     # One Mistral call. Together with the run deadline this stays inside the
     # proxy's ~100s limit. See RUN_DEADLINE_SECONDS in agent/runner.py.
