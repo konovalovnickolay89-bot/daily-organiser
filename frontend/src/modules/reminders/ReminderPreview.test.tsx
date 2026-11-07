@@ -97,6 +97,35 @@ describe("Reminder type switches", () => {
     expect(status.textContent).toContain("left in place");
   });
 
+  it("shows an assessed card without calling the reply a template", async () => {
+    getReminderPreview.mockResolvedValue(preview({ local_reminders: "on", reminder_overdue: "on" }));
+    prepareLocalReminders.mockResolvedValue({
+      prepared: 1,
+      reason: "overdue_lingering",
+      calls_assistant: true,
+      assessment: "assessed",
+      summary: "Note on Water the plants: “Have a look at this one.”",
+    });
+    render(<ReminderPreview />);
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Assessed. A card is waiting. Apply adds the note.");
+    expect(prepareLocalReminders).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when the assistant is off instead of inventing an assessment", async () => {
+    getReminderPreview.mockResolvedValue(preview({ local_reminders: "on", reminder_overdue: "on" }));
+    prepareLocalReminders.mockResolvedValue({
+      prepared: 0,
+      reason: "The assistant is off. Nothing was assessed.",
+      calls_assistant: false,
+      assessment: "unavailable",
+      summary: null,
+    });
+    render(<ReminderPreview />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("The assistant is off");
+    expect(screen.queryByText(/Assessed/)).toBeNull();
+  });
+
   it("does not offer a type switch before the columns exist", async () => {
     getReminderPreview.mockResolvedValue(preview({ reminder_types_ready: false }));
     render(<ReminderPreview />);

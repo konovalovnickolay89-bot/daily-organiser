@@ -6,7 +6,6 @@ from sqlalchemy import delete, func, select
 
 from agent_fakes import london
 
-from organiser.agent.mistral import MistralClient
 from organiser.agent.rules import window_base
 from organiser.models import AgentProposal, AgentRun, Commitment, Task
 
@@ -64,8 +63,22 @@ def _upcoming(db, moment, title):
     )
 
 
-def test_each_type_prepares_only_itself(client, db, house_clock, monkeypatch):
-    monkeypatch.setattr(MistralClient, "__init__", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("called")))
+def _worth(messages):
+    import json
+
+    item = json.loads(messages[-1]["content"])["untrusted_item"]
+    return json.dumps(
+        {
+            "worth_flagging": True,
+            "ref_id": item["ref_id"],
+            "rationale": f"The log says {item['rule_reason']}.",
+            "next_step": "Have a look at this one.",
+        }
+    )
+
+
+def test_each_type_prepares_only_itself(client, db, house_clock, reminder_ai):
+    reminder_ai(_worth)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
     _overdue(db, moment, "Water the plants")
@@ -73,7 +86,8 @@ def test_each_type_prepares_only_itself(client, db, house_clock, monkeypatch):
     _on(client, enabled=True, overdue=True)
     made = _prepare(client)
     assert made["prepared"] == 1
-    assert made["calls_assistant"] is False
+    assert made["calls_assistant"] is True
+    assert made["assessment"] == "assessed"
     assert "Water the plants" in made["summary"]
     assert client.get("/agent").json()["proposals"][0]["rule"] == "overdue_lingering"
 
@@ -96,7 +110,8 @@ def test_each_type_prepares_only_itself(client, db, house_clock, monkeypatch):
     assert "Return the spare key" in upcoming["summary"]
 
 
-def test_a_lower_type_is_prepared_when_higher_ones_are_off(client, db, house_clock):
+def test_a_lower_type_is_prepared_when_higher_ones_are_off(client, db, house_clock, reminder_ai):
+    reminder_ai(_worth)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
     _stalled(db, moment, "Mend the stair rod")
@@ -132,7 +147,8 @@ def test_all_types_off_prepares_nothing(client, db, house_clock):
     assert client.get("/agent").json()["proposals"] == []
 
 
-def test_master_off_wins_and_saved_types_survive(client, db, house_clock):
+def test_master_off_wins_and_saved_types_survive(client, db, house_clock, reminder_ai):
+    reminder_ai(_worth)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
     _overdue(db, moment, "Water the plants")
@@ -148,7 +164,13 @@ def test_master_off_wins_and_saved_types_survive(client, db, house_clock):
     assert off["reminder_stalled"] == "on"
     assert off["reminder_upcoming"] == "off"
     refused = _prepare(client)
-    assert refused == {"prepared": 0, "reason": "off", "calls_assistant": False, "summary": None}
+    assert refused == {
+        "prepared": 0,
+        "reason": "off",
+        "calls_assistant": False,
+        "summary": None,
+        "assessment": "skipped",
+    }
     assert client.get("/agent").json()["proposals"] == []
     restored = _on(client, enabled=True)
     assert restored["local_reminders"] == "on"
@@ -177,7 +199,8 @@ def test_an_old_client_cannot_turn_types_on(client):
     assert client.get("/system/facts").json()["reminder_overdue"] == "off"
 
 
-def test_a_disabled_type_leaves_its_waiting_card(client, db, house_clock):
+def test_a_disabled_type_leaves_its_waiting_card(client, db, house_clock, reminder_ai):
+    reminder_ai(_worth)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
     _overdue(db, moment, "Water the plants")
@@ -201,7 +224,8 @@ def test_a_disabled_type_leaves_its_waiting_card(client, db, house_clock):
     assert "Return the spare key" not in preview["waiting_note"]
 
 
-def test_quiet_hours_pause_dedupe_and_caps(client, db, house_clock):
+def test_quiet_hours_pause_dedupe_and_caps(client, db, house_clock, reminder_ai):
+    reminder_ai(_worth)
     moment = london(2026, 11, 2, 8, 0)
     house_clock["now"] = moment
     _overdue(db, moment, "Water the plants")
@@ -250,7 +274,8 @@ def test_quiet_hours_pause_dedupe_and_caps(client, db, house_clock):
     db.commit()
     raced = _prepare(client)
     assert raced["prepared"] == 0
-    assert raced["reason"] == "already prepared"
+    assert raced["reason"] == "already assessed"
+    assert raced["calls_assistant"] is False
     assert client.get("/agent").json()["proposals"] == []
 
     for index in range(3):

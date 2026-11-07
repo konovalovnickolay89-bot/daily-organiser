@@ -7,7 +7,7 @@ The assistant reads the house log and proposes changes. Each proposal is a card 
 It speaks in two ways:
 
 - **When you write in the box** on the arrival screen ("need filters for the boiler before Friday", or "buy oat milk"). The right-hand column shows up to five recent log lines, then the working steps, then one or two lines and up to 3 cards. That column is not a chat. The next line replaces the strip. A shop line is a name only, and it waits for Apply. A commute or travel to work can propose the trip. The live journey is the brief, from the rota, and the card must not invent one. If the run does not finish, the column says so and nothing is changed. That answer is HTTP 424, so the page stays in the app. If Mistral cannot be reached, the add line hides until a later try.
-- **On its own, by fixed rules**: a morning review, and items that have gone quiet. The rules live in `backend/organiser/agent/rules.py`, not in the model.
+- **On its own, by fixed rules**: a morning review, and items that have gone quiet, while local reminders are off. The rules live in `backend/organiser/agent/rules.py`, not in the model. While local reminders are on, Decisions does not start that review. It asks for one assessment of the first overdue, stalled, or upcoming item whose type is on. That call has no tools. A card is added only when the answer is worth flagging, and Apply only adds the note.
 
 ## Set it up
 
@@ -70,7 +70,7 @@ Always:
 - **12 Mistral runs a day** across everything, as a cost guard.
 - **One proactive card at a time.**
 - **Not now rests an item for 72 hours.** After a second look at the same item, it says nothing more until the item itself changes.
-- **No screen, no review.** The display at home asks for a review when one is due. There is no scheduler and nothing is installed on the host.
+- **No screen, no review.** The display at home asks for a review when one is due, or for one reminder assessment when local reminders are on. There is no scheduler and nothing is installed on the host. The two do not run together.
 
 ### What Apply can change
 

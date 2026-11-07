@@ -264,7 +264,7 @@ def reminder_preview(session: Session = Depends(get_db)) -> ReminderPreview:
         candidates=candidates,
         note=(
             "Preview. Nothing is sent, and this reading does not call the assistant. "
-            "A card is prepared only when the house switch and that type are both on."
+            "Rules list the lines. A card is added only after an assessment, and only when that type is on."
         ),
         waiting_note=waiting,
         **flags.as_words(),
@@ -272,9 +272,12 @@ def reminder_preview(session: Session = Depends(get_db)) -> ReminderPreview:
 
 
 @router.post("/reminders", response_model=LocalReminderResult)
-def prepare_reminders(session: Session = Depends(get_db)) -> LocalReminderResult:
-    """Prepare one local card when the switch is on. Does not call Mistral."""
-    result = prepare_local_reminder(session, _local_now(), get_settings())
+def prepare_reminders(
+    session: Session = Depends(get_db),
+    client: MistralClient | None = Depends(get_mistral),
+) -> LocalReminderResult:
+    """Assess one eligible reminder. No call unless the gates and a type allow it."""
+    result = prepare_local_reminder(session, _local_now(), get_settings(), client)
     session.commit()
     return LocalReminderResult.model_validate(result)
 
@@ -663,7 +666,13 @@ def review(
     session: Session = Depends(get_db),
     client: MistralClient | None = Depends(get_mistral),
 ) -> AgentResult:
-    """Run the one review GET /agent said is due. Each window runs once."""
+    """Run the one review GET /agent said is due. Each window runs once.
+
+    Local reminders own that screen while their master switch is on, so this
+    review does not also start.
+    """
+    if reminders_enabled(session):
+        raise HTTPException(status_code=409, detail="Local reminders are on. This review was not started.")
     settings = get_settings()
     local_now = _local_now()
     row = ensure_system_state(session)
