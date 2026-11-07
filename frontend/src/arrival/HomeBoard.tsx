@@ -10,7 +10,6 @@ import { AssistantPane } from "../modules/assistant/AssistantPane";
 import { ReasoningPane } from "../modules/assistant/ReasoningPane";
 import { MorningBrief } from "../modules/brief/MorningBrief";
 import { TodayList } from "../modules/tasks/TodayList";
-import { XCards } from "../modules/x/XCards";
 import { card, cx, heading, lede } from "./ui";
 
 const STORAGE = "organiser-home-open";
@@ -200,12 +199,7 @@ export function HomeBoard() {
         {open === "brief" && <MorningBrief />}
         {open === "today" && <TodayList />}
         {open === "proposals" && <AssistantPane />}
-        {open === "decisions" && (
-          <div className="grid gap-6">
-            <ReasoningPane />
-            <XCards />
-          </div>
-        )}
+        {open === "decisions" && <ReasoningPane />}
       </section>
     </div>
   );

@@ -344,6 +344,25 @@ def test_get_memory_does_not_embed(client, monkeypatch):
     assert client.get("/agent").status_code == 200
 
 
+def test_keyword_search_ranks_shared_words_and_does_not_embed(client, monkeypatch):
+    assert client.post("/memory", json={"kind": "fact", "text": "The milk stays in the door"}).status_code == 201
+    assert client.post("/memory", json={"kind": "fact", "text": "Paint the door"}).status_code == 201
+
+    def boom(text):
+        raise AssertionError(text)
+
+    monkeypatch.setattr("organiser.routes.memory.embed_query", boom)
+    monkeypatch.setattr("organiser.agent.memory.embed_query", boom)
+    found = client.get("/memory", params={"q": "milk door"})
+    assert found.status_code == 200
+    body = found.json()
+    assert body["search"] == "keyword"
+    assert [item["text"] for item in body["items"]] == ["The milk stays in the door", "Paint the door"]
+    listed = client.get("/memory")
+    assert listed.json()["search"] == "list"
+    assert "embedding" not in found.text
+
+
 def test_embed_query_without_a_key_is_quiet(monkeypatch):
     monkeypatch.setenv("MISTRAL_API_KEY", "")
     get_settings.cache_clear()

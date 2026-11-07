@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { exportMemory, forgetMemory, listMemory, pinMemory, type MemoryItem } from "../../api/memory";
-import { actions, errorText, fieldInput, ghost, inset, kickerAccent, lede, subheading } from "../../arrival/ui";
+import { actions, errorText, fieldInput, ghost, inset, kickerAccent, lede, meta, subheading } from "../../arrival/ui";
+import { formatHouseTime } from "../status/format";
 import { EmptyState } from "../../components/EmptyState";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useHouseTick } from "../../house/HouseContext";
@@ -23,6 +24,8 @@ export function MemoryScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [inspectId, setInspectId] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<"list" | "keyword">("list");
   const tick = useHouseTick();
 
   useEffect(() => {
@@ -31,6 +34,7 @@ export function MemoryScreen() {
       .then((data) => {
         if (!cancelled) {
           setItems(data.items);
+          setSearchMode(data.search === "keyword" ? "keyword" : "list");
           setError(null);
         }
       })
@@ -111,6 +115,7 @@ export function MemoryScreen() {
             aria-label="Search memory"
             onChange={(event) => {
               setConfirmId(null);
+              setInspectId(null);
               setQuery(event.target.value);
             }}
           />
@@ -125,10 +130,16 @@ export function MemoryScreen() {
         </p>
       )}
       {items === null && !error && <LoadingSkeleton label="Loading memory…" />}
+      {query.trim() && items !== null && (
+        <p className="mb-4 text-sm text-[var(--muted)]" data-memory-search={searchMode}>
+          Keyword search. Nothing is sent to a model.
+        </p>
+      )}
       {items !== null && rows.length === 0 && <EmptyState>{query.trim() ? "Nothing matches." : "Nothing is remembered yet."}</EmptyState>}
       <ul className="m-0 grid list-none gap-4 p-0">
         {rows.map((item) => {
           const confirming = confirmId === item.id;
+          const inspecting = inspectId === item.id;
           return (
             <li key={item.id} className={inset} data-memory={item.id}>
               <p className={kickerAccent}>
@@ -136,9 +147,27 @@ export function MemoryScreen() {
                 {item.pinned ? " · Pinned" : ""}
               </p>
               <p className="mb-2 mt-2 text-base font-semibold leading-snug text-[var(--ink)] [overflow-wrap:anywhere]">{item.text}</p>
+              {inspecting && (
+                <dl className="mb-2 grid gap-1" data-memory-inspect={item.id}>
+                  <div className="flex justify-between gap-4">
+                    <dt className={meta}>Source</dt>
+                    <dd className="m-0 text-base text-[var(--ink)]">{item.source}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className={meta}>Remembered</dt>
+                    <dd className="m-0 font-mono text-sm tabular-nums text-[var(--ink)]">{formatHouseTime(item.created_at)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className={meta}>Last used</dt>
+                    <dd className="m-0 font-mono text-sm tabular-nums text-[var(--ink)]">{formatHouseTime(item.last_used_at)}</dd>
+                  </div>
+                </dl>
+              )}
               {confirming ? (
                 <div className={actions}>
-                  <p className="m-0 min-h-11 basis-full text-base text-[var(--muted)]">Forget this memory? It is removed from the house.</p>
+                  <p className="m-0 min-h-11 basis-full text-base text-[var(--muted)]">
+                    Forget “{item.text}”? This removes that one line after you confirm. Nothing else is deleted.
+                  </p>
                   <button
                     type="button"
                     className={ghost}
@@ -153,6 +182,15 @@ export function MemoryScreen() {
                 </div>
               ) : (
                 <div className={actions}>
+                  <button
+                    type="button"
+                    className={ghost}
+                    aria-expanded={inspecting}
+                    disabled={busyId === item.id}
+                    onClick={() => setInspectId(inspecting ? null : item.id)}
+                  >
+                    {inspecting ? "Close" : "Inspect"}
+                  </button>
                   <button
                     type="button"
                     className={ghost}

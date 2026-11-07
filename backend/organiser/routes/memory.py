@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from organiser import clock
 from organiser.agent.cards import clip
-from organiser.agent.memory import MEMORY_TEXT_LIMIT, embed_query, forgotten_title, outside_memory
+from organiser.agent.memory import MEMORY_TEXT_LIMIT, embed_query, forgotten_title, outside_memory, search_keywords
 from organiser.db import get_db
 from organiser.domain import DEFAULT_OWNER
 from organiser.models import MemoryItem
@@ -42,14 +42,17 @@ def list_memory(
     session: Session = Depends(get_db),
     q: str = Query(default="", max_length=200),
 ) -> MemoryList:
-    """The memory list. A search is words in the text. This does not call Mistral."""
-    statement = _ordered()
+    """The memory list. A search is words in the text. This does not call Mistral.
+
+    Several words rank by how many of them appear. A pin breaks a tie.
+    A query with no significant word falls back to the phrase as written.
+    """
     term = " ".join(q.split())
-    if term:
-        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        statement = statement.where(MemoryItem.text.ilike(f"%{escaped}%", escape="\\"))
-    rows = session.scalars(statement.limit(200)).all()
-    return MemoryList(items=[_read(row) for row in rows])
+    if not term:
+        rows = session.scalars(_ordered().limit(200)).all()
+        return MemoryList(search="list", items=[_read(row) for row in rows])
+    ranked = search_keywords(session, term)
+    return MemoryList(search="keyword", items=[_read(row) for row in ranked])
 
 
 @router.get("/export", response_model=MemoryExport)

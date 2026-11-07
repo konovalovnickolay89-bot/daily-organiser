@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from organiser.agent.cards import clip
@@ -146,6 +146,68 @@ def embed_query(text: str) -> list[float] | None:
 
 def tokens(text: str) -> set[str]:
     return {tok for tok in _TOKEN.findall(text.lower()) if tok not in _STOP and len(tok) > 2}
+
+
+def keyword_words(text: str) -> list[str]:
+    """Significant words, in first-seen order. Empty when the query has none."""
+    seen: list[str] = []
+    for tok in _TOKEN.findall((text or "").lower()):
+        if tok in _STOP or len(tok) <= 2 or tok in seen:
+            continue
+        seen.append(tok)
+    return seen
+
+
+def _like_term(word: str) -> str:
+    escaped = word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def search_keywords(session: Session, query: str, *, limit: int = 50) -> list[MemoryItem]:
+    """Lines for a Settings search. Words, then a phrase if the query has no word.
+
+    Does not embed. The caller does not stamp ``last_used_at``.
+    """
+    raw = " ".join((query or "").split())
+    if not raw:
+        return []
+    words = keyword_words(raw)
+    if not words:
+        escaped = raw.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        return list(
+            session.scalars(
+                select(MemoryItem)
+                .where(MemoryItem.text.ilike(f"%{escaped}%", escape="\\"))
+                .order_by(MemoryItem.pinned.desc(), MemoryItem.created_at.desc())
+                .limit(limit)
+            ).all()
+        )
+    found = list(
+        session.scalars(
+            select(MemoryItem)
+            .where(or_(*(MemoryItem.text.ilike(_like_term(word), escape="\\") for word in words)))
+            .limit(200)
+        ).all()
+    )
+    return rank_keywords(found, raw)[:limit]
+
+
+def rank_keywords(rows: list[MemoryItem], query: str) -> list[MemoryItem]:
+    """Rank rows by how many query words they contain.
+
+    A pin breaks a tie. This does not embed and does not drop a row for being unpinned.
+    """
+    words = keyword_words(query)
+    if not words:
+        return list(rows)
+
+    def hits(row: MemoryItem) -> int:
+        lowered = row.text.casefold()
+        return sum(1 for word in words if word in lowered)
+
+    matched = [row for row in rows if hits(row) > 0]
+    matched.sort(key=lambda row: (hits(row), row.pinned, _stamp(row)), reverse=True)
+    return matched
 
 
 def keyword_similarity(query: str, text: str) -> float:

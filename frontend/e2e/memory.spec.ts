@@ -73,7 +73,7 @@ test("remember, apply, recall, forget and export", async ({ page }) => {
 
   const kept = memory.locator("[data-memory]", { hasText: tea });
   await kept.getByRole("button", { name: "Forget" }).click();
-  await expect(memory.getByText("Forget this memory? It is removed from the house.")).toBeVisible();
+  await expect(kept.getByText(`Forget “${tea}”?`)).toBeVisible();
   await kept.getByRole("button", { name: "Keep" }).click();
   await expect(memory.getByText(tea)).toBeVisible();
   await kept.getByRole("button", { name: "Forget" }).click();

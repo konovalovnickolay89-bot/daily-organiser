@@ -367,6 +367,9 @@ class MemoryRead(APIModel):
 
 
 class MemoryList(APIModel):
+    """``search`` is ``list`` or ``keyword``. Keyword does not call a model."""
+
+    search: str = "list"
     items: list[MemoryRead]
 
 
@@ -379,6 +382,31 @@ class DueRead(APIModel):
     trigger: AgentTrigger
     window_key: str
     label: str
+
+
+class PreviewCandidate(APIModel):
+    """One line the existing rules would consider. A title from the house log."""
+
+    rule: str
+    title: str
+    reason: str
+
+
+class ReminderPreview(APIModel):
+    """A reading of the reminder rules. ``calls_assistant`` stays false."""
+
+    calls_assistant: bool = False
+    label: str = "Preview"
+    quiet: bool
+    quiet_hours: str
+    runs_left_today: int
+    proactive_left_today: int
+    cap_runs: int
+    cap_proactive: int
+    due: DueRead | None = None
+    held_because: str | None = None
+    candidates: list[PreviewCandidate]
+    note: str
 
 
 class LastReply(APIModel):

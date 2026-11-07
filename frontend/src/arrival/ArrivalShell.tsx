@@ -25,7 +25,7 @@ const MODULE_ORDER: Record<string, string[]> = {
   brief: ["morning-brief"],
   approvals: ["approvals"],
   today: ["today", "assistant"],
-  reasoning: ["reasoning", "x-cards"],
+  reasoning: ["reasoning"],
   corner: ["quiet-media"],
 };
 

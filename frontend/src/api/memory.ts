@@ -20,7 +20,7 @@ export type MemoryExport = {
 export function listMemory(query = "") {
   const q = query.trim();
   const path = q ? `/memory?q=${encodeURIComponent(q)}` : "/memory";
-  return request<{ items: MemoryItem[] }>(path);
+  return request<{ items: MemoryItem[]; search?: "list" | "keyword" }>(path);
 }
 
 export function pinMemory(id: string, pinned: boolean) {

@@ -52,7 +52,7 @@ test("an approval in Decisions can be applied", async ({ page, request }) => {
   await page.getByRole("button", { name: "Decisions" }).click();
   const card = page.locator("[data-kind='approval']", { hasText: title });
   await expect(card).toBeVisible();
-  await card.getByRole("button", { name: "Apply" }).click();
+  await card.getByRole("button", { name: "Approve" }).click();
   await expect(card).toHaveCount(0);
 });
 

@@ -79,7 +79,7 @@ describe("X cards", () => {
     expect(screen.getByText("Council collection moved to Friday")).toBeTruthy();
     expect(screen.queryByText("This draft expired")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Apply Put the bins out tonight" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep Put the bins out tonight" }));
     await waitFor(() => expect(applyXItem).toHaveBeenCalledWith("b1"));
     expect(screen.queryByText("Put the bins out tonight")).toBeNull();
 

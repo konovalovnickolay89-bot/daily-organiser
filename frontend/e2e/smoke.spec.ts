@@ -9,12 +9,18 @@ test("skip link moves to the brief", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Morning brief" })).toBeVisible();
 });
 
-test("decisions use Apply and Not now", async ({ page }) => {
+test("decisions use Apply and Not now", async ({ page, request }) => {
+  const title = `Queue ${Date.now()}`;
+  const created = await request.post("/action-requests", {
+    data: { title, mode: "observe", detail: "Approving only records that you saw it." },
+  });
+  expect(created.ok()).toBeTruthy();
   await page.goto("/");
   await page.getByRole("button", { name: "Decisions" }).click();
   await expect(page.getByRole("heading", { name: "Decisions" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Apply" }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Not now" }).first()).toBeVisible();
+  const card = page.locator("[data-kind='approval']", { hasText: title });
+  await expect(card.getByRole("button", { name: "Approve" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Not now" })).toBeVisible();
 });
 
 test("shopping add and tick stays on the brief", async ({ page }) => {
