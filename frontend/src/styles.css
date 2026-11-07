@@ -230,6 +230,27 @@ textarea {
   }
 }
 
+/* Stage inset. Left and right match. The phone keeps 24px, or the safe area when that is larger.
+   Card padding, the 24px gap, and the brass tube stay as they are. */
+.stage {
+  padding: 40px 32px 72px;
+}
+
+@media (min-width: 1100px) {
+  .stage {
+    padding: 48px 48px 72px;
+  }
+}
+
+@media (max-width: 720px) {
+  .stage {
+    padding-top: 24px;
+    padding-right: max(24px, env(safe-area-inset-right));
+    padding-bottom: max(48px, env(safe-area-inset-bottom));
+    padding-left: max(24px, env(safe-area-inset-left));
+  }
+}
+
 /* The rail picks one card. A utility class cannot see the shell's view as cleanly. */
 .shell[data-view="brief"] .card:not([data-panel="brief"]),
 .shell[data-view="approvals"] .card:not([data-panel="reasoning"]),

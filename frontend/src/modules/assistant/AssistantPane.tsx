@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SectionHeader } from "../../arrival/SectionHeader";
-import { cx, empty, errorText, fieldInput, primary } from "../../arrival/ui";
+import { cx, empty, fieldInput, primary } from "../../arrival/ui";
 import { useView } from "../../arrival/view";
 import { LoadingSkeleton } from "../../components/LoadingSkeleton";
 import { useAssistant } from "./AssistantContext";
@@ -20,7 +20,7 @@ function waitingLabel(count: number) {
 export function AssistantPane() {
   const view = useView();
   const { state, error, text, setText, sorting, enabled, reachable, paused, proposals, submit } = useAssistant();
-  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const inline = view !== "home";
   const showForm = enabled && reachable;
   const restingEmpty = showForm && !paused && proposals.length === 0;
@@ -45,44 +45,34 @@ export function AssistantPane() {
       {state && !enabled && <p className={empty}>The assistant is off.</p>}
       {state && enabled && !reachable && <p className={empty}>The assistant is down.</p>}
       {showForm && (
-        <form
-          className={cx(
-            "mb-4 flex min-w-0 max-w-full gap-2",
-            proposals.length > 0 && "max-[720px]:sticky max-[720px]:top-16 max-[720px]:z-[2] max-[720px]:-mx-2 max-[720px]:bg-card max-[720px]:p-2",
-          )}
-          onSubmit={(event) => void submit(event)}
-        >
-          <label htmlFor="feed-text" className="sr-only">
-            Add to the log
-          </label>
-          <input
-            id="feed-text"
-            className={cx(fieldInput, "w-0 flex-1")}
-            type="text"
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="A date, a bill, or remember …"
-            maxLength={1000}
-            autoComplete="off"
-            disabled={paused || sorting}
-          />
-          <VoiceControl
-            disabled={paused || sorting}
-            onText={(value) => {
-              setText(value);
-              setVoiceError(null);
-            }}
-            onError={setVoiceError}
-          />
-          <button type="submit" className={cx(primary, "shrink-0")} disabled={paused || sorting || !text.trim()}>
-            {sorting ? "Sorting…" : "Add"}
-          </button>
+        <form className="mb-4 flex min-w-0 max-w-full flex-col gap-4" onSubmit={(event) => void submit(event)}>
+          <div
+            className={cx(
+              "flex min-w-0 max-w-full gap-2",
+              proposals.length > 0 &&
+                "max-[720px]:sticky max-[720px]:top-16 max-[720px]:z-[2] max-[720px]:-mx-2 max-[720px]:bg-card max-[720px]:p-2",
+            )}
+          >
+            <label htmlFor="feed-text" className="sr-only">
+              Add to the log
+            </label>
+            <input
+              id="feed-text"
+              className={cx(fieldInput, "w-0 flex-1")}
+              type="text"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="A date, a bill, or remember …"
+              maxLength={1000}
+              autoComplete="off"
+              disabled={paused || sorting}
+            />
+            <button type="submit" className={cx(primary, "shrink-0")} disabled={paused || sorting || voiceBusy || !text.trim()}>
+              {sorting ? "Sorting…" : "Add"}
+            </button>
+          </div>
+          <VoiceControl disabled={paused || sorting} onBusy={setVoiceBusy} onText={setText} />
         </form>
-      )}
-      {showForm && voiceError && (
-        <p className={errorText} role="alert">
-          {voiceError}
-        </p>
       )}
       {paused && <p className="mb-2 text-left text-sm text-[var(--muted)]">Paused. Nothing goes to the assistant.</p>}
       {inline && <AssistantResult heading={false} />}

@@ -58,12 +58,8 @@ export function ArrivalShell() {
               Skip to content
             </a>
             <Rail view={view} onView={setView} />
-            <main
-              id="main"
-              className="stage min-w-0 flex-1 pb-18 pl-8 pr-10 pt-10 outline-none min-[1100px]:pb-24 min-[1100px]:pl-12 min-[1100px]:pr-18 min-[1100px]:pt-14 max-[720px]:px-4 max-[720px]:pb-12 max-[720px]:pt-6"
-              tabIndex={-1}
-            >
-              <div className="max-w-[1280px]">
+            <main id="main" className="stage min-w-0 flex-1 outline-none" tabIndex={-1}>
+              <div className="mx-auto w-full max-w-[1280px]">
                 <PresenceBar />
                 <CatchUpStrip />
                 <AlertCards />

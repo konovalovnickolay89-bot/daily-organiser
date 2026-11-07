@@ -48,7 +48,7 @@ export default {
         rail: "var(--radius-rail)",
       },
       spacing: {
-        /* 72px, nine steps of the 8px grid. Stage inset on a wide screen. */
+        /* 72px, nine steps of the 8px grid. */
         18: "72px",
       },
       width: {

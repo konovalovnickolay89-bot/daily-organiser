@@ -8,6 +8,20 @@ test("the rail stays 76px and home keeps three columns on an 8px gap", async ({ 
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
+  const stage = await page.locator("main.stage").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return {
+      left: style.paddingLeft,
+      right: style.paddingRight,
+      top: style.paddingTop,
+      bottom: style.paddingBottom,
+    };
+  });
+  expect(stage.left).toBe(stage.right);
+  expect(stage.left).toBe("48px");
+  expect(stage.top).toBe("48px");
+  expect(stage.bottom).toBe("72px");
+
   const rail = page.getByRole("navigation", { name: "House" });
   const railBox = await rail.boundingBox();
   expect(railBox?.width).toBe(76);
@@ -49,6 +63,12 @@ test("a narrow screen keeps the tube, the lighter padding, and no sideways scrol
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const stage = await page.locator("main.stage").evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { left: style.paddingLeft, right: style.paddingRight };
+  });
+  expect(stage.left).toBe(stage.right);
+  expect(stage.left).toBe("24px");
   const card = await page.locator(".card").first().evaluate((el) => {
     const style = getComputedStyle(el);
     return { padding: style.paddingTop, radius: style.borderTopLeftRadius, border: style.borderTopWidth };
