@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Daily Organiser bot</title>
+  <meta name="description" content="Daily Organiser bot is a private household log that can read today’s Google Calendar events.">
+  <style>
+    :root {
+      --ink: #1c1915;
+      --muted: #3f3832;
+      --paper: #f6efe4;
+      --card: #fffaf3;
+      --line: #ddcbb6;
+      --brass: #6b3f14;
+      --banner: #3f2a16;
+      --banner-ink: #f6efe4;
+      --placeholder: #f3e1c4;
+      --serif: "Iowan Old Style", Palatino, Georgia, "Liberation Serif", serif;
+      --sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { color-scheme: light; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 1.125rem;
+      line-height: 1.6;
+    }
+    .skip {
+      position: absolute;
+      left: 1rem;
+      top: -5rem;
+      background: var(--card);
+      color: var(--ink);
+      padding: 0.6rem 1rem;
+      z-index: 2;
+      border: 2px solid var(--brass);
+    }
+    .skip:focus { top: 1rem; }
+    a { color: var(--brass); text-underline-offset: 0.18em; }
+    a:hover { color: #4e2d0e; }
+    a:focus-visible, .skip:focus {
+      outline: 3px solid var(--brass);
+      outline-offset: 3px;
+    }
+    .banner {
+      background: var(--banner);
+      color: var(--banner-ink);
+    }
+    .wrap, .mast, nav, footer { 
+      width: min(42rem, calc(100% - 2rem));
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .banner p { margin: 0; padding: 0.9rem 0; font-size: 1rem; }
+    .mast { padding: 2.25rem 0 0.5rem; }
+    .kicker {
+      margin: 0 0 0.4rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brass);
+      font-weight: 650;
+    }
+    h1, h2 { font-family: var(--serif); font-weight: 560; line-height: 1.2; }
+    h1 { margin: 0 0 0.6rem; font-size: 2.4rem; }
+    h2 { margin: 2rem 0 0.5rem; font-size: 1.55rem; scroll-margin-top: 1rem; }
+    p, li { color: var(--ink); }
+    .lede { font-size: 1.25rem; margin-top: 0; }
+    .muted { color: var(--muted); }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.25rem;
+      padding: 0.5rem 0 0.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    nav a { display: inline-block; padding: 0.75rem 0; }
+    main { padding-bottom: 2.5rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .card h2:first-child, .card p:first-child { margin-top: 0; }
+    .url {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      word-break: break-all;
+    }
+    .tag {
+      display: inline-block;
+      margin-right: 0.4rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 999px;
+      background: var(--placeholder);
+      color: var(--ink);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      vertical-align: 0.1em;
+    }
+    .placeholder {
+      background: var(--placeholder);
+      border-radius: 1rem;
+      padding: 0.9rem 1rem;
+    }
+    ul { padding-left: 1.2rem; }
+    li + li { margin-top: 0.35rem; }
+    footer {
+      padding: 0 0 2.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    @media (max-width: 40rem) {
+      h1 { font-size: 2rem; }
+      body { font-size: 1.05rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="mast">
+    <p class="kicker">Public app description</p>
+    <h1>Daily Organiser bot</h1>
+    <p class="lede">A private household log. The Google consent screen name entered for this app is Daily Organiser bot. In the house the same log is called Daily Organiser. It is not a chat.</p>
+  </header>
+  <nav aria-label="Public pages">
+    <a href="privacy.html">Privacy policy</a>
+    <a href="terms.html">Terms of service</a>
+  </nav>
+  <main id="content" class="wrap">
+    <section class="card" aria-labelledby="addresses">
+      <h2 id="addresses">App addresses</h2>
+      <p>These are the public addresses for Daily Organiser bot. The privacy policy address on this page is the one that belongs on the Google consent screen, character for character.</p>
+      <ul>
+        <li>App description: <span class="url">https://organiser-info.apidiscoverysolution.uk/</span></li>
+        <li>Privacy policy: <a href="privacy.html"><span class="url">https://organiser-info.apidiscoverysolution.uk/privacy.html</span></a></li>
+        <li>Terms of service: <a href="terms.html"><span class="url">https://organiser-info.apidiscoverysolution.uk/terms.html</span></a></li>
+      </ul>
+    </section>
+
+    <h2 id="what">What the app does</h2>
+    <p>Daily Organiser keeps household tasks, commitments, and a morning brief. With a personal Google calendar connected, that brief can list today’s appointment titles and times. The list is read from Google Calendar. The app does not create, edit, or delete those events.</p>
+    <p>Each line on the brief is the event title, or the word Busy when Google sends no title, and a local time or the words All day. The appointments section says: “Read only. This is not a calendar.”</p>
+    <p>There is no month grid and no public sign-up. These pages do not ask you to sign in, and they do not start a Google consent screen.</p>
+
+    <h2 id="google">What Google Calendar is used for</h2>
+    <p>The connection is read-only. The scopes named in the source are:</p>
+    <ul>
+      <li><span class="url">https://www.googleapis.com/auth/calendar.events.readonly</span> — Google’s description: view events on all your calendars.</li>
+      <li><span class="url">https://www.googleapis.com/auth/calendar.calendarlist.readonly</span> — Google’s description: see the list of Google calendars you’re subscribed to.</li>
+    </ul>
+    <p>The intended calendar is the primary personal calendar. The software can also keep a calendar the operator adds by name in settings. Google’s events scope is worded more widely than “today on the primary calendar”. The privacy policy explains that difference.</p>
+    <p>This app does not run a Google sign-in callback. A client id, a client secret, and a refresh token are supplied from outside the app. The app uses that refresh token to ask Google for a short-lived access token, then reads the calendar.</p>
+
+    <h2 id="house-app">The household app is separate</h2>
+    <p>The household app is already on the web at <span class="url">https://organiser.apidiscoverysolution.uk</span>. That address is not a link on this page. Opening it asks for a household access check. It is not this description, and it is not a Google sign-in.</p>
+    <p>This description is meant to stay public. The household app is meant to stay behind that access check. Nothing on this page is the app, its data, or its program files.</p>
+
+    <h2 id="who">Who operates it</h2>
+    <p>The operator is Mykola Konovalov. The log is for the household. It is not offered here as a service other people can join.</p>
+
+    <h2 id="privacy">Privacy policy</h2>
+    <p>The privacy policy describes how this software accesses, uses, stores, and shares Google calendar data, including what a revoke at Google does not delete.</p>
+    <p><a href="privacy.html">Privacy policy <span class="url">https://organiser-info.apidiscoverysolution.uk/privacy.html</span></a></p>
+    <p><a href="terms.html">Terms of service <span class="url">https://organiser-info.apidiscoverysolution.uk/terms.html</span></a></p>
+
+    <h2 id="contact">Support</h2>
+    <p>The public support email for Daily Organiser bot is <a href="mailto:mykolakonovalov@gmail.com">mykolakonovalov@gmail.com</a>. The operator is Mykola Konovalov.</p>
+  </main>
+  <footer>
+    <p>Text dated 7 November 2026. It describes the software reviewed that day. It is not a statement that Google has verified the app.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy — Daily Organiser bot</title>
+  <meta name="description" content="Privacy policy for Daily Organiser bot: read-only Google Calendar access, what is stored, and what revocation does not delete.">
+  <style>
+    :root {
+      --ink: #1c1915;
+      --muted: #3f3832;
+      --paper: #f6efe4;
+      --card: #fffaf3;
+      --line: #ddcbb6;
+      --brass: #6b3f14;
+      --banner: #3f2a16;
+      --banner-ink: #f6efe4;
+      --placeholder: #f3e1c4;
+      --serif: "Iowan Old Style", Palatino, Georgia, "Liberation Serif", serif;
+      --sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { color-scheme: light; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 1.125rem;
+      line-height: 1.6;
+    }
+    .skip {
+      position: absolute;
+      left: 1rem;
+      top: -5rem;
+      background: var(--card);
+      color: var(--ink);
+      padding: 0.6rem 1rem;
+      z-index: 2;
+      border: 2px solid var(--brass);
+    }
+    .skip:focus { top: 1rem; }
+    a { color: var(--brass); text-underline-offset: 0.18em; }
+    a:hover { color: #4e2d0e; }
+    a:focus-visible, .skip:focus {
+      outline: 3px solid var(--brass);
+      outline-offset: 3px;
+    }
+    .banner { background: var(--banner); color: var(--banner-ink); }
+    .wrap, .mast, nav, footer {
+      width: min(42rem, calc(100% - 2rem));
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .banner p { margin: 0; padding: 0.9rem 0; font-size: 1rem; }
+    .mast { padding: 2.25rem 0 0.5rem; }
+    .kicker {
+      margin: 0 0 0.4rem;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brass);
+      font-weight: 650;
+    }
+    h1, h2 { font-family: var(--serif); font-weight: 560; line-height: 1.2; }
+    h1 { margin: 0 0 0.6rem; font-size: 2.4rem; }
+    h2 { margin: 2rem 0 0.5rem; font-size: 1.55rem; scroll-margin-top: 1rem; }
+    .lede { font-size: 1.25rem; margin-top: 0; }
+    .muted { color: var(--muted); }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.25rem;
+      padding: 0.5rem 0 0.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    nav a { display: inline-block; padding: 0.75rem 0; }
+    main { padding-bottom: 2.5rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      padding: 1rem 1.15rem;
+      margin: 1rem 0;
+    }
+    .url {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 0.92em;
+      word-break: break-all;
+    }
+    .tag {
+      display: inline-block;
+      margin-right: 0.4rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 999px;
+      background: var(--placeholder);
+      color: var(--ink);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      vertical-align: 0.1em;
+    }
+    .placeholder {
+      background: var(--placeholder);
+      border-radius: 1rem;
+      padding: 0.9rem 1rem;
+    }
+    ul { padding-left: 1.2rem; }
+    li + li { margin-top: 0.35rem; }
+    footer {
+      padding: 0 0 2.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    @media (max-width: 40rem) {
+      h1 { font-size: 2rem; }
+      body { font-size: 1.05rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="mast">
+    <p class="kicker">Privacy policy</p>
+    <h1>Daily Organiser bot</h1>
+    <p class="lede">How this household log accesses, uses, stores, and shares Google Calendar data.</p>
+    <p class="muted">Text dated 7 November 2026. If the software changes, this page has to change before the new use. The app has no screen that asks someone to accept an updated policy.</p>
+  </header>
+  <nav aria-label="Public pages">
+    <a href="index.html">App description</a>
+    <a href="terms.html">Terms of service</a>
+  </nav>
+  <main id="content" class="wrap">
+    <section class="card" aria-labelledby="address">
+      <h2 id="address">Address of this page</h2>
+      <p><span class="url">https://organiser-info.apidiscoverysolution.uk/privacy.html</span></p>
+      <p>The app description links here. The same string is the privacy policy address for the Google consent screen. The app description address is <span class="url">https://organiser-info.apidiscoverysolution.uk/</span>.</p>
+    </section>
+
+    <h2 id="who">Who this is</h2>
+    <p>The operator is Mykola Konovalov. Daily Organiser bot is the name on the Google consent screen. Daily Organiser is the household log. It keeps household tasks, commitments, and a morning brief. It is not a public service people can join from these pages.</p>
+    <p>The Google account is the personal account whose refresh token is configured for the house. This page does not name that account.</p>
+
+    <h2 id="covers">What this policy covers</h2>
+    <p>It covers Google user data the calendar connection can receive: calendar events and the calendar list. Household notes a person types into the log are a different store. They are mentioned below only where they could be confused with calendar data.</p>
+
+    <h2 id="scopes">Google access this software is built for</h2>
+    <p>The source names two read-only scopes and no write scope:</p>
+    <ul>
+      <li><span class="url">https://www.googleapis.com/auth/calendar.events.readonly</span>. Google’s own description of this scope is “View events on all your calendars.”</li>
+      <li><span class="url">https://www.googleapis.com/auth/calendar.calendarlist.readonly</span>. Google’s own description is “See the list of Google calendars you’re subscribed to.”</li>
+    </ul>
+    <p>Those descriptions are wider than the subset this process asks for on an ordinary morning. For events, it asks for the configured calendars, for the local calendar day, up to 50 events. The default configured calendar is the primary calendar when no calendar id is set. The operator can add another calendar by name; that stores the calendar’s Google id and its display name.</p>
+    <p>The refresh request does not send a scope. This process cannot widen the grant at refresh time. It also cannot, from the source alone, prove which scopes the live token was given. That token was not checked against Google for this page.</p>
+    <p>The software does not create, change, or delete Google Calendar events. It does not request the broader calendar scopes that would allow that.</p>
+
+    <h2 id="grant">How the grant is obtained</h2>
+    <p>There is no Google OAuth callback in this app. The client id, client secret, and refresh token are acquired outside the app and read from the house environment (<span class="url">GOOGLE_OAUTH_CLIENT_ID</span>, <span class="url">GOOGLE_OAUTH_CLIENT_SECRET</span>, <span class="url">GOOGLE_OAUTH_REFRESH_TOKEN</span>). Those values are not written into the database by this code.</p>
+    <p>The refresh token is not sealed with the key this app uses for a different, optional connection. This page does not claim the environment file or the disk is encrypted. That was not inspected.</p>
+    <p>To read the calendar, the app sends the client id, client secret, and refresh token to <span class="url">https://oauth2.googleapis.com/token</span> and receives a short-lived access token. It then calls Google’s Calendar API at <span class="url">https://www.googleapis.com</span> with that access token. Both calls use HTTPS URLs in the source. This page does not describe the house network beyond that.</p>
+
+    <h2 id="read">What a read takes from Google</h2>
+    <p>On the morning brief, the app asks for events from local midnight to the next local midnight in the configured house timezone. The default timezone in the source is Europe/London. That names a zone, not a street address.</p>
+    <p>The event request does not set a field mask. Google’s response can include more than the title and the start, such as a description, a place, attendees, or an organiser address. This code keeps three things for the brief: the title (or Busy), a local time or All day, and a 12-character hash of the event id. The rest is not copied into the brief. It is still received into process memory for that request. There is no coded wipe of that memory.</p>
+    <p>Cancelled events are skipped. The same event id is shown once. A blank title is shown as Busy. Before a title is shown, the software drops titles that match a fixed household block list. The Google response is received before that check. A title that does not match the list is still shown. The list is not a guarantee that every non-household event is dropped.</p>
+    <p>The calendar list is requested when the operator adds a calendar by name, not on every brief. That request asks for up to 100 calendars and does not follow a further page.</p>
+
+    <h2 id="use">What the data is used for</h2>
+    <p>Event titles and times are shown on the household morning brief so the house can see today’s appointments. Calendar names are shown in settings so the operator can add or remove a calendar. A short hash of the event id is returned with the brief line so the page can tell lines apart. It is not the Google event id.</p>
+    <p>Google’s user-data policy includes extra rules, often called Limited Use, for some scopes. This software’s calendar use, as written, is the brief and the settings list above. It has no advertising and no analytics. It has no function that sells or rents Google data. This page does not say Google has judged that use acceptable.</p>
+    <p>Google’s policy text: <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>.</p>
+
+    <h2 id="stored">What is stored</h2>
+    <ul>
+      <li>The refresh token, client id, and client secret stay in the house environment until an operator removes them. They are not a row in the application database.</li>
+      <li>A short-lived access token is kept in the memory of the running process until it is near expiry, or until the process stops. The source uses the lifetime Google sends, or 3600 seconds if that lifetime is missing, and refreshes a little early. The token is not written to the database by this code.</li>
+      <li>After the operator adds a calendar in settings, the database stores the provider name, the Google calendar id, and the display name. Google’s id for a primary calendar is often the account email. The live database was not read for this page, so it does not say whether any such row is stored today. Reading the brief alone does not create that row.</li>
+      <li>Each diary attempt updates a status row: the time of the last success, or an error class of “unconfigured” or “unavailable”. That row has no event title and no token.</li>
+    </ul>
+
+    <h2 id="not-stored">What this code does not store</h2>
+    <p>Event titles, times, descriptions, places, attendees, and the short hash are not written as calendar-event rows. The brief is answered and then dropped by this code. The browser keeps the brief on the open page. The app does not put the brief into browser local storage. Local storage in this app is used for a colour theme and a layout preview, not for the diary.</p>
+    <p>There is no fixed retention period in the source for data that is not stored as a row. There is also no fixed retention period for a calendar id once it has been saved. It stays until that settings row is deleted, or until the database itself is removed by means this page did not inspect.</p>
+
+    <h2 id="unknown">Copies this page cannot see</h2>
+    <p>The application log for a request records the method, the path, the status, and the duration. It does not record the body. A failed diary call logs a fixed sentence, “diary request failed” or “diary list failed”, not the Google response.</p>
+    <p>This does not describe Cloudflare, the system journal, a crash dump, a proxy, or a database backup. Those were not inspected. They may keep copies this application does not. This page does not promise that those copies are encrypted, or that they are deleted on a schedule.</p>
+
+    <h2 id="others">Other services, including the assistant</h2>
+    <p>The morning review builds the whole brief, and building the brief reads today’s calendar events. It then builds the text it sends to Mistral. That text includes tasks and commitments only. The function that builds it skips every other section, including appointments. The assistant’s searches read tasks and commitments. They do not query the calendar.</p>
+    <p>A morning review can therefore cause a Google Calendar read in the same server step as a call to Mistral, while the appointments are not part of the text this code sends. Mistral is asked to store that conversation and the app then asks Mistral to delete it. If the delete fails, the log records the conversation id, not the calendar. This is not a claim about what Mistral keeps on its side. Calendar titles are not in that packet today. If a later change puts them in, this policy has to be updated first.</p>
+    <p>If a person types an appointment into a task, a note, or the assistant box, that typed line is house-log text. It can be sent to Mistral. The calendar code does not copy event titles into those records.</p>
+    <p>Voice input, when the house turns it on, can send one recording to Mistral for a transcript. It is off unless enabled. When no transcription model is set, the source default is <span class="url">voxtral-mini-transcribe-3</span>. A value set in the environment is what is sent instead. Voice is not a calendar read. Optional weather, journey, and X connections are separate. The calendar code does not pass Google event fields to them.</p>
+    <p>Google receives the OAuth refresh and the Calendar API requests, because Google holds the calendar. That is the provider the data comes from.</p>
+
+    <h2 id="who-sees">Who can see the brief</h2>
+    <p>The household app has no user accounts of its own. Whoever is admitted by the house access check can open the morning brief, including today’s appointment titles and times. This repository does not set that allow list, and this page does not say who is on it. The public description pages do not show the brief.</p>
+    <p>The household app’s existing address is <span class="url">https://organiser.apidiscoverysolution.uk</span>. It is not a link here. It stays behind the access check. It is not this policy.</p>
+
+    <h2 id="revoke">Revoking access is not the same as deleting stored data</h2>
+    <p>The account holder can review or remove the app’s access in their Google Account. Google’s help page, as fetched on 7 November 2026, is <a href="https://support.google.com/accounts/answer/13533235?hl=en">Manage links between your Google Account and apps from other developers</a>. The steps there can change. Removing access tells Google to stop honouring the grant. It does not, by itself, delete rows in this household database.</p>
+    <p>This app has no Google disconnect button. It does not call Google’s token-revoke endpoint. It notices a dead grant when a later refresh or calendar call fails. The brief then says the diary is not connected. An access token already cached in the running process can still be used until that cache expires or the process stops. Whether Google rejects that access token immediately is Google’s behaviour and was not tested.</p>
+    <p>Removing the three environment values and restarting the process stops new refreshes. That is an operator action on the host, not a control in the app. It does not delete a calendar row already stored.</p>
+    <p>Removing one calendar in settings deletes that calendar’s stored id and display name. It does not revoke the Google grant. It does not delete event titles, because those titles are not stored as rows. There is no control that deletes “all Google data”, and there is no job that clears logs outside this application.</p>
+    <p>Google’s OAuth policy says developers should store tokens encrypted at rest, revoke them when they are no longer needed, and then delete them. This software does not yet do that for the Google refresh token.</p>
+
+    <h2 id="notice">Notice inside the app</h2>
+    <p>The appointments section shows “Read only. This is not a calendar.” Settings describe the diary as read-only. The app does not yet show this privacy policy, or a link to it, inside the household interface. Google’s branding rules also ask for a privacy notice in the product. The words for that link are written down for review. They are not in the app.</p>
+
+    <h2 id="changes">Changes</h2>
+    <p>If Google data is used in a new way, this page has to be updated first. The current software cannot ask for a fresh grant by itself, because it has no OAuth callback. A new grant would be made outside the app.</p>
+
+    <h2 id="contact">Support</h2>
+    <p>The public support email for Daily Organiser bot is <a href="mailto:mykolakonovalov@gmail.com">mykolakonovalov@gmail.com</a>. The operator is Mykola Konovalov.</p>
+  </main>
+  <footer>
+    <p><a href="index.html">App description</a> · <a href="terms.html">Terms of service</a></p>
+    <p>Text dated 7 November 2026. It is not a statement that Google has verified the app.</p>
+  </footer>
+</body>
+</html>
