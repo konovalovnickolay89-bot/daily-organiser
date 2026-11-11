@@ -1,7 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { getAgent } from "../api/agent";
 import { listApprovals } from "../api/approvals";
-import { getMorningBrief, type MorningBrief as Brief } from "../api/brief";
+import { getMorningBrief, type BriefSection, type MorningBrief as Brief } from "../api/brief";
 import { getCommutePlan, type CommutePlan } from "../api/commute";
 import { getLineStatus, type LineStatus } from "../api/lines";
 import { listTasks } from "../api/tasks";
@@ -12,6 +12,7 @@ import { asError } from "../lib/errors";
 import { AssistantPane } from "../modules/assistant/AssistantPane";
 import { ReasoningPane } from "../modules/assistant/ReasoningPane";
 import { MorningBrief } from "../modules/brief/MorningBrief";
+import { CalendarDetail, calendarOverview } from "../modules/diary/CalendarHome";
 import { CommuteDetail, commuteOverview } from "../modules/commute/CommutePlan";
 import { LineStatusDetail, lineOverview } from "../modules/lines/LineStatusPanel";
 import { TodayList } from "../modules/tasks/TodayList";
@@ -19,7 +20,7 @@ import { card, cx, heading, lede } from "./ui";
 
 const STORAGE = "organiser-home-open";
 
-const SECTIONS = ["brief", "commute", "lines", "today", "proposals", "decisions"] as const;
+const SECTIONS = ["brief", "calendar", "commute", "lines", "today", "proposals", "decisions"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 type Row = {
@@ -32,6 +33,7 @@ type Row = {
 
 const EMPTY: Record<SectionId, Row> = {
   brief: { id: "brief", title: "Brief", count: "…", summary: "Checking the brief…", urgent: null },
+  calendar: { id: "calendar", title: "Calendar", count: "…", summary: "Checking today's diary…", urgent: null },
   commute: { id: "commute", title: "Commute", count: "…", summary: "Checking the commute…", urgent: null },
   lines: { id: "lines", title: "Lines", count: "…", summary: "Checking line status…", urgent: null },
   today: { id: "today", title: "Today", count: "…", summary: "Checking today…", urgent: null },
@@ -81,12 +83,16 @@ export function HomeBoard() {
   const [commuteError, setCommuteError] = useState<Error | null>(null);
   const [lines, setLines] = useState<LineStatus | null>(null);
   const [linesError, setLinesError] = useState<Error | null>(null);
+  const [diary, setDiary] = useState<BriefSection | null>(null);
+  const [diaryError, setDiaryError] = useState<Error | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [brief, tasks, agent, approvals, x, commuteResult, lineResult] = await Promise.all([
-        getMorningBrief().catch(() => null),
+      const [briefResult, tasks, agent, approvals, x, commuteResult, lineResult] = await Promise.all([
+        getMorningBrief()
+          .then((brief) => ({ brief, error: null as Error | null }))
+          .catch((err: unknown) => ({ brief: null as Brief | null, error: asError(err) })),
         listTasks({ scope: "today", limit: 200 }).catch(() => null),
         getAgent().catch(() => null),
         listApprovals("pending").catch(() => null),
@@ -103,9 +109,14 @@ export function HomeBoard() {
       setCommuteError(commuteResult.error);
       setLines(lineResult.status);
       setLinesError(lineResult.error);
+      const brief = briefResult.brief;
+      const appointments = brief?.sections.find((section) => section.key === "appointments") ?? null;
+      setDiary(appointments);
+      setDiaryError(briefResult.error);
       const next = { ...EMPTY };
       if (brief) next.brief = briefRow(brief);
       else next.brief = { ...EMPTY.brief, count: "—", summary: "The brief could not be read." };
+      next.calendar = { id: "calendar", title: "Calendar", ...calendarOverview(appointments, briefResult.error) };
       const trip = commuteOverview(commuteResult.status, commuteResult.error);
       next.commute = { id: "commute", title: "Commute", ...trip };
       const linesRow = lineOverview(lineResult.status, lineResult.error);
@@ -222,6 +233,7 @@ export function HomeBoard() {
       </section>
       <section id="home-detail" className={card}>
         {open === "brief" && <MorningBrief />}
+        {open === "calendar" && <CalendarDetail section={diary} error={diaryError} />}
         {open === "commute" && <CommuteDetail plan={commute} error={commuteError} />}
         {open === "lines" && <LineStatusDetail status={lines} error={linesError} />}
         {open === "today" && <TodayList />}

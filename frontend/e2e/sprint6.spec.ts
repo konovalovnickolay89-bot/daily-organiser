@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 test("status panel shows health, version, and the database", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Status", exact: true })).toBeVisible();
   await expect(page.locator("[data-status='health']")).toHaveText("Ok");
   await expect(page.locator("[data-status='version']")).not.toHaveText("…");

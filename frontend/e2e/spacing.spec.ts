@@ -167,7 +167,7 @@ test("inner panels, inputs, and pills use their own radii", async ({ page }) => 
   const pillRadius = await notNow.evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
   expect(pillRadius).toBe("999px");
 
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   const theme = page.getByRole("radio", { name: "Morning" });
   await expect(theme).toBeVisible();
   const choice = await theme.evaluate((el) => getComputedStyle(el.parentElement as HTMLElement).borderTopLeftRadius);
